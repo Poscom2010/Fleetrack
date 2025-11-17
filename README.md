@@ -205,7 +205,7 @@ firebase deploy --only firestore:rules
 ![System Admin](https://github.com/Poscom2010/Fleetrack/blob/main/src/assets/Systemadmin%20dashboard.JPG)
 
 ### Company Dashboard
-![Company Dashboard](https://via.placeholder.com/800x400?text=Company+Dashboard)
+![Company Dashboard](https://github.com/Poscom2010/Fleetrack/blob/main/src/assets/company%20dashboard.JPG)
 
 ### Analytics
 ![Analytics](https://via.placeholder.com/800x400?text=Analytics+Dashboard)
