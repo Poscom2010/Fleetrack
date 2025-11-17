@@ -202,10 +202,10 @@ firebase deploy --only firestore:rules
 ## 📸 Screenshots
 
 ### System Admin Dashboard
-![System Admin](https://via.placeholder.com/800x400?text=System+Admin+Dashboard)
+![System Admin](https://github.com/Poscom2010/Fleetrack/blob/main/src/assets/Systemadmin%20dashboard.JPG)
 
 ### Company Dashboard
-![Company Dashboard](https://via.placeholder.com/800x400?text=Company+Dashboard)
+![Company Dashboard](https://github.com/Poscom2010/Fleetrack/blob/main/src/assets/company%20dashboard.JPG)
 
 ### Analytics
 ![Analytics](https://via.placeholder.com/800x400?text=Analytics+Dashboard)
@@ -252,8 +252,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 👨‍💻 Author
 
 **Your Name**
-- GitHub: [@YOUR_USERNAME](https://github.com/YOUR_USERNAME)
-- Email: your.email@example.com
+- GitHub: [@poscom2010](https://www.github.com/poscom2010)
+- Email: peddzisaiposeni@gmail.com
 
 ---
 
