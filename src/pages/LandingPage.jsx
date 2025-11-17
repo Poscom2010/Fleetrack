@@ -16,7 +16,7 @@ import logo from '../assets/FleetTrack-logo.png';
 
 const LandingPage = () => {
   const navigate = useNavigate();
-  const { loginWithGoogle, login } = useAuth();
+  const { loginWithGoogle, login, user, userProfile } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -35,6 +35,25 @@ const LandingPage = () => {
     }
   }, [navigate]);
 
+  // Redirect authenticated users to their dashboard
+  useEffect(() => {
+    if (user && userProfile) {
+      // User is authenticated, redirect to appropriate dashboard
+      if (userProfile.role === 'system_admin') {
+        navigate('/admin', { replace: true });
+      } else if (userProfile.companyId) {
+        // User has a company, go to dashboard
+        navigate('/dashboard', { replace: true });
+      } else if (userProfile.role === 'company_admin') {
+        // New company admin without company, go to setup
+        navigate('/company-setup', { replace: true });
+      } else {
+        // Invited user without company (shouldn't happen, but handle it)
+        navigate('/company-setup', { replace: true });
+      }
+    }
+  }, [user, userProfile, navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -42,6 +61,8 @@ const LandingPage = () => {
     try {
       if (isLogin) {
         await login(email, password);
+        setShowAuthModal(false);
+        // useEffect will handle redirect after user/userProfile are set
       } else {
         // Registration logic
         if (password !== confirmPassword) {
@@ -54,8 +75,6 @@ const LandingPage = () => {
         setLoading(false);
         return;
       }
-      setShowAuthModal(false);
-      navigate('/dashboard');
     } catch (error) {
       console.error('Auth error:', error);
       alert(error.message);
@@ -69,7 +88,7 @@ const LandingPage = () => {
     try {
       await loginWithGoogle();
       setShowAuthModal(false);
-      navigate('/dashboard');
+      // useEffect will handle redirect after user/userProfile are set
     } catch (error) {
       console.error('Google sign-in error:', error);
       alert(error.message);
@@ -268,7 +287,10 @@ const LandingPage = () => {
 
                 {/* Sign In Button */}
                 <button
-                  onClick={() => openAuthModal(true)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    openAuthModal(true);
+                  }}
                   className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 text-sm"
                 >
                   Sign In
@@ -277,7 +299,10 @@ const LandingPage = () => {
 
                 {/* Create Account Button */}
                 <button
-                  onClick={() => openAuthModal(false)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    openAuthModal(false);
+                  }}
                   className="w-full py-2.5 bg-white border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-semibold rounded-lg transition flex items-center justify-center gap-2 text-sm"
                 >
                   Create Account
@@ -293,8 +318,12 @@ const LandingPage = () => {
 
               {/* Google Sign In */}
               <button
-                onClick={() => openAuthModal(true)}
-                className="w-full py-2.5 bg-white border-2 border-slate-300 hover:border-slate-400 text-slate-700 font-medium rounded-lg transition flex items-center justify-center gap-2 text-sm"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleGoogleSignIn();
+                }}
+                disabled={loading}
+                className="w-full py-2.5 bg-white border-2 border-slate-300 hover:border-slate-400 text-slate-700 font-medium rounded-lg transition flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path

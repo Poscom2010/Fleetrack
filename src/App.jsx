@@ -34,6 +34,7 @@ const CompanySetupPage = () => {
   const [logoFile, setLogoFile] = React.useState(null);
   const [formData, setFormData] = React.useState({
     name: "",
+    fullName: user?.displayName || "", // Admin's full name
     timezone: "Africa/Johannesburg",
     currency: "ZAR",
     dateFormat: "DD/MM/YYYY",
@@ -110,18 +111,62 @@ const CompanySetupPage = () => {
         updatedAt: serverTimestamp(),
       });
       
-      // Update user role - creator becomes company admin
+      // Update user profile - creator becomes company admin
       const userRef = doc(db, 'users', user.uid);
       await setDoc(userRef, {
         companyId: companyRef.id,
         role: 'company_admin',
+        fullName: formData.fullName || user.displayName,
         updatedAt: serverTimestamp(),
       }, { merge: true });
       
-      alert('Company created successfully! Your 2-month trial has started.');
+      // Show success modal and redirect after a delay
+      setLoading(false);
       
-      // Reload page to refresh auth context
-      window.location.href = '/dashboard';
+      // Create and show custom success modal
+      const modal = document.createElement('div');
+      modal.innerHTML = `
+        <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 9999;">
+          <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 24px; padding: 48px; max-width: 500px; width: 90%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);">
+            <div style="text-align: center;">
+              <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; box-shadow: 0 0 40px rgba(16, 185, 129, 0.4);">
+                <svg style="width: 48px; height: 48px; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <h2 style="font-size: 32px; font-weight: 700; color: white; margin-bottom: 16px;">Welcome to FleetTrack!</h2>
+              <p style="font-size: 18px; color: #94a3b8; margin-bottom: 32px;">Your company <strong style="color: #e2e8f0;">"${formData.name}"</strong> has been created successfully.</p>
+              <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 32px;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                  <svg style="width: 24px; height: 24px; color: #10b981; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span style="color: #d1fae5; font-size: 16px;">Full access activated</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                  <svg style="width: 24px; height: 24px; color: #10b981; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span style="color: #d1fae5; font-size: 16px;">All features unlocked</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <svg style="width: 24px; height: 24px; color: #10b981; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span style="color: #d1fae5; font-size: 16px;">Free</span>
+                </div>
+              </div>
+              <p style="color: #64748b; font-size: 14px;">Redirecting to your dashboard...</p>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      
+      // Redirect after 3 seconds
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 3000);
     } catch (error) {
       console.error('Error creating company:', error);
       alert('Failed to create company: ' + error.message);
@@ -138,6 +183,25 @@ const CompanySetupPage = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Admin Name */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">
+              Your Full Name *
+            </label>
+            <input
+              type="text"
+              value={formData.fullName}
+              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+              className="w-full bg-slate-900 text-white px-4 py-3 rounded-lg border border-slate-600 focus:border-brand-500 focus:outline-none"
+              placeholder="John Doe"
+              required
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              This will be displayed on your profile as Company Admin
+            </p>
+          </div>
+
+          {/* Company Name */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">
               Company Name *
@@ -300,14 +364,15 @@ const CompanySetupPage = () => {
             </div>
           </div>
 
+          {/* Trial Information */}
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
-            <h3 className="font-semibold text-emerald-400">✨ 2-Month Free Trial</h3>
+            <h3 className="font-semibold text-emerald-400">✨ Free Access</h3>
             <ul className="mt-2 space-y-1 text-sm text-emerald-200">
               <li>• Full access to all features</li>
-              <li>• Add unlimited vehicles during trial</li>
+              <li>• Add unlimited vehicles</li>
               <li>• No credit card required</li>
             </ul>
-            
+            {/* 
             <div className="mt-3 space-y-1 text-xs text-emerald-300/90">
               <p className="font-semibold text-emerald-200">After trial - Simple tiered pricing:</p>
               <p>• 1-2 vehicles: <span className="font-semibold">R150/month</span></p>
@@ -315,6 +380,7 @@ const CompanySetupPage = () => {
               <p>• 6-10 vehicles: <span className="font-semibold">R600/month</span></p>
               <p>• 11+ vehicles: <span className="font-semibold">R50 per vehicle/month</span></p>
             </div>
+            */}
           </div>
 
           <button
@@ -322,7 +388,7 @@ const CompanySetupPage = () => {
             disabled={loading}
             className="w-full rounded-lg bg-gradient-to-r from-brand-500 to-indigo-600 px-6 py-3 font-semibold text-white shadow-lg transition hover:from-brand-600 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? "Creating Company..." : "Create Company & Start Trial"}
+            {loading ? "Creating Company..." : "Create Company"}
           </button>
         </form>
       </div>

@@ -121,6 +121,7 @@ const useAuthProvider = () => {
             }
             
             // Create profile with invitation data if available
+            // First-time users without invitation become company admins
             const profileData = {
               email: currentUser.email,
               displayName: invitationData?.fullName || currentUser.displayName,
@@ -128,7 +129,7 @@ const useAuthProvider = () => {
               fullName: invitationData?.fullName || currentUser.displayName,
               phoneNumber: invitationData?.phoneNumber || null,
               location: invitationData?.location || null,
-              role: invitationData?.role || null,
+              role: invitationData?.role || 'company_admin', // Default to company_admin for new users
               companyId: invitationData?.companyId || null,
             };
             

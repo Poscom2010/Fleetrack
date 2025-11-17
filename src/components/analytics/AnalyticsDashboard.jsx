@@ -32,7 +32,6 @@ const AnalyticsDashboard = () => {
     licenseExpiryAlerts,
     loading,
     error,
-    isMockData,
     acknowledgeAlert,
   } = useAnalytics(user?.uid, timeRange);
 
@@ -194,20 +193,14 @@ const AnalyticsDashboard = () => {
                     Mileage since service: {formatNumber(alert.mileageSinceService)} km
                   </p>
                 </div>
-                {isMockData ? (
-                  <div className="inline-flex items-center justify-center rounded-lg border border-amber-400/50 bg-amber-500/20 px-3 py-1.5 text-xs font-semibold text-amber-200">
-                    Demo Data
-                  </div>
-                ) : (
-                  <button
-                    onClick={() =>
-                      handleAcknowledgeAlert(alert.vehicleId, alert.currentMileage)
-                    }
-                    className="inline-flex items-center justify-center rounded-lg border border-red-400/50 bg-gradient-to-r from-red-500 to-red-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-red-500/30 transition hover:from-red-600 hover:to-red-700 hover:shadow-red-500/50"
-                  >
-                    Acknowledge
-                  </button>
-                )}
+                <button
+                  onClick={() =>
+                    handleAcknowledgeAlert(alert.vehicleId, alert.currentMileage)
+                  }
+                  className="inline-flex items-center justify-center rounded-lg border border-red-400/50 bg-gradient-to-r from-red-500 to-red-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-red-500/30 transition hover:from-red-600 hover:to-red-700 hover:shadow-red-500/50"
+                >
+                  Acknowledge
+                </button>
               </div>
             ))}
           </div>
