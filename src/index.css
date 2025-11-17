@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --surface-100: #0f172a;
+    --surface-200: #111b2f;
+    --surface-300: #15213c;
+    --brand-500: #6366f1;
+    --accent-500: #0ea5e9;
+  }
+
+  html {
+    @apply bg-surface-100 text-slate-100 antialiased;
+    font-family: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  }
+
+  body {
+    min-height: 100vh;
+    background: radial-gradient(
+        circle at 10% 20%,
+        rgba(99, 102, 241, 0.25) 0%,
+        transparent 60%
+      ),
+      radial-gradient(
+        circle at 90% 10%,
+        rgba(14, 165, 233, 0.18) 0%,
+        transparent 55%
+      ),
+      radial-gradient(
+        circle at 50% 100%,
+        rgba(168, 85, 247, 0.18) 0%,
+        transparent 55%
+      ),
+      #0b1120;
+    color: #f8fafc;
+    @apply bg-surface-100 text-slate-100;
+  }
+
+  ::selection {
+    background: rgba(99, 102, 241, 0.35);
+    color: #f8fafc;
+  }
+
+  a {
+    @apply text-accent-400;
+  }
+}
