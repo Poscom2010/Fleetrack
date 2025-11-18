@@ -1,7 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useEffect, useState } from "react";
+import { usePageTitle } from "../hooks/usePageTitle";
 import LoginForm from "../components/auth/LoginForm";
+import LandingBackground from "../components/common/LandingBackground";
 import logo from "../assets/FleetTrack-logo.png";
 
 /**
@@ -9,6 +11,7 @@ import logo from "../assets/FleetTrack-logo.png";
  * @returns {JSX.Element} LoginPage component
  */
 const LoginPage = () => {
+  usePageTitle('Login');
   const navigate = useNavigate();
   const { user, register } = useAuth();
   const [isRegistering, setIsRegistering] = useState(false);
@@ -58,20 +61,9 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-slate-900">
-      {/* Modern Background with Subtle Gradients */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"></div>
-      
-      {/* Accent Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-brand-500/5 via-transparent to-purple-500/5"></div>
-      
-      {/* Subtle Noise Texture */}
-      <div 
-        className="absolute inset-0 opacity-[0.015]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-        }}
-      ></div>
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      {/* Same animated background as Landing Page */}
+      <LandingBackground />
 
       {/* Content Container */}
       <div className="relative z-10 min-h-screen flex items-center justify-center p-4">

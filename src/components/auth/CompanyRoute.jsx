@@ -19,7 +19,7 @@ const CompanyRoute = ({ children }) => {
 
   // Redirect to login if not authenticated
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // Admins bypass company requirement

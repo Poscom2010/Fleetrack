@@ -20,7 +20,7 @@ const AdminRoute = ({ children }) => {
 
   // Redirect to login if not authenticated
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // Redirect to dashboard if not system admin

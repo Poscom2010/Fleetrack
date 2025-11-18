@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
-import { useAuth } from "../hooks/useAuth";
+import { useState, useEffect } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { Plus, Car, Edit2, Trash2, AlertCircle, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
 const VehiclesPage = () => {
+  usePageTitle('Vehicles');
   const { user, company, userProfile } = useAuth();
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { useNavigate } from 'react-router-dom';
 import SuccessModal from '../components/common/SuccessModal';
 
@@ -7,6 +8,7 @@ import SuccessModal from '../components/common/SuccessModal';
  * Team Page - Shows driver activity table for admins and managers
  */
 const TeamPage = () => {
+  usePageTitle('Team');
   const { company, userProfile, user } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);

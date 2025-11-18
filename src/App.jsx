@@ -8,19 +8,20 @@ import {
 } from "react-router-dom";
 import { useAuth } from "./hooks/useAuth";
 import { AuthProvider } from "./hooks/useAuth";
+import { usePageTitle } from "./hooks/usePageTitle";
 import { updateCompany } from "./services/companyService";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminRoute from "./components/auth/AdminRoute";
 import CompanyRoute from "./components/auth/CompanyRoute";
 import CompanyOnlyRoute from "./components/auth/CompanyOnlyRoute";
 import SmartRedirect from "./components/auth/SmartRedirect";
-import LoginPage from "./pages/LoginPage";
 import LandingPage from "./pages/LandingPage";
 import VehiclesPage from "./pages/VehiclesPage";
 import EntriesPage from "./pages/EntriesPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import SupportPage from "./pages/SupportPage";
 import SystemAdminDashboard from "./pages/SystemAdminDashboard";
+import SystemAnalyticsPage from "./pages/SystemAnalyticsPage";
 import AnalyticsDashboard from "./components/analytics/AnalyticsDashboard";
 import TripLogbookPage from "./pages/TripLogbookPage";
 import ProfileSettingsPage from "./pages/ProfileSettingsPage";
@@ -1445,6 +1446,7 @@ const CompanySettingsPage = () => {
 
 // Simple Dashboard Page for company admins/managers
 const DashboardPage = () => {
+  usePageTitle('Dashboard');
   return (
     <div className="min-h-screen bg-slate-950">
       <AnalyticsDashboard />
@@ -1483,7 +1485,7 @@ function App() {
           <Toast />
           <Routes>
             {/* Public Routes */}
-            <Route path="/login" element={<LoginPage />} />
+            {/* Login is handled on the landing page, no separate /login route needed */}
 
             {/* Company Setup (authenticated but no company yet) */}
             <Route
@@ -1502,6 +1504,16 @@ function App() {
                 <AdminRoute>
                   <AppShell>
                     <SystemAdminDashboard />
+                  </AppShell>
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/analytics"
+              element={
+                <AdminRoute>
+                  <AppShell>
+                    <SystemAnalyticsPage />
                   </AppShell>
                 </AdminRoute>
               }
@@ -1609,9 +1621,6 @@ function App() {
 
             {/* Landing Page */}
             <Route path="/" element={<LandingPage />} />
-            
-            {/* Login Page */}
-            <Route path="/login" element={<LoginPage />} />
 
             {/* Catch all - redirect to smart redirect */}
             <Route path="*" element={<SmartRedirect />} />

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { useAuth } from "../hooks/useAuth";
+import React, { useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../services/firebase";
 
@@ -7,6 +8,7 @@ import { db } from "../services/firebase";
  * AnalyticsPage - AI-powered insights dashboard for fleet performance
  */
 const AnalyticsPage = () => {
+  usePageTitle('Analytics');
   const { company, userProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [insights, setInsights] = useState([]);

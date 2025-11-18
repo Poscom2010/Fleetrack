@@ -15,11 +15,12 @@ const LoginForm = ({ onSuccess, isRegistering = false }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState({});
   const [authError, setAuthError] = useState("");
   const [invitationName, setInvitationName] = useState("");
 
-  // Check for invitation data and pre-fill email
+  // Check for invitation data and pre-fill email, or load saved credentials
   useEffect(() => {
     const invitationEmail = sessionStorage.getItem('invitationEmail');
     const invitationNameStored = sessionStorage.getItem('invitationName');
@@ -27,6 +28,21 @@ const LoginForm = ({ onSuccess, isRegistering = false }) => {
     if (invitationEmail) {
       setEmail(invitationEmail);
       console.log('📧 Pre-filled email from invitation:', invitationEmail);
+    } else if (!isRegistering) {
+      // Load saved credentials if "Remember Me" was checked
+      const savedEmail = localStorage.getItem('fleettrack_saved_email');
+      const savedPassword = localStorage.getItem('fleettrack_saved_password');
+      const wasRemembered = localStorage.getItem('fleettrack_remember_me') === 'true';
+      
+      if (savedEmail && wasRemembered) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+        console.log('📧 Pre-filled email from saved credentials');
+      }
+      
+      if (savedPassword && wasRemembered) {
+        setPassword(savedPassword);
+      }
     }
     
     if (invitationNameStored) {
@@ -91,6 +107,20 @@ const LoginForm = ({ onSuccess, isRegistering = false }) => {
         toast.success("Account created successfully!");
       } else {
         await login(email, password);
+        
+        // Save credentials if "Remember Me" is checked
+        if (rememberMe) {
+          localStorage.setItem('fleettrack_saved_email', email);
+          localStorage.setItem('fleettrack_saved_password', password);
+          localStorage.setItem('fleettrack_remember_me', 'true');
+          console.log('💾 Saved login credentials');
+        } else {
+          // Clear saved credentials if "Remember Me" is unchecked
+          localStorage.removeItem('fleettrack_saved_email');
+          localStorage.removeItem('fleettrack_saved_password');
+          localStorage.removeItem('fleettrack_remember_me');
+        }
+        
         toast.success("Successfully signed in!");
       }
       if (onSuccess) {
@@ -274,6 +304,25 @@ const LoginForm = ({ onSuccess, isRegistering = false }) => {
           </div>
         )}
 
+        {/* Remember Me Checkbox (only for login) */}
+        {!isRegistering && (
+          <div className="flex items-center">
+            <input
+              id="rememberMe"
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+              disabled={loading}
+            />
+            <label
+              htmlFor="rememberMe"
+              className="ml-2 block text-sm text-gray-700 cursor-pointer select-none"
+            >
+              Remember me
+            </label>
+          </div>
+        )}
 
         {/* Submit Button */}
         <button

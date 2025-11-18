@@ -14,7 +14,7 @@ const SmartRedirect = () => {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // System admin goes to admin dashboard

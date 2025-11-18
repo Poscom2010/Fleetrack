@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { useNavigate } from 'react-router-dom';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -7,6 +8,7 @@ import { User, Mail, Phone, MapPin, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ProfileSettingsPage = () => {
+  usePageTitle('Profile Settings');
   const { user, userProfile } = useAuth();
   const navigate = useNavigate();
   const isDriver = userProfile?.role === 'company_user';

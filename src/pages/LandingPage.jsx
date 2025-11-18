@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { usePageTitle } from '../hooks/usePageTitle';
+import LandingBackground from '../components/common/LandingBackground';
 import { 
   MapPin, 
   BarChart3, 
@@ -10,11 +12,18 @@ import {
   Zap,
   Car,
   ArrowRight,
-  CheckCircle2
+  CheckCircle2,
+  DollarSign,
+  AlertTriangle,
+  Users,
+  FileText,
+  Calendar,
+  Gauge
 } from 'lucide-react';
 import logo from '../assets/FleetTrack-logo.png';
 
 const LandingPage = () => {
+  usePageTitle('Welcome');
   const navigate = useNavigate();
   const { loginWithGoogle, login, user, userProfile } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -24,14 +33,35 @@ const LandingPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Check for invitation token and redirect to login page
+  // Check for invitation token and handle registration
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const inviteToken = params.get('invite');
     
     if (inviteToken) {
-      // Redirect to login page with the invite parameter
-      navigate(`/login?invite=${encodeURIComponent(inviteToken)}`, { replace: true });
+      try {
+        // Store the invitation token in sessionStorage
+        sessionStorage.setItem('invitationToken', inviteToken);
+        console.log('💾 Stored invitation token from URL');
+        
+        // Decode token to get email and pre-fill
+        const decodedData = JSON.parse(atob(inviteToken));
+        console.log('✅ Decoded invitation:', decodedData);
+        
+        // Store email for pre-filling
+        sessionStorage.setItem('invitationEmail', decodedData.email);
+        sessionStorage.setItem('invitationName', decodedData.fullName);
+        
+        // Open auth modal in registration mode
+        setIsLogin(false);
+        setShowAuthModal(true);
+        setEmail(decodedData.email || '');
+        
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (err) {
+        console.error('❌ Error processing invitation:', err);
+      }
     }
   }, [navigate]);
 
@@ -107,60 +137,8 @@ const LandingPage = () => {
 
   return (
     <div className="h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden flex">
-      {/* 3D Background Scene with Dashboard Visualization */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Grid Floor */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(14,165,233,0.05)_2px,transparent_2px),linear-gradient(90deg,rgba(14,165,233,0.05)_2px,transparent_2px)] bg-[size:80px_80px] opacity-40" style={{ perspective: '1000px', transform: 'rotateX(60deg) translateY(20%)' }}></div>
-        
-        {/* Glowing Dashboard Elements */}
-        <div className="absolute top-1/2 right-1/4 w-96 h-64 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-3xl blur-2xl animate-pulse"></div>
-        
-        {/* Floating Data Visualization */}
-        <div className="absolute bottom-20 right-20 w-64 h-48 border border-cyan-500/30 rounded-2xl bg-slate-900/30 backdrop-blur-sm p-4 animate-float">
-          <div className="space-y-2">
-            <div className="h-2 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full w-3/4"></div>
-            <div className="h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full w-1/2"></div>
-            <div className="h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full w-2/3"></div>
-          </div>
-          <div className="mt-4 flex gap-2">
-            <div className="flex-1 h-16 bg-gradient-to-t from-cyan-500/50 to-transparent rounded"></div>
-            <div className="flex-1 h-20 bg-gradient-to-t from-blue-500/50 to-transparent rounded"></div>
-            <div className="flex-1 h-12 bg-gradient-to-t from-purple-500/50 to-transparent rounded"></div>
-          </div>
-        </div>
-
-        {/* Circular Chart */}
-        <div className="absolute bottom-32 left-1/3 w-32 h-32 animate-float-delayed">
-          <div className="relative w-full h-full">
-            <svg className="w-full h-full -rotate-90">
-              <circle cx="64" cy="64" r="56" fill="none" stroke="rgba(14,165,233,0.2)" strokeWidth="8"/>
-              <circle cx="64" cy="64" r="56" fill="none" stroke="url(#gradient)" strokeWidth="8" strokeDasharray="352" strokeDashoffset="88" className="animate-spin-slow"/>
-              <defs>
-                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#06b6d4"/>
-                  <stop offset="100%" stopColor="#3b82f6"/>
-                </linearGradient>
-              </defs>
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center text-cyan-400 font-bold text-xl">75%</div>
-          </div>
-        </div>
-
-        {/* Floating Particles */}
-        <div className="absolute top-20 left-10 w-2 h-2 bg-cyan-400 rounded-full animate-ping"></div>
-        <div className="absolute top-40 right-20 w-2 h-2 bg-blue-400 rounded-full animate-ping delay-500"></div>
-        <div className="absolute bottom-40 left-1/4 w-2 h-2 bg-purple-400 rounded-full animate-ping delay-1000"></div>
-        
-        {/* World Map Silhouette */}
-        <div className="absolute bottom-0 left-0 w-1/2 h-1/2 opacity-10">
-          <svg viewBox="0 0 800 400" className="w-full h-full">
-            <path d="M100,200 Q200,150 300,200 T500,200 Q600,250 700,200" fill="none" stroke="currentColor" strokeWidth="2" className="text-cyan-500"/>
-            <circle cx="150" cy="180" r="3" fill="currentColor" className="text-cyan-400 animate-pulse"/>
-            <circle cx="350" cy="210" r="3" fill="currentColor" className="text-blue-400 animate-pulse delay-500"/>
-            <circle cx="550" cy="190" r="3" fill="currentColor" className="text-purple-400 animate-pulse delay-1000"/>
-          </svg>
-        </div>
-      </div>
+      {/* Shared animated background */}
+      <LandingBackground />
 
       <div className="relative z-10 flex w-full h-full">
         {/* Left Side - Hero Section */}
@@ -181,34 +159,93 @@ const LandingPage = () => {
               With Confidence
             </h1>
 
-            <p className="text-slate-400 mb-8 leading-relaxed">
-              Track vehicles, monitor performance, and maximize profits
-              <br />with our comprehensive fleet management solution.
+            <p className="text-slate-400 mb-6 leading-relaxed text-lg">
+              Track vehicles, monitor performance, and maximize profits with our comprehensive fleet management solution.
             </p>
+            
+            {/* Key Benefits */}
+            <div className="flex flex-wrap gap-3 mb-8">
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/30 rounded-full text-green-400 text-xs font-medium">
+                <CheckCircle2 className="w-3 h-3" />
+                Free Access
+              </span>
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded-full text-blue-400 text-xs font-medium">
+                <CheckCircle2 className="w-3 h-3" />
+                Real-time Updates
+              </span>
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500/30 rounded-full text-purple-400 text-xs font-medium">
+                <CheckCircle2 className="w-3 h-3" />
+                Unlimited Vehicles
+              </span>
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-400 text-xs font-medium">
+                <CheckCircle2 className="w-3 h-3" />
+                Auto Alerts
+              </span>
+            </div>
 
-            {/* Features */}
-            <div className="space-y-4 mb-8">
-              <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-blue-400 mt-0.5" />
+            {/* Features Grid */}
+            <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 hover:border-blue-500/30 transition-all">
+                <Car className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
                 <div>
-                  <h3 className="text-white font-semibold mb-1">Real-time Tracking</h3>
-                  <p className="text-slate-400 text-sm">Monitor your fleet in real-time</p>
+                  <h3 className="text-white font-semibold mb-1 text-sm">Vehicle Management</h3>
+                  <p className="text-slate-400 text-xs">Track all vehicles in one place</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3">
-                <BarChart3 className="w-5 h-5 text-blue-400 mt-0.5" />
+              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 hover:border-green-500/30 transition-all">
+                <DollarSign className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
                 <div>
-                  <h3 className="text-white font-semibold mb-1">Advanced Analytics</h3>
-                  <p className="text-slate-400 text-sm">Detailed insights and reports</p>
+                  <h3 className="text-white font-semibold mb-1 text-sm">Daily Cash-In Tracking</h3>
+                  <p className="text-slate-400 text-xs">Monitor revenue per vehicle</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3">
-                <TrendingUp className="w-5 h-5 text-blue-400 mt-0.5" />
+              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 hover:border-purple-500/30 transition-all">
+                <BarChart3 className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
                 <div>
-                  <h3 className="text-white font-semibold mb-1">Profit Optimization</h3>
-                  <p className="text-slate-400 text-sm">Maximize your revenue</p>
+                  <h3 className="text-white font-semibold mb-1 text-sm">Advanced Analytics</h3>
+                  <p className="text-slate-400 text-xs">Profit trends & insights</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 hover:border-amber-500/30 transition-all">
+                <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="text-white font-semibold mb-1 text-sm">Service Alerts</h3>
+                  <p className="text-slate-400 text-xs">Auto maintenance reminders</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 hover:border-cyan-500/30 transition-all">
+                <FileText className="w-5 h-5 text-cyan-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="text-white font-semibold mb-1 text-sm">Trip Logbook</h3>
+                  <p className="text-slate-400 text-xs">Complete journey records</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 hover:border-rose-500/30 transition-all">
+                <TrendingUp className="w-5 h-5 text-rose-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="text-white font-semibold mb-1 text-sm">Expense Tracking</h3>
+                  <p className="text-slate-400 text-xs">Fuel, maintenance & more</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 hover:border-indigo-500/30 transition-all">
+                <Users className="w-5 h-5 text-indigo-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="text-white font-semibold mb-1 text-sm">Team Management</h3>
+                  <p className="text-slate-400 text-xs">Invite & manage drivers</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 hover:border-emerald-500/30 transition-all">
+                <Gauge className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="text-white font-semibold mb-1 text-sm">Mileage Tracking</h3>
+                  <p className="text-slate-400 text-xs">Odometer & distance logs</p>
                 </div>
               </div>
             </div>

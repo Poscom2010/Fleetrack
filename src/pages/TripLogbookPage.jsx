@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { Search, Filter, Download } from 'lucide-react';
 
 const TripLogbookPage = () => {
+  usePageTitle('Trip Logbook');
   const { user, userProfile, company } = useAuth();
   const isDriver = userProfile?.role === 'company_user';
   const isAdminOrManager = userProfile?.role === 'company_admin' || userProfile?.role === 'company_manager';

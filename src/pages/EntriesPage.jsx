@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from '../hooks/useAuth';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { useVehicles } from "../hooks/useVehicles";
 import DailyEntryForm from "../components/entries/DailyEntryForm";
 import ExpenseForm from "../components/entries/ExpenseForm";
@@ -21,7 +22,8 @@ import {
  * EntriesPage component for managing daily entries and expenses
  */
 const EntriesPage = () => {
-  const { user, company } = useAuth();
+  usePageTitle('Entries');
+  const { user, company, userProfile } = useAuth();
   const { vehicles, loading: vehiclesLoading } = useVehicles(user?.uid);
 
   const [dailyEntries, setDailyEntries] = useState([]);
