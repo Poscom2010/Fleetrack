@@ -58,8 +58,8 @@ const Navbar = () => {
     // Base links for all company users
     const links = [
       { path: "/dashboard", label: "Dashboard" },
-      { path: "/vehicles", label: "Vehicles" },
-      { path: "/entries", label: "Entries" },
+      { path: "/vehicles", label: "Vehicle Monitoring" },
+      { path: "/entries", label: "Capturing" },
       { path: "/logbook", label: "Trip Logbook" },
     ];
     

@@ -7,6 +7,8 @@ import ExpenseForm from "../components/entries/ExpenseForm";
 import EntryList from "../components/entries/EntryList";
 import Modal from "../components/common/Modal";
 import toast from "react-hot-toast";
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import {
   createDailyEntry,
   updateDailyEntry,
@@ -17,17 +19,20 @@ import {
   deleteExpense,
   getExpenses,
 } from "../services/entryService";
+import { getDriverProfiles } from "../services/driverProfileService";
 
 /**
  * EntriesPage component for managing daily entries and expenses
  */
 const EntriesPage = () => {
-  usePageTitle('Entries');
+  usePageTitle('Capturing');
   const { user, company, userProfile } = useAuth();
   const { vehicles, loading: vehiclesLoading } = useVehicles(user?.uid);
+  const isAdminOrManager = userProfile?.role === 'company_admin' || userProfile?.role === 'company_manager';
 
   const [dailyEntries, setDailyEntries] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
@@ -43,10 +48,38 @@ const EntriesPage = () => {
 
     try {
       setLoading(true);
-      const [entriesData, expensesData] = await Promise.all([
+      const promises = [
         getDailyEntries(user.uid),
         getExpenses(user.uid),
-      ]);
+      ];
+
+      // Load drivers if admin or manager (both registered users and driver profiles)
+      if (isAdminOrManager && company?.id) {
+        // Get registered users
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('companyId', '==', company.id));
+        const snapshot = await getDocs(q);
+        const registeredDrivers = snapshot.docs.map(doc => ({
+          id: doc.id,
+          type: 'user',
+          ...doc.data()
+        }));
+
+        // Get driver profiles (not yet invited)
+        const driverProfiles = await getDriverProfiles(company.id);
+        const profileDrivers = driverProfiles.map(profile => ({
+          id: profile.id,
+          type: 'profile',
+          fullName: profile.fullName,
+          email: profile.email,
+          isProfile: true
+        }));
+
+        // Combine both lists
+        setDrivers([...registeredDrivers, ...profileDrivers]);
+      }
+
+      const [entriesData, expensesData] = await Promise.all(promises);
       setDailyEntries(entriesData);
       setExpenses(expensesData);
     } catch (err) {
@@ -55,7 +88,7 @@ const EntriesPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.uid]);
+  }, [user?.uid, isAdminOrManager, company?.id]);
 
   // Load entries and expenses
   useEffect(() => {
@@ -101,6 +134,22 @@ const EntriesPage = () => {
     );
     try {
       setIsSubmitting(true);
+
+      // Check if creating a new driver profile
+      if (entryData.driverId === 'NEW_DRIVER' && entryData.newDriverName) {
+        // Create driver profile first
+        const { createDriverProfile } = await import('../services/driverProfileService');
+        const driverProfileId = await createDriverProfile(company.id, {
+          fullName: entryData.newDriverName.trim(),
+          email: null,
+          phone: null,
+          licenseNumber: null
+        });
+        
+        // Replace NEW_DRIVER with the actual driver profile ID
+        entryData.driverId = driverProfileId;
+        toast.success(`Driver profile created for ${entryData.newDriverName}`, { id: toastId });
+      }
 
       if (editingEntry) {
         await updateDailyEntry(editingEntry.id, entryData);
@@ -159,6 +208,22 @@ const EntriesPage = () => {
     );
     try {
       setIsSubmitting(true);
+
+      // Check if creating a new driver profile
+      if (expenseData.driverId === 'NEW_DRIVER' && expenseData.newDriverName) {
+        // Create driver profile first
+        const { createDriverProfile } = await import('../services/driverProfileService');
+        const driverProfileId = await createDriverProfile(company.id, {
+          fullName: expenseData.newDriverName.trim(),
+          email: null,
+          phone: null,
+          licenseNumber: null
+        });
+        
+        // Replace NEW_DRIVER with the actual driver profile ID
+        expenseData.driverId = driverProfileId;
+        toast.success(`Driver profile created for ${expenseData.newDriverName}`, { id: toastId });
+      }
 
       if (editingExpense) {
         await updateExpense(editingExpense.id, expenseData);
@@ -250,6 +315,9 @@ const EntriesPage = () => {
         <DailyEntryForm
           key={editingEntry?.id || "new-entry"}
           vehicles={vehicles}
+          drivers={drivers}
+          isAdminOrManager={isAdminOrManager}
+          currentUserId={user?.uid}
           entry={editingEntry}
           onSubmit={handleSubmitEntry}
           onCancel={handleCancelEntry}
@@ -265,6 +333,8 @@ const EntriesPage = () => {
         <ExpenseForm
           key={editingExpense?.id || "new-expense"}
           vehicles={vehicles}
+          drivers={drivers}
+          isAdminOrManager={isAdminOrManager}
           expense={editingExpense}
           onSubmit={handleSubmitExpense}
           onCancel={handleCancelExpense}

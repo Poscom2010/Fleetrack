@@ -26,6 +26,8 @@ const SystemAdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [businessInsights, setBusinessInsights] = useState([]);
   const [deleteModal, setDeleteModal] = useState({ show: false, userId: null, userName: '' });
+  const [emailModal, setEmailModal] = useState({ show: false, user: null });
+  const [emailForm, setEmailForm] = useState({ subject: '', message: '' });
   const [stats, setStats] = useState({
     totalCompanies: 0,
     totalUsers: 0,
@@ -451,8 +453,53 @@ const SystemAdminDashboard = () => {
   };
 
   const cancelDeleteUser = () => {
-    console.log('❌ User deletion cancelled');
     setDeleteModal({ show: false, userId: null, userName: '' });
+  };
+
+  const handleEmailUser = (user) => {
+    setEmailModal({ show: true, user });
+    setEmailForm({ subject: '', message: '' });
+  };
+
+  const handleSendEmail = () => {
+    if (!emailForm.subject || !emailForm.message) {
+      toast.error('Please fill in subject and message');
+      return;
+    }
+
+    const user = emailModal.user;
+    const userCompany = companies.find(c => c.id === user.companyId);
+    
+    // Prepare email content with signature
+    const emailBody = `
+${emailForm.message}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Best regards,
+
+🚗 System Administrator
+   FleetTrack - Fleet Management System
+   ${userCompany ? `Managing: ${userCompany.name}` : ''}
+
+📧 Email: poscomlimited@gmail.com
+🌐 Website: fleettrack.app
+📱 Support: Available 24/7
+
+This is an official communication from FleetTrack System Administration.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`.trim();
+
+    // Create mailto link
+    const mailtoLink = `mailto:${user.email}?subject=${encodeURIComponent(emailForm.subject)}&body=${encodeURIComponent(emailBody)}`;
+    
+    // Open email client
+    window.location.href = mailtoLink;
+    
+    toast.success('Opening your email client...');
+    
+    // Close modal
+    setEmailModal({ show: false, user: null });
+    setEmailForm({ subject: '', message: '' });
   };
 
   const handleDeactivateUser = async (userId, userName, currentStatus) => {
@@ -966,6 +1013,16 @@ const SystemAdminDashboard = () => {
                           <td className="py-3 px-2 text-right">
                             <div className="flex items-center justify-end gap-2">
                               <button
+                                onClick={() => handleEmailUser(user)}
+                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition flex items-center gap-1"
+                                title="Send Email"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                                Email
+                              </button>
+                              <button
                                 onClick={() => handleDeactivateUser(user.id, user.fullName || user.displayName || user.email, user.isActive !== false)}
                                 className={`px-3 py-1.5 rounded text-xs transition ${
                                   user.isActive === false
@@ -1027,6 +1084,125 @@ const SystemAdminDashboard = () => {
                 className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition font-medium"
               >
                 Delete User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Email User Modal */}
+      {emailModal.show && emailModal.user && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-slate-800 rounded-2xl border border-blue-500/30 p-5 max-w-lg w-full shadow-2xl my-8">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/20 flex-shrink-0">
+                <svg className="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-bold text-white">Send Email</h3>
+                <p className="text-xs text-slate-400 truncate">To: {emailModal.user.fullName || emailModal.user.displayName || emailModal.user.email}</p>
+              </div>
+            </div>
+
+            {/* User Info Display */}
+            <div className="bg-slate-900 rounded-lg p-3 border border-slate-700 mb-3">
+              <p className="text-xs text-slate-400 mb-1.5">Recipient</p>
+              <div className="space-y-0.5">
+                <p className="text-white text-xs">
+                  <span className="text-slate-400">Email:</span> {emailModal.user.email}
+                </p>
+                <p className="text-white text-xs">
+                  <span className="text-slate-400">Company:</span> {companies.find(c => c.id === emailModal.user.companyId)?.name || 'No Company'}
+                </p>
+              </div>
+            </div>
+
+            {/* Email Form */}
+            <div className="space-y-3">
+              {/* Subject */}
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  Subject *
+                </label>
+                <input
+                  type="text"
+                  value={emailForm.subject}
+                  onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })}
+                  placeholder="Enter email subject"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Message */}
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  Message *
+                </label>
+                <textarea
+                  value={emailForm.message}
+                  onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })}
+                  placeholder="Type your message here..."
+                  rows="5"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+
+              {/* Important Note */}
+              <div className="bg-amber-500/10 rounded-lg p-2.5 border border-amber-500/30">
+                <div className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <div className="text-xs text-amber-200">
+                    <p className="font-semibold mb-0.5">Important:</p>
+                    <p>Make sure to send from <span className="font-semibold">poscomlimited@gmail.com</span> in your email client.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Signature Preview */}
+              <div className="bg-slate-900/50 rounded-lg p-2.5 border border-slate-700">
+                <p className="text-xs text-slate-400 mb-1.5">Auto-signature:</p>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-brand-gradient shadow-brand flex-shrink-0">
+                    <div className="absolute inset-0 rounded-full bg-brand-gradient opacity-75 blur-sm"></div>
+                    <div className="relative z-10 flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-slate-900">
+                      <img 
+                        src="/FleetTrack-logo.png" 
+                        alt="FleetTrack" 
+                        className="h-5 w-5 object-contain" 
+                      />
+                    </div>
+                  </div>
+                  <div className="text-xs text-slate-300 space-y-0.5">
+                    <p className="font-semibold">System Administrator</p>
+                    <p className="text-slate-400">FleetTrack | poscomlimited@gmail.com</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => {
+                  setEmailModal({ show: false, user: null });
+                  setEmailForm({ subject: '', message: '' });
+                }}
+                className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendEmail}
+                className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                Send Email
               </button>
             </div>
           </div>

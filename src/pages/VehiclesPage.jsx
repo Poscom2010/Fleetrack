@@ -7,7 +7,7 @@ import { Plus, Car, Edit2, Trash2, AlertCircle, CheckCircle } from "lucide-react
 import toast from "react-hot-toast";
 
 const VehiclesPage = () => {
-  usePageTitle('Vehicles');
+  usePageTitle('Vehicle Monitoring');
   const { user, company, userProfile } = useAuth();
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);

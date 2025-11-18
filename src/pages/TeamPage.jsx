@@ -8,7 +8,7 @@ import SuccessModal from '../components/common/SuccessModal';
  * Team Page - Shows driver activity table for admins and managers
  */
 const TeamPage = () => {
-  usePageTitle('Team');
+  usePageTitle('Team Management / Invitations');
   const { company, userProfile, user } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
@@ -18,12 +18,14 @@ const TeamPage = () => {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successInvitationData, setSuccessInvitationData] = useState(null);
+  const [driverProfiles, setDriverProfiles] = useState([]);
   const [inviteForm, setInviteForm] = useState({
     email: '',
     fullName: '',
     phoneNumber: '',
     location: '',
     role: 'company_user',
+    driverProfileId: '', // Link to existing driver profile
   });
 
   const isSystemAdmin = userProfile?.role === 'system_admin';
@@ -58,11 +60,23 @@ const TeamPage = () => {
         loadCompanyUsers(),
         loadCompanyVehicles(),
         loadDriverStats(),
+        loadDriverProfiles(),
       ]);
     } catch (error) {
       console.error('Error loading team data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadDriverProfiles = async () => {
+    try {
+      if (!company?.id) return;
+      const { getDriverProfiles } = await import('../services/driverProfileService');
+      const profiles = await getDriverProfiles(company.id);
+      setDriverProfiles(profiles.filter(p => !p.isInvited)); // Only uninvited profiles
+    } catch (error) {
+      console.error('Error loading driver profiles:', error);
     }
   };
 
@@ -115,6 +129,7 @@ const TeamPage = () => {
     try {
       const { collection, query, where, getDocs } = await import('firebase/firestore');
       const { db } = await import('../services/firebase');
+      const { getActiveAssignments } = await import('../services/vehicleAssignmentService');
 
       let q;
 
@@ -128,11 +143,26 @@ const TeamPage = () => {
         );
       }
 
+      console.log('🔍 Executing Firestore query...');
       const snapshot = await getDocs(q);
+      console.log('📊 Query returned', snapshot.docs.length, 'documents');
+      
       const vehiclesData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
       }));
+
+      // Get active assignments
+      if (company?.id) {
+        const assignments = await getActiveAssignments(company.id);
+        
+        // Map assignments to vehicles
+        vehiclesData.forEach(vehicle => {
+          const assignment = assignments.find(a => a.vehicleId === vehicle.id);
+          vehicle.currentAssignment = assignment;
+          vehicle.userId = assignment?.driverId || null; // For backward compatibility
+        });
+      }
 
       console.log('✅ Loaded vehicles from company:', vehiclesData.length);
       setVehicles(vehiclesData);
@@ -184,6 +214,21 @@ const TeamPage = () => {
 
   const handleUpdateUserRole = async (userId, newRole) => {
     try {
+      // Prevent users from changing their own role
+      if (userId === user?.uid) {
+        alert('You cannot change your own role. Another admin must change it for you.');
+        return;
+      }
+
+      // Prevent changing admin/manager roles (only drivers can be changed)
+      const targetUser = users.find(u => u.id === userId);
+      if (targetUser && (targetUser.role === 'company_admin' || targetUser.role === 'company_manager')) {
+        if (newRole === 'company_user') {
+          alert('Cannot demote admins or managers to driver. Only system admins can change admin/manager roles.');
+          return;
+        }
+      }
+
       const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
       const { db } = await import('../services/firebase');
       
@@ -219,43 +264,24 @@ const TeamPage = () => {
 
   const handleAssignVehicle = async (userId, vehicleId) => {
     try {
-      const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
-      const { db } = await import('../services/firebase');
+      const { assignVehicleToDriver, unassignVehicleFromDriver } = await import('../services/vehicleAssignmentService');
       
       // If vehicleId is empty, unassign the vehicle
       if (!vehicleId) {
-        // Find and unassign any vehicle currently assigned to this user
-        const currentVehicle = vehicles.find(v => v.userId === userId);
-        if (currentVehicle) {
-          await updateDoc(doc(db, 'vehicles', currentVehicle.id), {
-            userId: null,
-            updatedAt: serverTimestamp(),
-          });
-        }
+        await unassignVehicleFromDriver(userId);
         await loadData();
+        alert('Vehicle unassigned successfully!');
         return;
       }
       
-      // Unassign vehicle from previous user if any
-      const vehicleToAssign = vehicles.find(v => v.id === vehicleId);
-      if (vehicleToAssign && vehicleToAssign.userId) {
-        await updateDoc(doc(db, 'vehicles', vehicleId), {
-          userId: null,
-          updatedAt: serverTimestamp(),
-        });
-      }
-      
-      // Assign vehicle to new user
-      await updateDoc(doc(db, 'vehicles', vehicleId), {
-        userId: userId,
-        updatedAt: serverTimestamp(),
-      });
+      // Assign vehicle to driver (creates history entry)
+      await assignVehicleToDriver(company.id, vehicleId, userId, user.uid);
       
       await loadData();
-      alert('Vehicle assigned successfully!');
+      alert('Vehicle assigned successfully! Assignment history has been recorded.');
     } catch (error) {
       console.error('Error assigning vehicle:', error);
-      alert('Failed to assign vehicle');
+      alert('Failed to assign vehicle: ' + error.message);
     }
   };
 
@@ -292,6 +318,7 @@ const TeamPage = () => {
         phoneNumber: inviteForm.phoneNumber || null,
         location: inviteForm.location || null,
         role: inviteForm.role,
+        driverProfileId: inviteForm.driverProfileId || null, // Link to driver profile
         timestamp: Date.now()
       }));
       
@@ -341,8 +368,8 @@ const TeamPage = () => {
       <div className="max-w-7xl mx-auto space-y-4">
         {/* Page Header */}
         <div className="mb-4">
-          <h1 className="text-2xl font-bold text-white mb-1">Team Members</h1>
-          <p className="text-sm text-slate-400">Monitor driver activity and performance</p>
+          <h1 className="text-2xl font-bold text-white mb-1">Team Management / Invitations</h1>
+          <p className="text-sm text-slate-400">Manage team members, invite drivers, and monitor activity</p>
         </div>
 
         {/* Driver Activity Table */}
@@ -481,15 +508,40 @@ const TeamPage = () => {
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            <select
-                              value={driver.role}
-                              onChange={(e) => handleUpdateUserRole(driver.id, e.target.value)}
-                              className="bg-slate-800 text-white px-3 py-1.5 rounded border border-slate-600 text-xs focus:border-blue-500 focus:outline-none"
-                            >
-                              <option value="company_admin">Admin</option>
-                              <option value="company_manager">Manager</option>
-                              <option value="company_user">Driver</option>
-                            </select>
+                            {driver.id === user?.uid ? (
+                              // Current user - show locked badge regardless of role
+                              <div className="flex items-center gap-2">
+                                <span className={`px-3 py-1.5 rounded text-xs font-medium ${
+                                  driver.role === 'company_admin' 
+                                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' 
+                                    : driver.role === 'company_manager'
+                                    ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                                    : 'bg-green-500/20 text-green-300 border border-green-500/30'
+                                }`}>
+                                  🔒 {driver.role === 'company_admin' ? 'Admin' : driver.role === 'company_manager' ? 'Manager' : 'Driver'}
+                                </span>
+                                <span className="text-xs text-slate-500">(You)</span>
+                              </div>
+                            ) : (driver.role === 'company_admin' || driver.role === 'company_manager') ? (
+                              // Other admins/managers - show locked badge
+                              <span className={`px-3 py-1.5 rounded text-xs font-medium ${
+                                driver.role === 'company_admin' 
+                                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' 
+                                  : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                              }`}>
+                                🔒 {driver.role === 'company_admin' ? 'Admin' : 'Manager'}
+                              </span>
+                            ) : (
+                              // Other drivers - show dropdown (only admins/managers can change)
+                              <select
+                                value={driver.role}
+                                onChange={(e) => handleUpdateUserRole(driver.id, e.target.value)}
+                                className="bg-slate-800 text-white px-3 py-1.5 rounded border border-slate-600 text-xs focus:border-blue-500 focus:outline-none"
+                                disabled={!isCompanyAdmin && !isCompanyManager}
+                              >
+                                <option value="company_user">Driver</option>
+                              </select>
+                            )}
                           </td>
                           <td className="px-4 py-3">
                             <button
@@ -552,6 +604,65 @@ const TeamPage = () => {
               </div>
 
               <form onSubmit={handleInviteDriver} className="space-y-4">
+                {/* Driver Profile Selection */}
+                {driverProfiles.length > 0 && (
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-4">
+                    <label className="block text-sm font-medium text-blue-300 mb-2">
+                      📋 Select Existing Driver (Optional)
+                    </label>
+                    <select
+                      value={inviteForm.driverProfileId}
+                      onChange={(e) => {
+                        const profileId = e.target.value;
+                        if (profileId) {
+                          const profile = driverProfiles.find(p => p.id === profileId);
+                          
+                          // Check if profile has email
+                          if (!profile.email || profile.email.trim() === '') {
+                            const addEmail = window.confirm(
+                              `⚠️ Driver "${profile.fullName}" has no email!\n\n` +
+                              'Email is required for sending invitation and login.\n\n' +
+                              'Please add their email address in the form below before sending invitation.\n\n' +
+                              'Continue?'
+                            );
+                            
+                            if (!addEmail) {
+                              return;
+                            }
+                          }
+                          
+                          setInviteForm({
+                            ...inviteForm,
+                            driverProfileId: profileId,
+                            fullName: profile.fullName,
+                            email: profile.email || '',
+                            phoneNumber: profile.phone || '',
+                          });
+                        } else {
+                          setInviteForm({
+                            ...inviteForm,
+                            driverProfileId: '',
+                            fullName: '',
+                            email: '',
+                            phoneNumber: '',
+                          });
+                        }
+                      }}
+                      className="w-full bg-slate-900 text-white px-4 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
+                    >
+                      <option value="">New Driver (No existing data)</option>
+                      {driverProfiles.map(profile => (
+                        <option key={profile.id} value={profile.id}>
+                          👤 {profile.fullName} {profile.email ? `(${profile.email})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-blue-200 mt-2">
+                      Select a driver you've captured data for. Their existing trips will be linked to their account.
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">
                     Name *
@@ -574,8 +685,15 @@ const TeamPage = () => {
                     value={inviteForm.email}
                     onChange={(e) => setInviteForm({...inviteForm, email: e.target.value})}
                     className="w-full bg-slate-900 text-white px-4 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
+                    placeholder="driver@example.com"
                     required
                   />
+                  <p className="text-xs text-blue-200 mt-1 flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                    Email is required for invitation. It will be auto-populated during driver registration.
+                  </p>
                 </div>
 
                 <div>

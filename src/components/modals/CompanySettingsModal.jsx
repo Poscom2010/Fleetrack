@@ -8,6 +8,7 @@ const CompanySettingsModal = ({ isOpen, onClose }) => {
   const [loading, setLoading] = React.useState(true);
   const [savingProfile, setSavingProfile] = React.useState(false);
   const [logoFile, setLogoFile] = React.useState(null);
+  const [isEditingName, setIsEditingName] = React.useState(false);
 
   const [profileForm, setProfileForm] = React.useState({
     name: "",
@@ -71,6 +72,46 @@ const CompanySettingsModal = ({ isOpen, onClose }) => {
     e.preventDefault();
     if (!company?.id) return;
 
+    // Check if company name is being changed
+    const isNameChanged = profileForm.name !== company.name;
+    
+    if (isNameChanged) {
+      const confirmed = window.confirm(
+        '⚠️ WARNING: CHANGING COMPANY NAME\n\n' +
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+        'You are about to change the company name from:\n' +
+        `"${company.name}" → "${profileForm.name}"\n\n` +
+        'CRITICAL IMPACTS:\n\n' +
+        '❌ ALL pending invitations will show the NEW name\n' +
+        '❌ ALL invitation links will reference the NEW name\n' +
+        '❌ Company branding will change everywhere\n' +
+        '❌ Reports and documents will show NEW name\n' +
+        '❌ Email notifications will use NEW name\n\n' +
+        '⚠️ THIS CHANGE IS IMMEDIATE AND AFFECTS:\n' +
+        '   • All team members\n' +
+        '   • All pending invitations\n' +
+        '   • All system references\n\n' +
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+        'Are you ABSOLUTELY SURE you want to proceed?\n\n' +
+        'Type "YES" in the next prompt to confirm.'
+      );
+      
+      if (!confirmed) {
+        return;
+      }
+      
+      // Second confirmation - require typing YES
+      const typedConfirmation = prompt(
+        'FINAL CONFIRMATION\n\n' +
+        'Type "YES" (in capital letters) to confirm company name change:'
+      );
+      
+      if (typedConfirmation !== 'YES') {
+        alert('Company name change cancelled. No changes were made.');
+        return;
+      }
+    }
+
     try {
       setSavingProfile(true);
       let logoUrlToSave = profileForm.logoUrl || null;
@@ -99,14 +140,77 @@ const CompanySettingsModal = ({ isOpen, onClose }) => {
         },
       });
 
+      // If name changed, update all pending invitations
+      if (isNameChanged) {
+        await updatePendingInvitations(company.id, profileForm.name);
+      }
+
       await refreshUserData();
       setLogoFile(null);
+      
+      if (isNameChanged) {
+        alert(
+          '✅ Company name updated successfully!\n\n' +
+          'The new name is now active across the entire system.\n' +
+          'All pending invitations have been updated.'
+        );
+      }
+      
       onClose(); // Close modal after successful save
     } catch (error) {
       console.error("Error updating company profile:", error);
       alert("Failed to update company profile: " + error.message);
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const updatePendingInvitations = async (companyId, newCompanyName) => {
+    try {
+      const { doc, getDoc, updateDoc } = await import('firebase/firestore');
+      const { db } = await import('../../services/firebase');
+      
+      const companyRef = doc(db, 'companies', companyId);
+      const companyDoc = await getDoc(companyRef);
+      
+      if (!companyDoc.exists()) return;
+      
+      const pendingInvitations = companyDoc.data().pendingInvitations || [];
+      
+      // Update company name in all pending invitation tokens
+      const updatedInvitations = pendingInvitations.map(invitation => {
+        if (invitation.status === 'pending' && invitation.token) {
+          try {
+            // Decode token
+            const decodedData = JSON.parse(atob(invitation.token));
+            
+            // Update company name
+            decodedData.companyName = newCompanyName;
+            
+            // Re-encode token
+            const newToken = btoa(JSON.stringify(decodedData));
+            
+            return {
+              ...invitation,
+              token: newToken
+            };
+          } catch (err) {
+            console.error('Error updating invitation token:', err);
+            return invitation;
+          }
+        }
+        return invitation;
+      });
+      
+      // Save updated invitations
+      await updateDoc(companyRef, {
+        pendingInvitations: updatedInvitations
+      });
+      
+      console.log('✅ Updated pending invitations with new company name');
+    } catch (error) {
+      console.error('Error updating pending invitations:', error);
+      throw error;
     }
   };
 
@@ -137,14 +241,85 @@ const CompanySettingsModal = ({ isOpen, onClose }) => {
           <form onSubmit={handleSaveProfile} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Company Name</label>
-              <input
-                type="text"
-                value={profileForm.name}
-                onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                className="w-full bg-slate-900 text-white px-4 py-2 rounded-lg border border-slate-600 focus:border-brand-500 focus:outline-none"
-                required
-              />
+              <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+                Company Name
+                <span className="text-xs text-amber-400 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                  </svg>
+                  Protected
+                </span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={profileForm.name}
+                  onChange={(e) => {
+                    if (isEditingName) {
+                      setProfileForm({ ...profileForm, name: e.target.value });
+                    }
+                  }}
+                  className={`w-full px-4 py-2 rounded-lg border text-white focus:outline-none ${
+                    isEditingName 
+                      ? 'bg-slate-900 border-amber-500 focus:border-amber-400' 
+                      : 'bg-slate-900/50 border-slate-600 cursor-not-allowed'
+                  }`}
+                  required
+                  disabled={!isEditingName}
+                />
+                {!isEditingName && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const confirmed = window.confirm(
+                        '⚠️ WARNING: You are about to unlock the Company Name field.\n\n' +
+                        'Changing the company name has SERIOUS consequences:\n' +
+                        '• All pending invitations will be updated\n' +
+                        '• Company branding changes everywhere\n' +
+                        '• This affects all team members\n\n' +
+                        'Do you want to proceed?'
+                      );
+                      if (confirmed) {
+                        setIsEditingName(true);
+                      }
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs rounded border border-amber-500/50 transition flex items-center gap-1"
+                  >
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                    Edit
+                  </button>
+                )}
+                {isEditingName && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingName(false);
+                      setProfileForm({ ...profileForm, name: company.name });
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded transition flex items-center gap-1"
+                  >
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                    </svg>
+                    Lock
+                  </button>
+                )}
+              </div>
+              {!isEditingName && (
+                <p className="text-xs text-slate-400 mt-1">
+                  Click "Edit" to unlock and change company name
+                </p>
+              )}
+              {isEditingName && (
+                <p className="text-xs text-amber-300 mt-1 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  Field unlocked - You can now edit the company name
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">Company Logo</label>

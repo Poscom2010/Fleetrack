@@ -35,8 +35,8 @@ const Sidebar = () => {
     // Base links for all company users
     const links = [
       { path: "/dashboard", label: "Dashboard", icon: "home" },
-      { path: "/vehicles", label: "Vehicles", icon: "truck" },
-      { path: "/entries", label: "Entries", icon: "document" },
+      { path: "/vehicles", label: "Vehicle Monitoring", icon: "truck" },
+      { path: "/entries", label: "Capturing", icon: "document" },
       { path: "/logbook", label: "Trip Logbook", icon: "book" },
     ];
     
@@ -45,9 +45,9 @@ const Sidebar = () => {
       links.push({ path: "/analytics", label: "Analytics", icon: "chart" });
     }
 
-    // Add Team link for admins and managers
+    // Add Team Management/Invitations link for admins and managers
     if (isCompanyAdmin(userProfile) || isCompanyManager(userProfile)) {
-      links.push({ path: "/team", label: "Team", icon: "users" });
+      links.push({ path: "/team", label: "Team Management / Invitations", icon: "users" });
     }
 
     // Add Contact Support for all users

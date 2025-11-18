@@ -131,14 +131,15 @@ service cloud.firestore {
     
     // Daily entries collection rules
     match /dailyEntries/{entryId} {
-      // Allow read if user has company access OR owns the resource (legacy support)
+      // Allow read if user has company access OR owns the resource (driver can see their own entries)
       allow read: if isAuthenticated() && 
                     (hasCompanyAccess(resource.data.companyId) || 
                      isOwner(resource.data.userId));
       
-      // Allow create if user is authenticated (with or without company)
-      allow create: if isCreatingOwnResource() &&
-                      hasRequiredFields(['userId', 'vehicleId', 'date', 'cashIn', 'startMileage', 'endMileage', 'distanceTraveled']) &&
+      // Allow create if:
+      // 1. User is creating for themselves (driver), OR
+      // 2. Admin/Manager creating for a driver in their company
+      allow create: if isAuthenticated() &&
                       (request.resource.data.companyId == null || hasCompanyAccess(request.resource.data.companyId)) &&
                       request.resource.data.userId is string &&
                       request.resource.data.vehicleId is string &&
@@ -149,16 +150,19 @@ service cloud.firestore {
                       request.resource.data.endMileage is number &&
                       request.resource.data.endMileage > request.resource.data.startMileage &&
                       request.resource.data.distanceTraveled is number &&
-                      request.resource.data.distanceTraveled == (request.resource.data.endMileage - request.resource.data.startMileage);
+                      request.resource.data.distanceTraveled == (request.resource.data.endMileage - request.resource.data.startMileage) &&
+                      // Validate startLocation and endLocation are strings
+                      request.resource.data.startLocation is string &&
+                      request.resource.data.endLocation is string;
       
-      // Allow update if user has company access and userId/companyId not changed
+      // Allow update if user has company access OR owns the entry, and userId/companyId not changed
       allow update: if isAuthenticated() && 
-                      hasCompanyAccess(resource.data.companyId) &&
+                      (hasCompanyAccess(resource.data.companyId) || isOwner(resource.data.userId)) &&
                       request.resource.data.userId == resource.data.userId &&
                       request.resource.data.companyId == resource.data.companyId;
       
-      // Allow delete if user has company access
-      allow delete: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      // Allow delete if user has company access OR owns the entry
+      allow delete: if isAuthenticated() && (hasCompanyAccess(resource.data.companyId) || isOwner(resource.data.userId));
     }
     
     // Expenses collection rules
@@ -213,6 +217,53 @@ service cloud.firestore {
       
       // Allow delete if user has company access
       allow delete: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+    }
+    
+    // Driver Profiles collection rules
+    // For drivers who haven't been invited yet but have data captured
+    match /driverProfiles/{profileId} {
+      // Allow read if user has company access
+      allow read: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow create if user is admin/manager
+      allow create: if isAuthenticated() &&
+                      hasCompanyAccess(request.resource.data.companyId) &&
+                      request.resource.data.companyId is string &&
+                      request.resource.data.fullName is string;
+      
+      // Allow update if user has company access
+      allow update: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow delete if user has company access
+      allow delete: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+    }
+    
+    // Vehicle Assignments collection rules
+    // Tracks vehicle assignment history for drivers
+    match /vehicleAssignments/{assignmentId} {
+      // Allow read if user has company access OR is the assigned driver
+      allow read: if isAuthenticated() && (
+        hasCompanyAccess(resource.data.companyId) ||
+        resource.data.driverId == request.auth.uid
+      );
+      
+      // Allow create if user is admin/manager
+      allow create: if isAuthenticated() &&
+                      hasCompanyAccess(request.resource.data.companyId) &&
+                      request.resource.data.companyId is string &&
+                      request.resource.data.vehicleId is string &&
+                      request.resource.data.driverId is string &&
+                      request.resource.data.assignedBy is string &&
+                      request.resource.data.isActive is bool;
+      
+      // Allow update if user has company access (to end assignments)
+      allow update: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Only admins can delete assignment history
+      allow delete: if isAuthenticated() && 
+                      hasCompanyAccess(resource.data.companyId) &&
+                      (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin' ||
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'system_admin');
     }
     
     // Deletion Requests collection rules

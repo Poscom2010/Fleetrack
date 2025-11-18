@@ -43,7 +43,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
         onClick={onClose}
       />
 
-      <div className="flex min-h-full items-center justify-center p-4">
+      <div className="flex min-h-screen items-start justify-center p-4 pt-20 pb-20">
         <div
           className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-surface-200/90 p-6 text-slate-200 shadow-soft"
           onClick={(e) => e.stopPropagation()}

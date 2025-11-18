@@ -20,6 +20,8 @@ const createDefaultFormState = (expense) => {
   if (!expense) {
     return {
       vehicleId: "",
+      driverId: "",
+      newDriverName: "",
       date: new Date().toISOString().split("T")[0],
       description: "",
       amount: "",
@@ -43,6 +45,8 @@ const createDefaultFormState = (expense) => {
  * ExpenseForm component for adding or editing expense entries
  * @param {Object} props
  * @param {Array} props.vehicles - List of available vehicles
+ * @param {Array} props.drivers - List of available drivers (for admin/manager)
+ * @param {boolean} props.isAdminOrManager - Whether current user is admin or manager
  * @param {Object} props.expense - Existing expense data for editing (optional)
  * @param {Function} props.onSubmit - Callback function when form is submitted
  * @param {Function} props.onCancel - Callback function when form is cancelled
@@ -50,6 +54,8 @@ const createDefaultFormState = (expense) => {
  */
 const ExpenseForm = ({
   vehicles = [],
+  drivers = [],
+  isAdminOrManager = false,
   expense,
   onSubmit,
   onCancel,
@@ -80,6 +86,19 @@ const ExpenseForm = ({
 
     if (!formData.vehicleId) {
       newErrors.vehicleId = "Please select a vehicle";
+    }
+
+    if (isAdminOrManager && !formData.driverId) {
+      newErrors.driverId = "Please select a driver";
+    }
+
+    // If "New Driver" is selected, validate the new driver name
+    if (isAdminOrManager && formData.driverId === 'NEW_DRIVER') {
+      if (!formData.newDriverName || formData.newDriverName.trim() === '') {
+        newErrors.newDriverName = "Please enter the new driver's name";
+      } else if (formData.newDriverName.trim().length < 2) {
+        newErrors.newDriverName = "Driver name must be at least 2 characters";
+      }
     }
 
     if (!formData.date) {
@@ -117,6 +136,86 @@ const ExpenseForm = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-sm text-slate-200">
+      {/* Driver Selection - Only for Admin/Manager */}
+      {isAdminOrManager && (
+        <div>
+          <label
+            htmlFor="driverId"
+            className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+          >
+            Driver *
+          </label>
+          <select
+            id="driverId"
+            name="driverId"
+            value={formData.driverId}
+            onChange={handleChange}
+            className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
+              errors.driverId
+                ? "border-rose-400/60 bg-rose-500/10"
+                : "border-white/10 bg-surface-200/60"
+            }`}
+            disabled={isSubmitting}
+          >
+            <option value="">Select a driver</option>
+            <option value="NEW_DRIVER">➕ New Driver (Enter name below)</option>
+            <optgroup label="Registered Users">
+              {drivers.filter(d => d.type === 'user').map((driver) => (
+                <option key={driver.id} value={driver.id}>
+                  ✓ {driver.fullName || driver.email}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Driver Profiles (Not Invited Yet)">
+              {drivers.filter(d => d.type === 'profile').map((driver) => (
+                <option key={driver.id} value={driver.id}>
+                  👤 {driver.fullName} {driver.email ? `(${driver.email})` : ''}
+                </option>
+              ))}
+            </optgroup>
+          </select>
+          {errors.driverId && (
+            <p className="mt-1 text-xs font-medium text-rose-300">
+              {errors.driverId}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* New Driver Name Input - Shows when "New Driver" is selected */}
+      {isAdminOrManager && formData.driverId === 'NEW_DRIVER' && (
+        <div>
+          <label
+            htmlFor="newDriverName"
+            className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+          >
+            New Driver Name *
+          </label>
+          <input
+            type="text"
+            id="newDriverName"
+            name="newDriverName"
+            value={formData.newDriverName}
+            onChange={handleChange}
+            placeholder="Enter driver's full name"
+            className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
+              errors.newDriverName
+                ? "border-rose-400/60 bg-rose-500/10"
+                : "border-white/10 bg-surface-200/60"
+            }`}
+            disabled={isSubmitting}
+          />
+          {errors.newDriverName && (
+            <p className="mt-1 text-xs font-medium text-rose-300">
+              {errors.newDriverName}
+            </p>
+          )}
+          <p className="mt-1 text-xs text-blue-300">
+            💡 A driver profile will be created automatically for this driver
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
           <label

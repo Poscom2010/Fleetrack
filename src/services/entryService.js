@@ -24,11 +24,14 @@ import { db } from "./firebase";
  */
 export const createDailyEntry = async (userId, companyId, entryData) => {
   try {
-    const { vehicleId, date, cashIn, startMileage, endMileage, notes } =
+    const { vehicleId, driverId, date, startLocation, endLocation, cashIn, startMileage, endMileage, notes } =
       entryData;
 
+    // Use driverId if provided (admin creating for driver), otherwise use userId
+    const actualDriverId = driverId || userId;
+
     // Check for duplicate entry (same vehicle and date)
-    const duplicate = await checkDuplicateDailyEntry(userId, vehicleId, date);
+    const duplicate = await checkDuplicateDailyEntry(actualDriverId, vehicleId, date);
     if (duplicate) {
       throw new Error(
         "A daily entry already exists for this vehicle on this date"
@@ -39,10 +42,13 @@ export const createDailyEntry = async (userId, companyId, entryData) => {
     const distanceTraveled = endMileage - startMileage;
 
     const docRef = await addDoc(collection(db, "dailyEntries"), {
-      userId,
+      userId: actualDriverId, // The driver who drove
+      createdBy: userId, // The user who created the entry (admin or driver)
       companyId: companyId || null,
       vehicleId,
       date: Timestamp.fromDate(new Date(date)),
+      startLocation: startLocation || "",
+      endLocation: endLocation || "",
       cashIn: Number(cashIn),
       startMileage: Number(startMileage),
       endMileage: Number(endMileage),
@@ -203,6 +209,14 @@ export const updateDailyEntry = async (entryId, updates) => {
           ? Number(updates.endMileage)
           : currentEntry.endMileage;
       updates.distanceTraveled = endMileage - startMileage;
+    }
+
+    // Ensure startLocation and endLocation are included if provided
+    if (updates.startLocation !== undefined) {
+      updates.startLocation = updates.startLocation || "";
+    }
+    if (updates.endLocation !== undefined) {
+      updates.endLocation = updates.endLocation || "";
     }
 
     // Check for duplicate if date or vehicle is being changed

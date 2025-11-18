@@ -97,10 +97,14 @@ const useAuthProvider = () => {
                       location: decodedData.location,
                       role: decodedData.role,
                       companyId: decodedData.companyId,
+                      driverProfileId: decodedData.driverProfileId || null, // Link to existing driver profile
                       invitationToken: invitationToken, // Store for later validation
                     };
                     
                     console.log('✅ Will create profile with company:', invitationData.companyId);
+                    if (invitationData.driverProfileId) {
+                      console.log('🔗 Will link to driver profile:', invitationData.driverProfileId);
+                    }
                     
                     // Clear sessionStorage
                     sessionStorage.removeItem('invitationToken');
@@ -140,6 +144,37 @@ const useAuthProvider = () => {
             profile = await getUserProfile(currentUser.uid);
             
             console.log('👤 User profile created:', profile);
+            
+            // Link driver profile if provided
+            if (invitationData?.driverProfileId) {
+              try {
+                console.log('🔗 Linking driver profile to user account...');
+                const { linkDriverProfileToUser } = await import('../services/driverProfileService');
+                const { collection, query, where, getDocs, updateDoc, doc } = await import('firebase/firestore');
+                const { db } = await import('../services/firebase');
+                
+                // Link the driver profile
+                await linkDriverProfileToUser(invitationData.driverProfileId, currentUser.uid);
+                
+                // Transfer all daily entries from profile ID to user ID
+                const entriesRef = collection(db, 'dailyEntries');
+                const q = query(entriesRef, where('userId', '==', invitationData.driverProfileId));
+                const snapshot = await getDocs(q);
+                
+                console.log(`📊 Found ${snapshot.docs.length} entries to transfer`);
+                
+                for (const entryDoc of snapshot.docs) {
+                  await updateDoc(doc(db, 'dailyEntries', entryDoc.id), {
+                    userId: currentUser.uid,
+                    linkedFromProfile: invitationData.driverProfileId
+                  });
+                }
+                
+                console.log('✅ Driver profile linked and data transferred successfully');
+              } catch (linkErr) {
+                console.error('❌ Error linking driver profile:', linkErr);
+              }
+            }
             
             // Note: We don't update invitation status here to avoid permission issues
             // The company admin can see accepted invitations in their dashboard

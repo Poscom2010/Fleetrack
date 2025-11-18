@@ -9,7 +9,11 @@ const createDefaultFormState = (entry) => {
   if (!entry) {
     return {
       vehicleId: "",
+      driverId: "",
+      newDriverName: "",
       date: new Date().toISOString().split("T")[0],
+      startLocation: "",
+      endLocation: "",
       cashIn: "",
       startMileage: "",
       endMileage: "",
@@ -21,7 +25,10 @@ const createDefaultFormState = (entry) => {
 
   return {
     vehicleId: entry.vehicleId || "",
+    driverId: entry.driverId || "",
     date: entryDate.toISOString().split("T")[0],
+    startLocation: entry.startLocation || "",
+    endLocation: entry.endLocation || "",
     cashIn: entry.cashIn?.toString() || "",
     startMileage: entry.startMileage?.toString() || "",
     endMileage: entry.endMileage?.toString() || "",
@@ -33,6 +40,9 @@ const createDefaultFormState = (entry) => {
  * DailyEntryForm component for adding or editing daily entries
  * @param {Object} props
  * @param {Array} props.vehicles - List of available vehicles
+ * @param {Array} props.drivers - List of available drivers (for admin/manager)
+ * @param {boolean} props.isAdminOrManager - Whether current user is admin or manager
+ * @param {string} props.currentUserId - Current user's ID
  * @param {Object} props.entry - Existing entry data for editing (optional)
  * @param {Function} props.onSubmit - Callback function when form is submitted
  * @param {Function} props.onCancel - Callback function when form is cancelled
@@ -40,6 +50,9 @@ const createDefaultFormState = (entry) => {
  */
 const DailyEntryForm = ({
   vehicles = [],
+  drivers = [],
+  isAdminOrManager = false,
+  currentUserId = "",
   entry,
   onSubmit,
   onCancel,
@@ -80,8 +93,29 @@ const DailyEntryForm = ({
       newErrors.vehicleId = "Please select a vehicle";
     }
 
+    if (isAdminOrManager && !formData.driverId) {
+      newErrors.driverId = "Please select a driver";
+    }
+
+    // If "New Driver" is selected, validate the new driver name
+    if (isAdminOrManager && formData.driverId === 'NEW_DRIVER') {
+      if (!formData.newDriverName || formData.newDriverName.trim() === '') {
+        newErrors.newDriverName = "Please enter the new driver's name";
+      } else if (formData.newDriverName.trim().length < 2) {
+        newErrors.newDriverName = "Driver name must be at least 2 characters";
+      }
+    }
+
     if (!formData.date) {
       newErrors.date = "Date is required";
+    }
+
+    if (!formData.startLocation || formData.startLocation.trim() === "") {
+      newErrors.startLocation = "Start location is required";
+    }
+
+    if (!formData.endLocation || formData.endLocation.trim() === "") {
+      newErrors.endLocation = "End location is required";
     }
 
     const cashInValidation = validateCashIn(formData.cashIn);
@@ -119,6 +153,7 @@ const DailyEntryForm = ({
     if (validateForm()) {
       onSubmit({
         ...formData,
+        driverId: isAdminOrManager ? formData.driverId : currentUserId,
         cashIn: parseFloat(formData.cashIn),
         startMileage: parseFloat(formData.startMileage),
         endMileage: parseFloat(formData.endMileage),
@@ -129,6 +164,84 @@ const DailyEntryForm = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-sm text-slate-200">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {isAdminOrManager && (
+          <div>
+            <label
+              htmlFor="driverId"
+              className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+            >
+              Driver *
+            </label>
+            <select
+              id="driverId"
+              name="driverId"
+              value={formData.driverId}
+              onChange={handleChange}
+              className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
+                errors.driverId
+                  ? "border-rose-400/60 bg-rose-500/10"
+                  : "border-white/10 bg-surface-200/60"
+              }`}
+              disabled={isSubmitting}
+            >
+              <option value="">Select a driver</option>
+              <option value="NEW_DRIVER">➕ New Driver (Enter name below)</option>
+              <optgroup label="Registered Users">
+                {drivers.filter(d => d.type === 'user').map((driver) => (
+                  <option key={driver.id} value={driver.id}>
+                    ✓ {driver.fullName || driver.email}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Driver Profiles (Not Invited Yet)">
+                {drivers.filter(d => d.type === 'profile').map((driver) => (
+                  <option key={driver.id} value={driver.id}>
+                    👤 {driver.fullName} {driver.email ? `(${driver.email})` : ''}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+            {errors.driverId && (
+              <p className="mt-1 text-xs font-medium text-rose-300">
+                {errors.driverId}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* New Driver Name Input - Shows when "New Driver" is selected */}
+        {isAdminOrManager && formData.driverId === 'NEW_DRIVER' && (
+          <div>
+            <label
+              htmlFor="newDriverName"
+              className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+            >
+              New Driver Name *
+            </label>
+            <input
+              type="text"
+              id="newDriverName"
+              name="newDriverName"
+              value={formData.newDriverName}
+              onChange={handleChange}
+              placeholder="Enter driver's full name"
+              className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
+                errors.newDriverName
+                  ? "border-rose-400/60 bg-rose-500/10"
+                  : "border-white/10 bg-surface-200/60"
+              }`}
+              disabled={isSubmitting}
+            />
+            {errors.newDriverName && (
+              <p className="mt-1 text-xs font-medium text-rose-300">
+                {errors.newDriverName}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-blue-300">
+              💡 A driver profile will be created automatically for this driver
+            </p>
+          </div>
+        )}
         <div>
           <label
             htmlFor="vehicleId"
@@ -186,6 +299,64 @@ const DailyEntryForm = ({
           {errors.date && (
             <p className="mt-1 text-xs font-medium text-rose-300">
               {errors.date}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label
+            htmlFor="startLocation"
+            className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+          >
+            From (Start Location) *
+          </label>
+          <input
+            type="text"
+            id="startLocation"
+            name="startLocation"
+            value={formData.startLocation}
+            onChange={handleChange}
+            className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
+              errors.startLocation
+                ? "border-rose-400/60 bg-rose-500/10"
+                : "border-white/10 bg-surface-200/60"
+            }`}
+            placeholder="e.g., Johannesburg"
+            disabled={isSubmitting}
+          />
+          {errors.startLocation && (
+            <p className="mt-1 text-xs font-medium text-rose-300">
+              {errors.startLocation}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label
+            htmlFor="endLocation"
+            className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+          >
+            To (End Location) *
+          </label>
+          <input
+            type="text"
+            id="endLocation"
+            name="endLocation"
+            value={formData.endLocation}
+            onChange={handleChange}
+            className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
+              errors.endLocation
+                ? "border-rose-400/60 bg-rose-500/10"
+                : "border-white/10 bg-surface-200/60"
+            }`}
+            placeholder="e.g., Pretoria"
+            disabled={isSubmitting}
+          />
+          {errors.endLocation && (
+            <p className="mt-1 text-xs font-medium text-rose-300">
+              {errors.endLocation}
             </p>
           )}
         </div>

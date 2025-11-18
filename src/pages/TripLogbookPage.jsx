@@ -12,6 +12,7 @@ const TripLogbookPage = () => {
   const isAdminOrManager = userProfile?.role === 'company_admin' || userProfile?.role === 'company_manager';
   const [trips, setTrips] = useState([]);
   const [users, setUsers] = useState({});
+  const [vehicles, setVehicles] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [totalCashIn, setTotalCashIn] = useState(0);
@@ -69,10 +70,27 @@ const TripLogbookPage = () => {
         setUsers(usersData);
       }
 
+      // Fetch vehicle details for all trips
+      if (tripsData.length > 0) {
+        const vehicleIds = [...new Set(tripsData.map(trip => trip.vehicleId).filter(Boolean))];
+        const vehiclesRef = collection(db, 'vehicles');
+        const vehiclesData = {};
+        
+        for (const vehicleId of vehicleIds) {
+          const vehicleQuery = query(vehiclesRef, where('__name__', '==', vehicleId));
+          const vehicleSnapshot = await getDocs(vehicleQuery);
+          if (!vehicleSnapshot.empty) {
+            const vehicleData = vehicleSnapshot.docs[0].data();
+            vehiclesData[vehicleId] = vehicleData.name || vehicleData.registrationNumber || 'Unknown';
+          }
+        }
+        setVehicles(vehiclesData);
+      }
+
       setTrips(tripsData);
 
       // Calculate totals
-      const cashIn = tripsData.reduce((sum, trip) => sum + (trip.totalCash || 0), 0);
+      const cashIn = tripsData.reduce((sum, trip) => sum + (trip.cashIn || 0), 0);
       const expenses = tripsData.reduce((sum, trip) => {
         const fuel = trip.fuelExpense || 0;
         const repairs = trip.repairsExpense || 0;
@@ -93,10 +111,11 @@ const TripLogbookPage = () => {
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
     const driverName = users[trip.userId] || '';
+    const vehicleName = vehicles[trip.vehicleId] || '';
     return (
       trip.startLocation?.toLowerCase().includes(search) ||
       trip.endLocation?.toLowerCase().includes(search) ||
-      trip.vehicleName?.toLowerCase().includes(search) ||
+      vehicleName.toLowerCase().includes(search) ||
       driverName.toLowerCase().includes(search) ||
       trip.date?.toLocaleDateString().includes(search)
     );
@@ -113,9 +132,9 @@ const TripLogbookPage = () => {
         trip.date?.toLocaleDateString() || '',
         ...(isAdminOrManager ? [users[trip.userId] || 'Unknown'] : []),
         `${trip.startLocation} → ${trip.endLocation}`,
-        trip.vehicleName || '',
-        `${trip.distance || 0} km`,
-        `R${(trip.totalCash || 0).toFixed(2)}`,
+        vehicles[trip.vehicleId] || 'N/A',
+        `${trip.distanceTraveled || 0} km`,
+        `R${(trip.cashIn || 0).toFixed(2)}`,
         `R${((trip.fuelExpense || 0) + (trip.repairsExpense || 0) + (trip.otherExpenses || 0)).toFixed(2)}`
       ];
       return baseRow;
@@ -250,13 +269,13 @@ const TripLogbookPage = () => {
                           {trip.startLocation} → {trip.endLocation}
                         </td>
                         <td className="px-4 py-3 text-slate-300 text-sm">
-                          {trip.vehicleName || 'N/A'}
+                          {vehicles[trip.vehicleId] || 'N/A'}
                         </td>
                         <td className="px-4 py-3 text-slate-300 text-sm">
-                          {trip.distance ? `${trip.distance.toFixed(1)} km` : 'N/A'}
+                          {trip.distanceTraveled ? `${trip.distanceTraveled.toFixed(1)} km` : 'N/A'}
                         </td>
                         <td className="px-4 py-3 text-blue-400 font-semibold text-sm">
-                          ${(trip.totalCash || 0).toFixed(2)}
+                          ${(trip.cashIn || 0).toFixed(2)}
                         </td>
                         <td className="px-4 py-3 text-red-400 font-semibold text-sm">
                           ${totalTripExpenses.toFixed(2)}
