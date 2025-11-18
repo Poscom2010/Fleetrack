@@ -341,10 +341,43 @@ const CompanySetupPage = () => {
                 onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
                 className="w-full bg-slate-900 text-white px-4 py-3 rounded-lg border border-slate-600"
               >
-                <option value="Africa/Johannesburg">Africa/Johannesburg</option>
-                <option value="UTC">UTC</option>
-                <option value="America/New_York">America/New_York</option>
-                <option value="Europe/London">Europe/London</option>
+                <optgroup label="Africa">
+                  <option value="Africa/Johannesburg">South Africa (SAST)</option>
+                  <option value="Africa/Harare">Zimbabwe (CAT)</option>
+                  <option value="Africa/Nairobi">Kenya (EAT)</option>
+                  <option value="Africa/Lagos">Nigeria (WAT)</option>
+                  <option value="Africa/Cairo">Egypt (EET)</option>
+                  <option value="Africa/Casablanca">Morocco (WET)</option>
+                </optgroup>
+                <optgroup label="Americas">
+                  <option value="America/New_York">New York (EST)</option>
+                  <option value="America/Chicago">Chicago (CST)</option>
+                  <option value="America/Denver">Denver (MST)</option>
+                  <option value="America/Los_Angeles">Los Angeles (PST)</option>
+                  <option value="America/Toronto">Toronto (EST)</option>
+                  <option value="America/Sao_Paulo">São Paulo (BRT)</option>
+                </optgroup>
+                <optgroup label="Europe">
+                  <option value="Europe/London">London (GMT)</option>
+                  <option value="Europe/Paris">Paris (CET)</option>
+                  <option value="Europe/Berlin">Berlin (CET)</option>
+                  <option value="Europe/Moscow">Moscow (MSK)</option>
+                </optgroup>
+                <optgroup label="Asia">
+                  <option value="Asia/Dubai">Dubai (GST)</option>
+                  <option value="Asia/Kolkata">India (IST)</option>
+                  <option value="Asia/Singapore">Singapore (SGT)</option>
+                  <option value="Asia/Tokyo">Tokyo (JST)</option>
+                  <option value="Asia/Shanghai">Shanghai (CST)</option>
+                </optgroup>
+                <optgroup label="Australia & Pacific">
+                  <option value="Australia/Sydney">Sydney (AEDT)</option>
+                  <option value="Australia/Perth">Perth (AWST)</option>
+                  <option value="Pacific/Auckland">Auckland (NZDT)</option>
+                </optgroup>
+                <optgroup label="Other">
+                  <option value="UTC">UTC (Universal)</option>
+                </optgroup>
               </select>
             </div>
 
@@ -357,10 +390,40 @@ const CompanySetupPage = () => {
                 onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
                 className="w-full bg-slate-900 text-white px-4 py-3 rounded-lg border border-slate-600"
               >
-                <option value="ZAR">ZAR (R)</option>
-                <option value="USD">USD ($)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="GBP">GBP (£)</option>
+                <optgroup label="Africa">
+                  <option value="ZAR">South African Rand (R)</option>
+                  <option value="BWP">Botswana Pula (P)</option>
+                  <option value="KES">Kenyan Shilling (KSh)</option>
+                  <option value="NGN">Nigerian Naira (₦)</option>
+                  <option value="GHS">Ghanaian Cedi (₵)</option>
+                  <option value="TZS">Tanzanian Shilling (TSh)</option>
+                  <option value="UGX">Ugandan Shilling (USh)</option>
+                  <option value="EGP">Egyptian Pound (E£)</option>
+                  <option value="MAD">Moroccan Dirham (DH)</option>
+                </optgroup>
+                <optgroup label="Americas">
+                  <option value="USD">US Dollar ($)</option>
+                  <option value="CAD">Canadian Dollar (C$)</option>
+                  <option value="BRL">Brazilian Real (R$)</option>
+                  <option value="MXN">Mexican Peso (MX$)</option>
+                </optgroup>
+                <optgroup label="Europe">
+                  <option value="EUR">Euro (€)</option>
+                  <option value="GBP">British Pound (£)</option>
+                  <option value="CHF">Swiss Franc (CHF)</option>
+                  <option value="RUB">Russian Ruble (₽)</option>
+                </optgroup>
+                <optgroup label="Asia">
+                  <option value="AED">UAE Dirham (د.إ)</option>
+                  <option value="INR">Indian Rupee (₹)</option>
+                  <option value="SGD">Singapore Dollar (S$)</option>
+                  <option value="JPY">Japanese Yen (¥)</option>
+                  <option value="CNY">Chinese Yuan (¥)</option>
+                </optgroup>
+                <optgroup label="Australia & Pacific">
+                  <option value="AUD">Australian Dollar (A$)</option>
+                  <option value="NZD">New Zealand Dollar (NZ$)</option>
+                </optgroup>
               </select>
             </div>
           </div>

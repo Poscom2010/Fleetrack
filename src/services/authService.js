@@ -8,8 +8,12 @@ import {
 } from "firebase/auth";
 import { auth } from "./firebase";
 
-// Google Auth Provider
+// Google Auth Provider with configuration
 const googleProvider = new GoogleAuthProvider();
+// Force account selection every time
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
 
 /**
  * Sign up a new user with email and password

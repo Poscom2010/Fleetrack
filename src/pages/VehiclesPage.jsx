@@ -18,10 +18,7 @@ const VehiclesPage = () => {
     registrationNumber: '',
     make: '',
     model: '',
-    year: '',
-    lastServiceMileage: '',
     nextServiceMileage: '',
-    nextServiceDate: '',
     licenseExpiryDate: '',
   });
 
@@ -64,7 +61,15 @@ const VehiclesPage = () => {
   };
 
   const getServiceStatus = (vehicle) => {
-    if (!vehicle.nextServiceDate) return { status: 'unknown', text: 'No service scheduled', color: 'slate' };
+    if (!vehicle.nextServiceMileage) {
+      return { 
+        status: 'missing', 
+        text: '⚠️ Please capture next service mileage', 
+        color: 'yellow',
+        icon: AlertCircle,
+        important: true
+      };
+    }
 
     const nextService = new Date(vehicle.nextServiceDate);
     const today = new Date();
@@ -81,7 +86,13 @@ const VehiclesPage = () => {
 
   const getLicenseStatus = (vehicle) => {
     if (!vehicle.licenseExpiryDate) {
-      return { status: 'unknown', text: 'No licence disc date set', color: 'slate' };
+      return { 
+        status: 'missing', 
+        text: '⚠️ Please capture disc licence expiry date', 
+        color: 'yellow',
+        icon: AlertCircle,
+        important: true
+      };
     }
 
     const expiryDate = new Date(vehicle.licenseExpiryDate);
@@ -119,6 +130,10 @@ const VehiclesPage = () => {
     total: vehicles.length,
     active: vehicles.filter(v => getServiceStatus(v).status === 'ok').length,
     serviceDue: vehicles.filter(v => ['due', 'overdue'].includes(getServiceStatus(v).status)).length,
+    missingData: vehicles.filter(v => 
+      getServiceStatus(v).status === 'missing' || 
+      getLicenseStatus(v).status === 'missing'
+    ).length,
   };
 
   const handleOpenModal = (vehicle = null) => {
@@ -129,10 +144,7 @@ const VehiclesPage = () => {
         registrationNumber: vehicle.registrationNumber || '',
         make: vehicle.make || '',
         model: vehicle.model || '',
-        year: vehicle.year || '',
-        lastServiceMileage: vehicle.lastServiceMileage || '',
         nextServiceMileage: vehicle.nextServiceMileage || '',
-        nextServiceDate: vehicle.nextServiceDate || '',
         licenseExpiryDate: vehicle.licenseExpiryDate || '',
       });
     } else {
@@ -142,10 +154,7 @@ const VehiclesPage = () => {
         registrationNumber: '',
         make: '',
         model: '',
-        year: '',
-        lastServiceMileage: '',
         nextServiceMileage: '',
-        nextServiceDate: '',
         licenseExpiryDate: '',
       });
     }
@@ -160,10 +169,7 @@ const VehiclesPage = () => {
       registrationNumber: '',
       make: '',
       model: '',
-      year: '',
-      lastServiceMileage: '',
       nextServiceMileage: '',
-      nextServiceDate: '',
       licenseExpiryDate: '',
     });
   };
@@ -241,8 +247,32 @@ const VehiclesPage = () => {
           </button>
         </div>
 
+        {/* Missing Data Alert Banner */}
+        {stats.missingData > 0 && (
+          <div className="mb-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 animate-pulse">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-6 h-6 text-yellow-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="text-yellow-400 font-bold text-base mb-1">
+                  ⚠️ Action Required: Missing Critical Data
+                </h3>
+                <p className="text-yellow-200 text-sm leading-relaxed mb-2">
+                  <strong>{stats.missingData} vehicle{stats.missingData > 1 ? 's' : ''}</strong> {stats.missingData > 1 ? 'are' : 'is'} missing important information needed for alerts:
+                </p>
+                <ul className="text-yellow-200 text-xs space-y-1 ml-4">
+                  <li>• <strong>Next Service Mileage</strong> - Required for service due alerts</li>
+                  <li>• <strong>Disc License Expiry</strong> - Required for license renewal alerts</li>
+                </ul>
+                <p className="text-yellow-300 text-xs mt-2 font-medium">
+                  👉 Please edit these vehicles and add the missing data to enable automatic alerts.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           {/* Total Vehicles */}
           <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
             <p className="text-slate-400 text-xs font-medium mb-1">Total Vehicles</p>
@@ -259,6 +289,12 @@ const VehiclesPage = () => {
           <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
             <p className="text-slate-400 text-xs font-medium mb-1">Service Due</p>
             <p className="text-3xl font-bold text-orange-400">{stats.serviceDue}</p>
+          </div>
+
+          {/* Missing Data */}
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+            <p className="text-slate-400 text-xs font-medium mb-1">Missing Data</p>
+            <p className="text-3xl font-bold text-yellow-400">{stats.missingData}</p>
           </div>
         </div>
 
@@ -311,7 +347,7 @@ const VehiclesPage = () => {
                   <div className="mb-4">
                     <p className="text-slate-500 text-xs mb-1">Model</p>
                     <p className="text-white font-medium">
-                      {vehicle.year} {vehicle.make} {vehicle.model}
+                      {vehicle.make} {vehicle.model}
                     </p>
                   </div>
 
@@ -324,6 +360,8 @@ const VehiclesPage = () => {
                         ? 'bg-orange-500/10 border border-orange-500/20'
                         : serviceStatus.status === 'overdue'
                         ? 'bg-red-500/10 border border-red-500/20'
+                        : serviceStatus.status === 'missing'
+                        ? 'bg-yellow-500/10 border border-yellow-500/30 animate-pulse'
                         : 'bg-slate-800 border border-slate-700'
                     }`}
                   >
@@ -335,6 +373,8 @@ const VehiclesPage = () => {
                           ? 'text-orange-400'
                           : serviceStatus.status === 'overdue'
                           ? 'text-red-400'
+                          : serviceStatus.status === 'missing'
+                          ? 'text-yellow-400'
                           : 'text-slate-400'
                       }`}
                     />
@@ -347,6 +387,8 @@ const VehiclesPage = () => {
                             ? 'text-orange-400'
                             : serviceStatus.status === 'overdue'
                             ? 'text-red-400'
+                            : serviceStatus.status === 'missing'
+                            ? 'text-yellow-400'
                             : 'text-slate-400'
                         }`}
                       >
@@ -367,6 +409,8 @@ const VehiclesPage = () => {
                         ? 'bg-orange-500/10 border border-orange-500/20'
                         : licenseStatus.status === 'expired'
                         ? 'bg-red-500/10 border border-red-500/20'
+                        : licenseStatus.status === 'missing'
+                        ? 'bg-yellow-500/10 border border-yellow-500/30 animate-pulse'
                         : 'bg-slate-800 border border-slate-700'
                     }`}
                   >
@@ -378,6 +422,8 @@ const VehiclesPage = () => {
                           ? 'text-orange-400'
                           : licenseStatus.status === 'expired'
                           ? 'text-red-400'
+                          : licenseStatus.status === 'missing'
+                          ? 'text-yellow-400'
                           : 'text-slate-400'
                       }`}
                     />
@@ -390,6 +436,8 @@ const VehiclesPage = () => {
                             ? 'text-orange-400'
                             : licenseStatus.status === 'expired'
                             ? 'text-red-400'
+                            : licenseStatus.status === 'missing'
+                            ? 'text-yellow-400'
                             : 'text-slate-400'
                         }`}
                       >
@@ -414,6 +462,20 @@ const VehiclesPage = () => {
             <h2 className="text-2xl font-bold text-white mb-6">
               {editingVehicle ? 'Edit Vehicle' : 'Add New Vehicle'}
             </h2>
+
+            {/* Important Notice */}
+            <div className="mb-6 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-yellow-400 font-semibold text-sm mb-1">Important for Alerts!</h3>
+                  <p className="text-yellow-200 text-xs leading-relaxed">
+                    Please capture <strong>Next Service Mileage</strong> and <strong>Disc License Expiry</strong> to receive timely alerts. 
+                    You can add these now or later by editing the vehicle.
+                  </p>
+                </div>
+              </div>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -477,73 +539,34 @@ const VehiclesPage = () => {
                   />
                 </div>
 
-                {/* Year */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">
-                    Year *
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.year}
-                    onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
-                    placeholder="e.g., 2022"
-                    required
-                  />
-                </div>
-
-                {/* Next Service Date */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">
-                    Next Service Date
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.nextServiceDate}
-                    onChange={(e) => setFormData({ ...formData, nextServiceDate: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
-                  />
-                </div>
-
-                {/* Last Service Mileage */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">
-                    Last Service Mileage (km)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.lastServiceMileage}
-                    onChange={(e) => setFormData({ ...formData, lastServiceMileage: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
-                    placeholder="e.g., 50000"
-                  />
-                </div>
 
                 {/* Next Service Mileage */}
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">
-                    Next Service Mileage (km)
+                    Next Service Mileage (km) <span className="text-yellow-400 text-xs">⚠️ Critical for alerts</span>
                   </label>
                   <input
                     type="number"
                     value={formData.nextServiceMileage}
                     onChange={(e) => setFormData({ ...formData, nextServiceMileage: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                    className="w-full bg-slate-800 border border-yellow-500/30 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-yellow-500 transition"
                     placeholder="e.g., 60000"
                   />
+                  <p className="mt-1 text-xs text-yellow-400">⚠️ Required for service due alerts - Add now or later</p>
                 </div>
 
                 {/* Card Disc Licence Expiry */}
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">
-                    Card Disc Licence Expiry
+                    Disc Licence Expiry <span className="text-yellow-400 text-xs">⚠️ Critical for alerts</span>
                   </label>
                   <input
                     type="date"
                     value={formData.licenseExpiryDate}
                     onChange={(e) => setFormData({ ...formData, licenseExpiryDate: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                    className="w-full bg-slate-800 border border-yellow-500/30 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-yellow-500 transition"
                   />
+                  <p className="mt-1 text-xs text-yellow-400">⚠️ Required for license renewal alerts - Add now or later</p>
                 </div>
               </div>
 

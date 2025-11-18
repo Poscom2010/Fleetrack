@@ -110,25 +110,23 @@ service cloud.firestore {
                    );
       
       // Allow create if user is authenticated (with or without company)
-      allow create: if isCreatingOwnResource() &&
-                      hasRequiredFields(['userId', 'name', 'registrationNumber', 'model', 'year']) &&
+      // Only validate required fields: name, registrationNumber
+      // All other fields (make, model, year, service data, etc.) are optional
+      allow create: if isAuthenticated() &&
+                      request.resource.data.userId == request.auth.uid &&
                       (request.resource.data.companyId == null || hasCompanyAccess(request.resource.data.companyId)) &&
                       request.resource.data.userId is string &&
                       request.resource.data.name is string &&
-                      request.resource.data.registrationNumber is string &&
-                      request.resource.data.model is string &&
-                      request.resource.data.year is number &&
-                      request.resource.data.year > 1900 &&
-                      request.resource.data.year <= 2100;
+                      request.resource.data.registrationNumber is string;
       
       // Allow update if user has company access and userId/companyId not changed
       allow update: if isAuthenticated() && 
-                      hasCompanyAccess(resource.data.companyId) &&
+                      (resource.data.userId == request.auth.uid || hasCompanyAccess(resource.data.companyId)) &&
                       request.resource.data.userId == resource.data.userId &&
                       request.resource.data.companyId == resource.data.companyId;
       
-      // Allow delete if user has company access
-      allow delete: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      // Allow delete if user has company access or owns the vehicle
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || hasCompanyAccess(resource.data.companyId));
     }
     
     // Daily entries collection rules
