@@ -1,19 +1,34 @@
 # Dependencies
 node_modules
+node_modules/
+/.pnp
+.pnp.js
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
 # Build outputs
 dist
 dist-ssr
 build
 .vercel
+.next
+out
+.nuxt
+.output
+.vite
 
 # Environment variables
 .env
 .env.local
+.env.development
 .env.development.local
+.env.test
 .env.test.local
+.env.production
 .env.production.local
 *.local
+.env*.local
 
 # Logs
 logs
@@ -23,33 +38,87 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+debug.log
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea
+.idea/
+*.iml
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.swp
+*.swo
+*~
 
 # Firebase
 .firebase
+.firebase/
 .firebaserc
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+firebase-debug.*.log
+.runtimeconfig.json
 
 # Temporary files
 *.tmp
 *.temp
 .cache
+.cache/
+.parcel-cache
+.eslintcache
 
 # OS files
 Thumbs.db
 .DS_Store
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
 
-# Cleanup script (contains sensitive data)
+# Test coverage
+coverage
+coverage/
+.nyc_output
+*.lcov
+
+# Documentation (if auto-generated)
+# docs/
+
+# Sensitive data
 cleanup-data.js
+*.key
+*.pem
+*.p12
+*.pfx
+serviceAccountKey.json
+service-account-key.json
+
+# Database backups
+*.sql
+*.sqlite
+*.db
+
+# Deployment configs (if they contain secrets)
+# deployment-config.json
+
+# User-specific files
+.history/
+*.bak
+*.backup
+
+# Lock files (optional - uncomment if you want to ignore them)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
