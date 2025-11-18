@@ -18,20 +18,24 @@ import {
   Users,
   FileText,
   Calendar,
-  Gauge
+  Gauge,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import logo from '../assets/FleetTrack-logo.png';
 
 const LandingPage = () => {
   usePageTitle('Welcome');
   const navigate = useNavigate();
-  const { loginWithGoogle, login, user, userProfile } = useAuth();
+  const { loginWithGoogle, login, signup, user, userProfile } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Check for invitation token and handle registration
   useEffect(() => {
@@ -74,12 +78,9 @@ const LandingPage = () => {
       } else if (userProfile.companyId) {
         // User has a company, go to dashboard
         navigate('/dashboard', { replace: true });
-      } else if (userProfile.role === 'company_admin') {
-        // New company admin without company, go to setup
-        navigate('/company-setup', { replace: true });
       } else {
-        // Invited user without company (shouldn't happen, but handle it)
-        navigate('/company-setup', { replace: true });
+        // New user without company, go to company setup
+        navigate('/company/setup', { replace: true });
       }
     }
   }, [user, userProfile, navigate]);
@@ -100,14 +101,15 @@ const LandingPage = () => {
           setLoading(false);
           return;
         }
-        // For now, just show message - you can implement registration later
-        alert('Registration feature coming soon! Please use Google Sign In or contact admin.');
-        setLoading(false);
-        return;
+        
+        // Register the new user
+        await signup(email, password);
+        setShowAuthModal(false);
+        // useEffect will handle redirect after user/userProfile are set
       }
     } catch (error) {
       console.error('Auth error:', error);
-      alert(error.message);
+      alert(error.message || 'An error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -445,7 +447,7 @@ const LandingPage = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 transition"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 transition text-slate-900"
                   placeholder="your@example.com"
                   required
                 />
@@ -456,14 +458,23 @@ const LandingPage = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Password
                 </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 transition"
-                  placeholder="••••••••"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 pr-12 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 transition text-slate-900"
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
 
               {/* Confirm Password (only for registration) */}
@@ -472,14 +483,23 @@ const LandingPage = () => {
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Confirm Password
                   </label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 transition"
-                    placeholder="••••••••"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full px-4 py-3 pr-12 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 transition text-slate-900"
+                      placeholder="••••••••"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
                 </div>
               )}
 
