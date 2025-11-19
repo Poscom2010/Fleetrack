@@ -3,12 +3,12 @@
 ## ✅ **Status: PRODUCTION READY**
 
 **Date:** November 19, 2025  
-**Version:** 2.0 - Mobile Responsive & Secure  
+**Version:** 2.1 - Mobile Responsive, Secure & Onboarded  
 **Deployment Target:** Vercel (fleetrackk.vercel.app)
 
 ---
 
-## 🎉 **What's New in Version 2.0**
+## 🎉 **What's New in Version 2.1**
 
 ### **1. Full Mobile Responsiveness** 📱
 - ✅ All pages optimized for mobile devices
@@ -29,7 +29,15 @@
 - ✅ Delete buttons hidden for drivers
 - ✅ Data protection implemented
 
-### **4. Improved UX** ✨
+### **4. Beautiful Onboarding** 🎯 **NEW!**
+- ✅ Role-based guided tours for new users
+- ✅ Step-by-step instructions
+- ✅ Critical steps highlighted (e.g., inviting drivers)
+- ✅ Mobile & desktop responsive
+- ✅ One-time show with skip option
+- ✅ Saves completion to Firebase
+
+### **5. Improved UX** ✨
 - ✅ Better mobile landing page with key features
 - ✅ Clear data presentation in cards
 - ✅ Improved readability on all screen sizes
@@ -497,7 +505,55 @@ git push origin main
 
 ---
 
+## 🎯 **Onboarding System**
+
+### **What It Does:**
+- Guides new users through platform setup
+- Tailored content for each role
+- Highlights critical actions (like inviting drivers)
+- Beautiful, engaging UI
+- Mobile & desktop responsive
+
+### **Onboarding Flows:**
+
+#### **Company Admin/Manager (6 Steps):**
+1. Welcome & Overview
+2. Add Your Vehicles
+3. **Invite Your Drivers** ⚠️ (Critical step - highlighted)
+4. Capture Data
+5. View Analytics
+6. Ready to Go!
+
+#### **Driver (5 Steps):**
+1. Welcome to Your Fleet
+2. Capture Daily Trips
+3. Manage Vehicles
+4. View Performance
+5. Ready to Go!
+
+#### **System Admin (3 Steps):**
+1. Welcome & Platform Control
+2. Dashboard Overview
+3. Ready to Go!
+
+### **Key Features:**
+- ✅ One-time show (won't repeat)
+- ✅ Skip option available
+- ✅ Progress tracking
+- ✅ Saves to Firebase
+- ✅ Color-coded steps
+- ✅ Icon-based visual hierarchy
+
+---
+
 ## 📝 **Version History**
+
+### **v2.1 (November 19, 2025 - Latest)**
+- ✅ Beautiful onboarding system
+- ✅ Role-based guided tours
+- ✅ Critical step highlighting
+- ✅ One-time user guidance
+- ✅ Firebase persistence
 
 ### **v2.0 (November 19, 2025)**
 - ✅ Full mobile responsiveness
@@ -513,12 +569,15 @@ git push origin main
 
 ---
 
-**🎊 Congratulations! FleetTrack v2.0 is Production Ready! 🎊**
+**🎊 Congratulations! FleetTrack v2.1 is Production Ready! 🎊**
 
 **Deploy with confidence!** 🚀✨
+
+**New users will love the onboarding experience!** 🎯
 
 ---
 
 **Last Updated:** November 19, 2025  
 **Status:** ✅ READY FOR PRODUCTION  
+**Version:** 2.1 - Now with Onboarding!  
 **Next Step:** Deploy to Vercel

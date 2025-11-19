@@ -1,5 +1,7 @@
+import { useState, useEffect } from "react";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
+import Onboarding from "../onboarding/Onboarding";
 import { useAuth } from "../../hooks/useAuth";
 // import SubscriptionBanner from "../subscription/SubscriptionBanner";
 
@@ -11,10 +13,37 @@ const SubscriptionBanner = () => null;
  * background gradients, navbar placement, and shared padding.
  */
 const AppShell = ({ children }) => {
-  const { company, userProfile } = useAuth();
+  const { user, company, userProfile, refreshUserData } = useAuth();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+
+  // Check if user needs onboarding (only show once per session)
+  useEffect(() => {
+    if (userProfile && !userProfile.onboardingCompleted && !onboardingDismissed) {
+      setShowOnboarding(true);
+    }
+  }, [userProfile, onboardingDismissed]);
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    setOnboardingDismissed(true); // Prevent re-showing in this session
+    // Refresh user data after a short delay to ensure modal closes first
+    setTimeout(() => {
+      refreshUserData();
+    }, 100);
+  };
 
   return (
     <div className="relative min-h-screen bg-surface-100 text-slate-100">
+      {/* Onboarding Modal */}
+      {showOnboarding && (
+        <Onboarding 
+          user={user} 
+          userProfile={userProfile} 
+          onComplete={handleOnboardingComplete} 
+        />
+      )}
+
       {/* Ambient gradient background */}
       <div
         aria-hidden="true"

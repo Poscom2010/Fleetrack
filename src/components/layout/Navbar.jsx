@@ -84,6 +84,9 @@ const Navbar = () => {
       links.push({ path: "/team", label: "Team Management" });
     }
     
+    // Add Onboarding for all users
+    links.push({ path: "/onboarding", label: "Onboarding Guide" });
+    
     // Add Contact Support for all users
     links.push({ path: "/support", label: "Support" });
     

@@ -26,6 +26,7 @@ import AnalyticsDashboard from "./components/analytics/AnalyticsDashboard";
 import TripLogbookPage from "./pages/TripLogbookPage";
 import ProfileSettingsPage from "./pages/ProfileSettingsPage";
 import TeamPage from "./pages/TeamPage";
+import OnboardingPage from "./pages/OnboardingPage";
 import SuccessModal from "./components/common/SuccessModal";
 // Full Company Setup Page Component
 const CompanySetupPage = () => {
@@ -1655,6 +1656,18 @@ function App() {
                     <AnalyticsPage />
                   </AppShell>
                 </CompanyOnlyRoute>
+              }
+            />
+
+            {/* Onboarding Page - Available to all authenticated users */}
+            <Route
+              path="/onboarding"
+              element={
+                <ProtectedRoute>
+                  <AppShell>
+                    <OnboardingPage />
+                  </AppShell>
+                </ProtectedRoute>
               }
             />
 
