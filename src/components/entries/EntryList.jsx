@@ -23,7 +23,10 @@ const EntryList = ({
   onEditExpense,
   onDeleteExpense,
   isLoading = false,
+  userRole,
 }) => {
+  // Only admins and managers can delete
+  const canDelete = userRole === 'company_admin' || userRole === 'company_manager' || userRole === 'system_admin';
   const [activeTab, setActiveTab] = useState("entries");
   const [selectedVehicle, setSelectedVehicle] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -256,12 +259,15 @@ const EntryList = ({
                             >
                               Edit
                             </button>
-                            <button
-                              onClick={() => onDeleteEntry(entry.id)}
-                              className="rounded-2xl border border-rose-400/30 px-4 py-2 text-xs font-semibold text-rose-200 transition hover:border-rose-400/60 hover:text-rose-100"
-                            >
-                              Delete
-                            </button>
+                            {/* Only admins and managers can delete */}
+                            {canDelete && (
+                              <button
+                                onClick={() => onDeleteEntry(entry.id)}
+                                className="rounded-2xl border border-rose-400/30 px-4 py-2 text-xs font-semibold text-rose-200 transition hover:border-rose-400/60 hover:text-rose-100"
+                              >
+                                Delete
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -338,12 +344,15 @@ const EntryList = ({
                               >
                                 Edit
                               </button>
-                              <button
-                                onClick={() => onDeleteExpense(expense.id)}
-                                className="rounded-2xl border border-rose-400/30 px-4 py-2 text-xs font-semibold text-rose-200 transition hover:border-rose-400/60 hover:text-rose-100"
-                              >
-                                Delete
-                              </button>
+                              {/* Only admins and managers can delete */}
+                              {canDelete && (
+                                <button
+                                  onClick={() => onDeleteExpense(expense.id)}
+                                  className="rounded-2xl border border-rose-400/30 px-4 py-2 text-xs font-semibold text-rose-200 transition hover:border-rose-400/60 hover:text-rose-100"
+                                >
+                                  Delete
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>

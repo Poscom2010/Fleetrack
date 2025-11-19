@@ -138,56 +138,56 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden flex">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-x-hidden">
       {/* Shared animated background */}
       <LandingBackground />
 
-      <div className="relative z-10 flex w-full h-full">
+      <div className="relative z-10 flex flex-col lg:flex-row w-full min-h-screen">
         {/* Left Side - Hero Section */}
-        <div className="w-1/3 flex flex-col justify-between p-8">
+        <div className="w-full lg:w-1/3 flex flex-col justify-between p-4 sm:p-6 lg:p-8">
           {/* Top Section - Logo and Tagline */}
-          <div className="flex items-center gap-4">
-            <img src={logo} alt="FleetTrack" className="h-20 w-20 object-contain" />
-            <span className="inline-block px-3 py-1.5 bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/30 rounded-full text-sm font-medium" style={{color: '#fbbf24'}}>
+          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 mb-6 lg:mb-0">
+            <img src={logo} alt="FleetTrack" className="h-16 w-16 sm:h-20 sm:w-20 object-contain" />
+            <span className="inline-block px-3 py-1.5 bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/30 rounded-full text-xs sm:text-sm font-medium text-center" style={{color: '#fbbf24'}}>
               The power in You. Drive Smart, Earn More
             </span>
           </div>
 
           {/* Middle Section - Hero Content */}
-          <div>
-            <h1 className="text-5xl font-bold text-white mb-4 leading-tight">
+          <div className="mb-6 lg:mb-0">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-3 sm:mb-4 leading-tight">
               Manage Your Fleet
               <br />
               With Confidence
             </h1>
 
-            <p className="text-slate-400 mb-6 leading-relaxed text-lg">
+            <p className="text-slate-400 mb-4 sm:mb-6 leading-relaxed text-sm sm:text-base lg:text-lg">
               Track vehicles, monitor performance, and maximize profits with our comprehensive fleet management solution.
             </p>
             
             {/* Key Benefits */}
-            <div className="flex flex-wrap gap-3 mb-8">
-              <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/30 rounded-full text-green-400 text-xs font-medium">
+            <div className="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-8">
+              <span className="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-green-500/10 border border-green-500/30 rounded-full text-green-400 text-xs font-medium">
                 <CheckCircle2 className="w-3 h-3" />
                 Free Access
               </span>
-              <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded-full text-blue-400 text-xs font-medium">
+              <span className="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-500/10 border border-blue-500/30 rounded-full text-blue-400 text-xs font-medium">
                 <CheckCircle2 className="w-3 h-3" />
                 Real-time Updates
               </span>
-              <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500/30 rounded-full text-purple-400 text-xs font-medium">
+              <span className="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-purple-500/10 border border-purple-500/30 rounded-full text-purple-400 text-xs font-medium">
                 <CheckCircle2 className="w-3 h-3" />
                 Unlimited Vehicles
               </span>
-              <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-400 text-xs font-medium">
+              <span className="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-400 text-xs font-medium">
                 <CheckCircle2 className="w-3 h-3" />
                 Auto Alerts
               </span>
             </div>
 
-            {/* Features Grid */}
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 hover:border-blue-500/30 transition-all">
+            {/* Mobile Features - 4 Key Features */}
+            <div className="lg:hidden grid grid-cols-1 gap-3 mb-6">
+              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50">
                 <Car className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <h3 className="text-white font-semibold mb-1 text-sm">Vehicle Management</h3>
@@ -195,7 +195,7 @@ const LandingPage = () => {
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 hover:border-green-500/30 transition-all">
+              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50">
                 <DollarSign className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <h3 className="text-white font-semibold mb-1 text-sm">Daily Cash-In Tracking</h3>
@@ -203,7 +203,7 @@ const LandingPage = () => {
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 hover:border-purple-500/30 transition-all">
+              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50">
                 <BarChart3 className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <h3 className="text-white font-semibold mb-1 text-sm">Advanced Analytics</h3>
@@ -211,40 +211,75 @@ const LandingPage = () => {
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 hover:border-amber-500/30 transition-all">
+              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50">
                 <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <h3 className="text-white font-semibold mb-1 text-sm">Service Alerts</h3>
                   <p className="text-slate-400 text-xs">Auto maintenance reminders</p>
                 </div>
               </div>
+            </div>
 
-              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 hover:border-cyan-500/30 transition-all">
-                <FileText className="w-5 h-5 text-cyan-400 mt-0.5 flex-shrink-0" />
+            {/* Desktop Features Grid - All 8 Features */}
+            <div className="hidden lg:grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
+              <div className="flex items-start gap-2 sm:gap-3 bg-slate-900/30 p-2.5 sm:p-3 rounded-lg border border-slate-800/50 hover:border-blue-500/30 transition-all">
+                <Car className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="text-white font-semibold mb-1 text-sm">Vehicle Management</h3>
+                  <p className="text-slate-400 text-xs">Track all vehicles in one place</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 sm:gap-3 bg-slate-900/30 p-2.5 sm:p-3 rounded-lg border border-slate-800/50 hover:border-green-500/30 transition-all">
+                <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="text-white font-semibold mb-1 text-sm">Daily Cash-In Tracking</h3>
+                  <p className="text-slate-400 text-xs">Monitor revenue per vehicle</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 sm:gap-3 bg-slate-900/30 p-2.5 sm:p-3 rounded-lg border border-slate-800/50 hover:border-purple-500/30 transition-all">
+                <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="text-white font-semibold mb-1 text-sm">Advanced Analytics</h3>
+                  <p className="text-slate-400 text-xs">Profit trends & insights</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 sm:gap-3 bg-slate-900/30 p-2.5 sm:p-3 rounded-lg border border-slate-800/50 hover:border-amber-500/30 transition-all">
+                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="text-white font-semibold mb-1 text-sm">Service Alerts</h3>
+                  <p className="text-slate-400 text-xs">Auto maintenance reminders</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 sm:gap-3 bg-slate-900/30 p-2.5 sm:p-3 rounded-lg border border-slate-800/50 hover:border-cyan-500/30 transition-all">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <h3 className="text-white font-semibold mb-1 text-sm">Trip Logbook</h3>
                   <p className="text-slate-400 text-xs">Complete journey records</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 hover:border-rose-500/30 transition-all">
-                <TrendingUp className="w-5 h-5 text-rose-400 mt-0.5 flex-shrink-0" />
+              <div className="flex items-start gap-2 sm:gap-3 bg-slate-900/30 p-2.5 sm:p-3 rounded-lg border border-slate-800/50 hover:border-rose-500/30 transition-all">
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-rose-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <h3 className="text-white font-semibold mb-1 text-sm">Expense Tracking</h3>
                   <p className="text-slate-400 text-xs">Fuel, maintenance & more</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 hover:border-indigo-500/30 transition-all">
-                <Users className="w-5 h-5 text-indigo-400 mt-0.5 flex-shrink-0" />
+              <div className="flex items-start gap-2 sm:gap-3 bg-slate-900/30 p-2.5 sm:p-3 rounded-lg border border-slate-800/50 hover:border-indigo-500/30 transition-all">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <h3 className="text-white font-semibold mb-1 text-sm">Team Management</h3>
                   <p className="text-slate-400 text-xs">Invite & manage drivers</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 hover:border-emerald-500/30 transition-all">
-                <Gauge className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+              <div className="flex items-start gap-2 sm:gap-3 bg-slate-900/30 p-2.5 sm:p-3 rounded-lg border border-slate-800/50 hover:border-emerald-500/30 transition-all">
+                <Gauge className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <h3 className="text-white font-semibold mb-1 text-sm">Mileage Tracking</h3>
                   <p className="text-slate-400 text-xs">Odometer & distance logs</p>
@@ -255,7 +290,7 @@ const LandingPage = () => {
           </div>
 
           {/* Bottom Section - Stats */}
-          <div className="flex gap-12">
+          <div className="hidden lg:flex gap-8 xl:gap-12">
             <div>
               <div className="text-4xl font-bold text-white">500+</div>
               <div className="text-slate-400 text-sm">Active Fleets</div>
@@ -271,25 +306,41 @@ const LandingPage = () => {
           </div>
         </div>
 
-        {/* Right Side - Login Card */}
-        <div className="flex-1 flex flex-col justify-start items-center p-12 pt-8 pb-20">
-          <div className="w-full max-w-lg space-y-6">
+        {/* Mobile Get Started Button - Only visible on mobile */}
+        <div className="lg:hidden w-full px-4 pb-8">
+          <button
+            onClick={() => setShowAuthModal(true)}
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-2xl shadow-2xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-3"
+          >
+            <span className="text-lg">Get Started</span>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </button>
+          <p className="text-center text-slate-400 text-sm mt-3">
+            Sign in or create your free account
+          </p>
+        </div>
+
+        {/* Right Side - Login Card - Hidden on mobile, visible on desktop */}
+        <div className="hidden lg:flex flex-1 flex-col justify-start items-center p-4 sm:p-6 lg:p-12 lg:pt-8 pb-8 lg:pb-20">
+          <div className="w-full max-w-lg space-y-4 sm:space-y-6">
             {/* Stats Cards at Top */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-3 sm:p-4">
                 <p className="text-slate-400 text-xs mb-1">Total Vehicles</p>
-                <p className="text-4xl font-bold text-white">245</p>
+                <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">245</p>
               </div>
-              <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4">
+              <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-3 sm:p-4">
                 <p className="text-slate-400 text-xs mb-1">Active</p>
-                <p className="text-4xl font-bold text-green-400">198</p>
+                <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-green-400">198</p>
               </div>
             </div>
 
             {/* Login Card */}
-            <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl p-6 border border-slate-200">
-              <div className="mb-5">
-                <h2 className="text-2xl font-bold text-slate-900 mb-1">Get Started</h2>
+            <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl p-4 sm:p-6 border border-slate-200">
+              <div className="mb-4 sm:mb-5">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-1">Get Started</h2>
                 <p className="text-slate-600 text-sm">Access your fleet management dashboard</p>
               </div>
 
@@ -415,7 +466,7 @@ const LandingPage = () => {
       {/* Auth Modal Overlay */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative my-8">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 sm:p-8 relative my-8">
             {/* Close Button */}
             <button
               onClick={() => setShowAuthModal(false)}
@@ -427,11 +478,11 @@ const LandingPage = () => {
             </button>
 
             {/* Modal Header */}
-            <div className="mb-6">
-              <h2 className="text-3xl font-bold text-slate-900 mb-2">
+            <div className="mb-4 sm:mb-6">
+              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
                 {isLogin ? 'Welcome Back' : 'Create Account'}
               </h2>
-              <p className="text-slate-600">
+              <p className="text-sm sm:text-base text-slate-600">
                 {isLogin ? 'Sign in to access your dashboard' : 'Join FleetTrack to manage your fleet'}
               </p>
             </div>

@@ -330,12 +330,15 @@ const VehiclesPage = () => {
                       >
                         <Edit2 className="w-4 h-4 text-slate-400" />
                       </button>
-                      <button
-                        onClick={() => handleDelete(vehicle.id)}
-                        className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition"
-                      >
-                        <Trash2 className="w-4 h-4 text-slate-400" />
-                      </button>
+                      {/* Only admins and managers can delete vehicles */}
+                      {(userProfile?.role === 'company_admin' || userProfile?.role === 'company_manager' || userProfile?.role === 'system_admin') && (
+                        <button
+                          onClick={() => handleDelete(vehicle.id)}
+                          className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition"
+                        >
+                          <Trash2 className="w-4 h-4 text-slate-400" />
+                        </button>
+                      )}
                     </div>
                   </div>
 

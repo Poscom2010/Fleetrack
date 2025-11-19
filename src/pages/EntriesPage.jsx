@@ -304,6 +304,7 @@ const EntriesPage = () => {
           onEditExpense={handleEditExpense}
           onDeleteExpense={handleDeleteExpense}
           isLoading={loading}
+          userRole={userProfile?.role}
         />
       </div>
 

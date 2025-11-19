@@ -15,6 +15,7 @@ const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileDropdownRef = useRef(null);
   const mobileMenuRef = useRef(null);
+  const mobileMenuButtonRef = useRef(null);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -24,8 +25,13 @@ const Navbar = () => {
         setIsProfileOpen(false);
       }
       
-      // Close mobile menu if clicking outside
-      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target)) {
+      // Close mobile menu if clicking outside (but not on the menu button)
+      if (
+        mobileMenuRef.current && 
+        !mobileMenuRef.current.contains(event.target) &&
+        mobileMenuButtonRef.current &&
+        !mobileMenuButtonRef.current.contains(event.target)
+      ) {
         setIsMenuOpen(false);
       }
     };
@@ -52,7 +58,12 @@ const Navbar = () => {
   // Navigation links based on user role
   const getNavLinks = () => {
     if (isSystemAdmin(userProfile)) {
-      return [{ path: "/admin", label: "System Admin" }];
+      return [
+        { path: "/admin?tab=dashboard", label: "Dashboard" },
+        { path: "/admin?tab=companies", label: "Companies" },
+        { path: "/admin?tab=users", label: "Users" },
+        { path: "/admin/analytics", label: "Analytics" }
+      ];
     }
     
     // Base links for all company users
@@ -68,6 +79,14 @@ const Navbar = () => {
       links.push({ path: "/analytics", label: "Analytics" });
     }
     
+    // Add Team Management for admins and managers
+    if (isCompanyAdmin(userProfile) || isCompanyManager(userProfile)) {
+      links.push({ path: "/team", label: "Team Management" });
+    }
+    
+    // Add Contact Support for all users
+    links.push({ path: "/support", label: "Support" });
+    
     return links;
   };
   
@@ -79,7 +98,30 @@ const Navbar = () => {
     <nav className="relative">
       <div className="w-full">
         <div className="flex items-center justify-between px-4 py-3">
-          {/* Logo - Desktop Only */}
+          {/* User Info - Mobile Only (Left Side) */}
+          <div className="flex items-center gap-3 lg:hidden">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 shadow-lg">
+              <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-white">
+                {userProfile?.fullName?.split(' ')[0]
+                  || userProfile?.displayName?.split(' ')[0]
+                  || user?.displayName?.split(' ')[0]
+                  || 'User'}
+              </span>
+              <span className="text-xs text-slate-400">
+                {userProfile?.role === 'company_admin' ? 'Admin' :
+                 userProfile?.role === 'company_manager' ? 'Manager' :
+                 userProfile?.role === 'company_user' ? 'Driver' :
+                 userProfile?.role === 'system_admin' ? 'System Admin' : 'User'}
+              </span>
+            </div>
+          </div>
+          
+          {/* Logo - Desktop Only (Left Side) */}
           <div className="hidden lg:flex items-center">
             <Link
               to="/dashboard"
@@ -270,9 +312,11 @@ const Navbar = () => {
           </div>
 
           {/* Mobile menu button */}
-          <div className="flex items-center md:hidden">
+          <div className="flex items-center lg:hidden">
             <button
+              ref={mobileMenuButtonRef}
               onClick={() => setIsMenuOpen(!isMenuOpen)}
+              type="button"
               className="inline-flex items-center justify-center rounded-full bg-white/10 p-2 text-slate-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-brand-500/70 focus:ring-offset-2 focus:ring-offset-surface-100"
             >
               <svg
@@ -304,28 +348,7 @@ const Navbar = () => {
 
       {/* Mobile menu */}
       {isMenuOpen && (
-        <div ref={mobileMenuRef} className="mx-4 mt-3 space-y-4 rounded-3xl border border-white/10 bg-surface-200/95 p-5 text-slate-200 shadow-soft backdrop-blur-xl md:hidden">
-          <div className="flex items-center gap-3 rounded-2xl bg-white/5 p-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 shadow-lg">
-              <svg className="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-white">
-                {userProfile?.fullName?.split(' ')[0]
-                  || userProfile?.displayName?.split(' ')[0]
-                  || user?.displayName?.split(' ')[0]
-                  || 'User'}
-              </span>
-              <span className="text-xs text-slate-400">
-                {userProfile?.role === 'company_admin' ? 'Admin' :
-                 userProfile?.role === 'company_manager' ? 'Manager' :
-                 userProfile?.role === 'company_user' ? 'Driver' :
-                 userProfile?.role === 'system_admin' ? 'System Admin' : 'User'}
-              </span>
-            </div>
-          </div>
+        <div ref={mobileMenuRef} className="mx-4 mt-3 space-y-4 rounded-3xl border border-white/10 bg-surface-200/95 p-5 text-slate-200 shadow-soft backdrop-blur-xl lg:hidden">
 
           <div className="space-y-2">
             {navLinks.map((link) => {
@@ -348,7 +371,10 @@ const Navbar = () => {
           </div>
 
           <button
-            onClick={handleLogout}
+            onClick={() => {
+              handleLogout();
+              setIsMenuOpen(false);
+            }}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/5 px-4 py-3 text-base font-medium text-slate-200 transition hover:bg-white/10 hover:text-white"
           >
             <svg

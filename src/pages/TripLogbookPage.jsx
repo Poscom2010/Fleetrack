@@ -171,22 +171,22 @@ const TripLogbookPage = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-4">
-          <h1 className="text-2xl font-bold text-white mb-1">Trip Logbook</h1>
-          <p className="text-slate-400 text-sm">Electronic logbook for all your trips and expenses.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white mb-1">Trip Logbook</h1>
+          <p className="text-slate-400 text-xs sm:text-sm">Electronic logbook for all your trips and expenses.</p>
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
           {/* Total Cash In */}
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-3 sm:p-4">
             <p className="text-slate-400 text-xs font-medium mb-1">Total Cash In</p>
-            <p className="text-3xl font-bold text-blue-400">${totalCashIn.toFixed(2)}</p>
+            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-400">${totalCashIn.toFixed(2)}</p>
           </div>
 
           {/* Total Expenses */}
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-3 sm:p-4">
             <p className="text-slate-400 text-xs font-medium mb-1">Total Expenses</p>
-            <p className="text-3xl font-bold text-red-400">${totalExpenses.toFixed(2)}</p>
+            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-red-400">${totalExpenses.toFixed(2)}</p>
           </div>
         </div>
 
@@ -222,8 +222,77 @@ const TripLogbookPage = () => {
           )}
         </div>
 
-        {/* Trips Table */}
-        <div className="bg-slate-900/30 border border-slate-800 rounded-xl overflow-hidden">
+        {/* Mobile Card View */}
+        <div className="lg:hidden space-y-3">
+          {filteredTrips.length === 0 ? (
+            <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-8 text-center">
+              <p className="text-slate-500 text-sm">No trips found. Start adding your trips to see them here.</p>
+            </div>
+          ) : (
+            filteredTrips.map((trip) => {
+              const totalTripExpenses = (trip.fuelExpense || 0) + (trip.repairsExpense || 0) + (trip.otherExpenses || 0);
+              const driverName = users[trip.userId] || 'Unknown';
+              
+              return (
+                <div key={trip.id} className="bg-slate-900/30 border border-slate-800 rounded-xl p-3">
+                  {/* Date */}
+                  <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-700/50">
+                    <span className="text-slate-400 text-xs font-medium">
+                      📅 {trip.date?.toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </span>
+                  </div>
+                  
+                  {/* Driver (Admin/Manager only) */}
+                  {isAdminOrManager && (
+                    <div className="mb-2">
+                      <span className="text-slate-500 text-xs">Driver:</span>
+                      <p className="text-white font-medium text-sm">{driverName}</p>
+                    </div>
+                  )}
+                  
+                  {/* Route */}
+                  <div className="mb-2">
+                    <span className="text-slate-500 text-xs">Route:</span>
+                    <p className="text-white font-medium text-sm">
+                      {trip.startLocation} → {trip.endLocation}
+                    </p>
+                  </div>
+                  
+                  {/* Vehicle & Distance */}
+                  <div className="grid grid-cols-2 gap-3 mb-2 text-xs">
+                    <div>
+                      <span className="text-slate-500">Vehicle:</span>
+                      <p className="text-slate-300 font-medium">{vehicles[trip.vehicleId] || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Distance:</span>
+                      <p className="text-slate-300 font-medium">{trip.distanceTraveled ? `${trip.distanceTraveled.toFixed(1)} km` : 'N/A'}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Cash In & Expenses */}
+                  <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-700/50">
+                    <div>
+                      <span className="text-slate-500 text-xs">Cash In:</span>
+                      <p className="text-blue-400 font-bold text-sm">${(trip.cashIn || 0).toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 text-xs">Expenses:</span>
+                      <p className="text-red-400 font-bold text-sm">${totalTripExpenses.toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden lg:block bg-slate-900/30 border border-slate-800 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>

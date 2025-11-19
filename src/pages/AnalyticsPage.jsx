@@ -248,31 +248,31 @@ const AnalyticsPage = () => {
       <div className="max-w-7xl mx-auto space-y-4">
         {/* Header */}
         <div className="mb-4">
-          <h1 className="text-2xl font-bold text-white mb-1">Fleet Analytics & Insights</h1>
-          <p className="text-sm text-slate-400">AI-powered analysis of your fleet performance</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white mb-1">Fleet Analytics & Insights</h1>
+          <p className="text-xs sm:text-sm text-slate-400">AI-powered analysis of your fleet performance</p>
         </div>
 
         {/* Fleet Summary Cards */}
         {fleetSummary && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-slate-800 rounded-xl p-3 sm:p-4 border border-slate-700">
               <p className="text-xs text-slate-400 mb-1">Total Distance</p>
-              <p className="text-3xl font-bold text-white">{fleetSummary.totalDistance.toFixed(0)}</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">{fleetSummary.totalDistance.toFixed(0)}</p>
               <p className="text-xs text-slate-500 mt-1">kilometers</p>
             </div>
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+            <div className="bg-slate-800 rounded-xl p-3 sm:p-4 border border-slate-700">
               <p className="text-xs text-slate-400 mb-1">Total Revenue</p>
-              <p className="text-3xl font-bold text-green-400">R{fleetSummary.totalRevenue.toFixed(0)}</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-400">R{fleetSummary.totalRevenue.toFixed(0)}</p>
               <p className="text-xs text-slate-500 mt-1">{fleetSummary.totalTrips} trips</p>
             </div>
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+            <div className="bg-slate-800 rounded-xl p-3 sm:p-4 border border-slate-700">
               <p className="text-xs text-slate-400 mb-1">Total Expenses</p>
-              <p className="text-3xl font-bold text-orange-400">R{fleetSummary.totalExpenses.toFixed(0)}</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-400">R{fleetSummary.totalExpenses.toFixed(0)}</p>
               <p className="text-xs text-slate-500 mt-1">operating costs</p>
             </div>
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+            <div className="bg-slate-800 rounded-xl p-3 sm:p-4 border border-slate-700">
               <p className="text-xs text-slate-400 mb-1">Net Profit</p>
-              <p className={`text-3xl font-bold ${fleetSummary.totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <p className={`text-xl sm:text-2xl lg:text-3xl font-bold ${fleetSummary.totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 R{fleetSummary.totalProfit.toFixed(0)}
               </p>
               <p className="text-xs text-slate-500 mt-1">
@@ -317,12 +317,59 @@ const AnalyticsPage = () => {
 
         {/* Vehicle Performance Table */}
         <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-          <h2 className="text-lg font-semibold text-white mb-4">Vehicle Performance Breakdown</h2>
+          <h2 className="text-base sm:text-lg font-semibold text-white mb-4">Vehicle Performance Breakdown</h2>
           
           {vehicleMetrics.length === 0 ? (
             <p className="text-slate-400 text-center py-8">No vehicle data available</p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              {/* Mobile Card View */}
+              <div className="lg:hidden space-y-3">
+                {vehicleMetrics.map((metric) => (
+                  <div key={metric.vehicle.id} className="bg-slate-900 rounded-lg p-3 border border-slate-700">
+                    <div className="mb-2">
+                      <p className="font-medium text-white text-sm">{metric.vehicle.name}</p>
+                      <p className="text-xs text-slate-400">{metric.vehicle.registrationNumber}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs mb-2">
+                      <div>
+                        <span className="text-slate-500">Trips:</span>
+                        <p className="text-slate-200 font-semibold">{metric.tripCount}</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Distance:</span>
+                        <p className="text-slate-200 font-semibold">{metric.totalDistance.toFixed(0)} km</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Revenue:</span>
+                        <p className="text-green-400 font-semibold">R{metric.totalRevenue.toFixed(0)}</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Expenses:</span>
+                        <p className="text-orange-400 font-semibold">R{metric.totalExpenses.toFixed(0)}</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Profit:</span>
+                        <p className={`font-semibold ${metric.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          R{metric.profit.toFixed(0)}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Margin:</span>
+                        <p className={`font-semibold ${metric.profitMargin >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {metric.profitMargin.toFixed(1)}%
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      Cost/km: <span className="text-orange-400 font-semibold">R{metric.costPerKm.toFixed(2)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Desktop Table View */}
+              <div className="hidden lg:block overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-700 text-sm">
                 <thead>
                   <tr className="text-xs text-slate-400 uppercase">
@@ -361,6 +408,7 @@ const AnalyticsPage = () => {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
       </div>

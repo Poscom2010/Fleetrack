@@ -391,8 +391,157 @@ const TeamPage = () => {
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-slate-700 bg-slate-900">
-              <table className="min-w-full divide-y divide-slate-700 text-sm">
+            <>
+              {/* Mobile Card View */}
+              <div className="lg:hidden space-y-3">
+                {teamMembers.length === 0 ? (
+                  <div className="bg-slate-900 rounded-lg border border-slate-700 p-8 text-center">
+                    <svg className="mx-auto h-12 w-12 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <p className="mt-4 text-slate-400">No drivers yet</p>
+                    <p className="text-xs text-slate-500 mt-1">Invite drivers from Company Settings</p>
+                  </div>
+                ) : (
+                  teamMembers.map((driver) => {
+                    const assignedVehicle = vehicles.find((v) => v.userId === driver.id);
+                    const stats = driverStats[driver.id] || { totalKm: 0 };
+                    let lastLogin = driver.lastLoginAt;
+                    if (lastLogin && lastLogin.toDate) {
+                      lastLogin = lastLogin.toDate();
+                    }
+                    
+                    const lastLoginText = lastLogin
+                      ? `${lastLogin.toLocaleDateString()} ${lastLogin.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                      : 'Never';
+
+                    let loginStatus = 'active';
+                    if (lastLogin) {
+                      const daysSinceLogin = Math.floor((Date.now() - lastLogin.getTime()) / (1000 * 60 * 60 * 24));
+                      if (daysSinceLogin > 30) {
+                        loginStatus = 'inactive';
+                      } else if (daysSinceLogin > 14) {
+                        loginStatus = 'warning';
+                      }
+                    } else {
+                      loginStatus = 'never';
+                    }
+
+                    return (
+                      <div key={driver.id} className="bg-slate-900 rounded-lg border border-slate-700 p-3">
+                        {/* Driver Info */}
+                        <div className="flex items-center gap-3 mb-3 pb-3 border-b border-slate-700/50">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 shadow-lg">
+                            <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-slate-100 text-sm">
+                              {driver.fullName || driver.displayName || driver.email}
+                            </p>
+                            <p className="text-xs text-slate-400">{driver.email}</p>
+                          </div>
+                        </div>
+
+                        {/* Assigned Vehicle */}
+                        <div className="mb-3">
+                          <span className="text-slate-500 text-xs">Assigned Vehicle:</span>
+                          <select
+                            value={assignedVehicle?.id || ''}
+                            onChange={(e) => handleAssignVehicle(driver.id, e.target.value)}
+                            className="w-full mt-1 bg-slate-800 text-white px-3 py-2 rounded border border-slate-600 text-sm focus:border-blue-500 focus:outline-none"
+                          >
+                            <option value="">No vehicle</option>
+                            {vehicles.map((vehicle) => (
+                              <option key={vehicle.id} value={vehicle.id}>
+                                {vehicle.name} ({vehicle.registrationNumber})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Stats Grid */}
+                        <div className="grid grid-cols-2 gap-3 mb-3 text-xs">
+                          <div>
+                            <span className="text-slate-500">Total Distance:</span>
+                            <p className="text-slate-200 font-semibold">{stats.totalKm.toFixed(2)} km</p>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Last Login:</span>
+                            <div className="flex items-center gap-1 mt-1">
+                              <div className={`h-2 w-2 rounded-full ${
+                                loginStatus === 'active' ? 'bg-green-500' :
+                                loginStatus === 'warning' ? 'bg-orange-500' :
+                                loginStatus === 'inactive' ? 'bg-red-500' :
+                                'bg-slate-500'
+                              }`} />
+                              <span className={`text-xs ${
+                                loginStatus === 'active' ? 'text-slate-200' :
+                                loginStatus === 'warning' ? 'text-orange-400' :
+                                loginStatus === 'inactive' ? 'text-red-400' :
+                                'text-slate-500'
+                              }`}>
+                                {lastLoginText}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Role */}
+                        <div className="mb-3">
+                          <span className="text-slate-500 text-xs">Role:</span>
+                          {driver.id === user?.uid ? (
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`px-3 py-1.5 rounded text-xs font-medium ${
+                                driver.role === 'company_admin' 
+                                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' 
+                                  : driver.role === 'company_manager'
+                                  ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                                  : 'bg-green-500/20 text-green-300 border border-green-500/30'
+                              }`}>
+                                🔒 {driver.role === 'company_admin' ? 'Admin' : driver.role === 'company_manager' ? 'Manager' : 'Driver'}
+                              </span>
+                              <span className="text-xs text-slate-500">(You)</span>
+                            </div>
+                          ) : (driver.role === 'company_admin' || driver.role === 'company_manager') ? (
+                            <span className={`inline-block mt-1 px-3 py-1.5 rounded text-xs font-medium ${
+                              driver.role === 'company_admin' 
+                                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' 
+                                : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                            }`}>
+                              🔒 {driver.role === 'company_admin' ? 'Admin' : 'Manager'}
+                            </span>
+                          ) : (
+                            <select
+                              value={driver.role}
+                              onChange={(e) => handleUpdateUserRole(driver.id, e.target.value)}
+                              className="w-full mt-1 bg-slate-800 text-white px-3 py-2 rounded border border-slate-600 text-sm focus:border-blue-500 focus:outline-none"
+                              disabled={!isCompanyAdmin && !isCompanyManager}
+                            >
+                              <option value="company_user">Driver</option>
+                            </select>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="pt-3 border-t border-slate-700/50">
+                          <button
+                            onClick={() => handleResetPassword(driver.id, driver.email)}
+                            className="w-full px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm transition"
+                          >
+                            Reset Password
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden lg:block overflow-x-auto rounded-lg border border-slate-700 bg-slate-900">
+                <table className="min-w-full divide-y divide-slate-700 text-sm">
                 <thead className="bg-slate-900/80">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -559,6 +708,7 @@ const TeamPage = () => {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
 
