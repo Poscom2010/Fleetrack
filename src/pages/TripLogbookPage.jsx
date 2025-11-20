@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { Search, Filter, Download } from 'lucide-react';
+import { fetchDriverNames } from '../utils/driverUtils';
 
 const TripLogbookPage = () => {
   usePageTitle('Trip Logbook');
@@ -13,6 +14,7 @@ const TripLogbookPage = () => {
   const [trips, setTrips] = useState([]);
   const [users, setUsers] = useState({});
   const [vehicles, setVehicles] = useState({});
+  const [expenses, setExpenses] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [totalCashIn, setTotalCashIn] = useState(0);
@@ -56,50 +58,92 @@ const TripLogbookPage = () => {
       // Fetch user details for admin/manager view
       if (isAdminOrManager && tripsData.length > 0) {
         const userIds = [...new Set(tripsData.map(trip => trip.userId))];
-        const usersRef = collection(db, 'users');
-        const usersData = {};
-        
-        for (const userId of userIds) {
-          const userQuery = query(usersRef, where('__name__', '==', userId));
-          const userSnapshot = await getDocs(userQuery);
-          if (!userSnapshot.empty) {
-            const userData = userSnapshot.docs[0].data();
-            usersData[userId] = userData.fullName || userData.displayName || userData.email || 'Unknown';
-          }
-        }
+        const usersData = await fetchDriverNames(userIds, company?.id);
         setUsers(usersData);
       }
 
       // Fetch vehicle details for all trips
       if (tripsData.length > 0) {
         const vehicleIds = [...new Set(tripsData.map(trip => trip.vehicleId).filter(Boolean))];
-        const vehiclesRef = collection(db, 'vehicles');
         const vehiclesData = {};
         
         for (const vehicleId of vehicleIds) {
-          const vehicleQuery = query(vehiclesRef, where('__name__', '==', vehicleId));
-          const vehicleSnapshot = await getDocs(vehicleQuery);
-          if (!vehicleSnapshot.empty) {
-            const vehicleData = vehicleSnapshot.docs[0].data();
-            vehiclesData[vehicleId] = vehicleData.name || vehicleData.registrationNumber || 'Unknown';
+          try {
+            const vehicleDoc = await getDoc(doc(db, 'vehicles', vehicleId));
+            if (vehicleDoc.exists()) {
+              const vehicleData = vehicleDoc.data();
+              // Show both name and registration number
+              const name = vehicleData.name || 'Vehicle';
+              const regNumber = vehicleData.registrationNumber || '';
+              vehiclesData[vehicleId] = regNumber ? `${name} (${regNumber})` : name;
+            } else {
+              vehiclesData[vehicleId] = 'Unknown Vehicle';
+            }
+          } catch (error) {
+            console.error(`Error fetching vehicle ${vehicleId}:`, error);
+            vehiclesData[vehicleId] = 'Unknown Vehicle';
           }
         }
         setVehicles(vehiclesData);
       }
 
+      // Fetch expenses from expenses collection
+      const expensesRef = collection(db, 'expenses');
+      let expensesQuery;
+      if (isAdminOrManager && company?.id) {
+        expensesQuery = query(
+          expensesRef,
+          where('companyId', '==', company.id)
+        );
+      } else {
+        expensesQuery = query(
+          expensesRef,
+          where('userId', '==', user.uid)
+        );
+      }
+
+      const expensesSnapshot = await getDocs(expensesQuery);
+      const expensesData = {};
+      
+      expensesSnapshot.docs.forEach(doc => {
+        const expense = doc.data();
+        const dateKey = expense.date?.toDate().toDateString();
+        const vehicleId = expense.vehicleId;
+        const key = `${dateKey}-${vehicleId}`;
+        
+        if (!expensesData[key]) {
+          expensesData[key] = [];
+        }
+        expensesData[key].push({
+          id: doc.id,
+          description: expense.description,
+          amount: expense.amount || 0,
+          category: expense.category || 'Other'
+        });
+      });
+      
+      setExpenses(expensesData);
+
       setTrips(tripsData);
 
-      // Calculate totals
+      // Calculate totals including expenses from expenses collection
       const cashIn = tripsData.reduce((sum, trip) => sum + (trip.cashIn || 0), 0);
-      const expenses = tripsData.reduce((sum, trip) => {
+      let totalExpensesAmount = tripsData.reduce((sum, trip) => {
         const fuel = trip.fuelExpense || 0;
         const repairs = trip.repairsExpense || 0;
         const other = trip.otherExpenses || 0;
         return sum + fuel + repairs + other;
       }, 0);
 
+      // Add expenses from expenses collection
+      Object.values(expensesData).forEach(expenseList => {
+        expenseList.forEach(expense => {
+          totalExpensesAmount += expense.amount;
+        });
+      });
+
       setTotalCashIn(cashIn);
-      setTotalExpenses(expenses);
+      setTotalExpenses(totalExpensesAmount);
     } catch (error) {
       console.error('Error loading trips:', error);
     } finally {
@@ -230,8 +274,14 @@ const TripLogbookPage = () => {
             </div>
           ) : (
             filteredTrips.map((trip) => {
-              const totalTripExpenses = (trip.fuelExpense || 0) + (trip.repairsExpense || 0) + (trip.otherExpenses || 0);
-              const driverName = users[trip.userId] || 'Unknown';
+              const inlineExpenses = (trip.fuelExpense || 0) + (trip.repairsExpense || 0) + (trip.otherExpenses || 0);
+              const dateKey = trip.date?.toDateString();
+              const vehicleId = trip.vehicleId;
+              const expenseKey = `${dateKey}-${vehicleId}`;
+              const tripExpensesList = expenses[expenseKey] || [];
+              const separateExpensesTotal = tripExpensesList.reduce((sum, exp) => sum + exp.amount, 0);
+              const totalTripExpenses = inlineExpenses + separateExpensesTotal;
+              const driverName = users[trip.userId] || 'Unknown Driver';
               
               return (
                 <div key={trip.id} className="bg-slate-900/30 border border-slate-800 rounded-xl p-3">
@@ -285,6 +335,39 @@ const TripLogbookPage = () => {
                       <p className="text-red-400 font-bold text-sm">${totalTripExpenses.toFixed(2)}</p>
                     </div>
                   </div>
+                  
+                  {/* Expense Breakdown */}
+                  {(inlineExpenses > 0 || tripExpensesList.length > 0) && (
+                    <div className="mt-2 pt-2 border-t border-slate-700/50">
+                      <span className="text-slate-500 text-xs font-medium">Expense Breakdown:</span>
+                      <div className="mt-1 space-y-1">
+                        {trip.fuelExpense > 0 && (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-slate-400">• Fuel</span>
+                            <span className="text-slate-300">${trip.fuelExpense.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {trip.repairsExpense > 0 && (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-slate-400">• Repairs</span>
+                            <span className="text-slate-300">${trip.repairsExpense.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {trip.otherExpenses > 0 && (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-slate-400">• Other</span>
+                            <span className="text-slate-300">${trip.otherExpenses.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {tripExpensesList.map((expense) => (
+                          <div key={expense.id} className="flex justify-between text-xs">
+                            <span className="text-slate-400">• {expense.description}</span>
+                            <span className="text-slate-300">${expense.amount.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })
@@ -317,8 +400,14 @@ const TripLogbookPage = () => {
                   </tr>
                 ) : (
                   filteredTrips.map((trip) => {
-                    const totalTripExpenses = (trip.fuelExpense || 0) + (trip.repairsExpense || 0) + (trip.otherExpenses || 0);
-                    const driverName = users[trip.userId] || 'Unknown';
+                    const inlineExpenses = (trip.fuelExpense || 0) + (trip.repairsExpense || 0) + (trip.otherExpenses || 0);
+                    const dateKey = trip.date?.toDateString();
+                    const vehicleId = trip.vehicleId;
+                    const expenseKey = `${dateKey}-${vehicleId}`;
+                    const tripExpensesList = expenses[expenseKey] || [];
+                    const separateExpensesTotal = tripExpensesList.reduce((sum, exp) => sum + exp.amount, 0);
+                    const totalTripExpenses = inlineExpenses + separateExpensesTotal;
+                    const driverName = users[trip.userId] || 'Unknown Driver';
                     
                     return (
                       <tr key={trip.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition">
@@ -347,7 +436,19 @@ const TripLogbookPage = () => {
                           ${(trip.cashIn || 0).toFixed(2)}
                         </td>
                         <td className="px-4 py-3 text-red-400 font-semibold text-sm">
-                          ${totalTripExpenses.toFixed(2)}
+                          <div className="flex flex-col">
+                            <span>${totalTripExpenses.toFixed(2)}</span>
+                            {(inlineExpenses > 0 || tripExpensesList.length > 0) && (
+                              <div className="mt-1 text-xs text-slate-400 font-normal space-y-0.5">
+                                {trip.fuelExpense > 0 && <div>Fuel: ${trip.fuelExpense.toFixed(2)}</div>}
+                                {trip.repairsExpense > 0 && <div>Repairs: ${trip.repairsExpense.toFixed(2)}</div>}
+                                {trip.otherExpenses > 0 && <div>Other: ${trip.otherExpenses.toFixed(2)}</div>}
+                                {tripExpensesList.map((expense) => (
+                                  <div key={expense.id}>{expense.description}: ${expense.amount.toFixed(2)}</div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );

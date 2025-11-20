@@ -34,7 +34,7 @@ const AppShell = ({ children }) => {
   };
 
   return (
-    <div className="relative min-h-screen bg-surface-100 text-slate-100">
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-slate-50">
       {/* Onboarding Modal */}
       {showOnboarding && (
         <Onboarding 
@@ -44,18 +44,29 @@ const AppShell = ({ children }) => {
         />
       )}
 
-      {/* Ambient gradient background */}
+      {/* Vibrant ambient gradient background */}
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 overflow-hidden"
       >
-        <div className="absolute -top-32 right-1/4 h-72 w-72 rounded-full bg-brand-gradient opacity-25 blur-4xl" />
-        <div className="absolute -bottom-48 left-1/3 h-96 w-96 rounded-full bg-[radial-gradient(circle,_rgba(14,165,233,0.35)_0%,_transparent_60%)] opacity-40 blur-4xl" />
-        <div className="absolute top-1/2 left-[-20%] h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle,_rgba(99,102,241,0.28)_0%,_transparent_65%)] opacity-30 blur-4xl" />
+        {/* Top right - Cyan glow */}
+        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 opacity-20 blur-4xl animate-pulse" />
+        
+        {/* Bottom left - Purple glow */}
+        <div className="absolute -bottom-40 -left-40 h-[32rem] w-[32rem] rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 opacity-15 blur-4xl" />
+        
+        {/* Center - Blue accent */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[40rem] w-[40rem] rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 opacity-10 blur-4xl" />
+        
+        {/* Top left - Teal glow */}
+        <div className="absolute top-20 left-1/4 h-80 w-80 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 opacity-15 blur-4xl" />
+        
+        {/* Bottom right - Indigo glow */}
+        <div className="absolute bottom-32 right-1/4 h-96 w-96 rounded-full bg-gradient-to-tl from-indigo-500 to-blue-600 opacity-20 blur-4xl" />
       </div>
 
-      {/* Sticky Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-surface-100/90 shadow-lg backdrop-blur-xl">
+      {/* Sticky Header with glass effect */}
+      <header className="sticky top-0 z-50 w-full border-b border-white/20 bg-slate-900/70 shadow-xl backdrop-blur-2xl">
         <Navbar />
       </header>
 
