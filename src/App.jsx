@@ -22,6 +22,7 @@ import AnalyticsPage from "./pages/AnalyticsPage";
 import SupportPage from "./pages/SupportPage";
 import SystemAdminDashboard from "./pages/SystemAdminDashboard";
 import SystemAnalyticsPage from "./pages/SystemAnalyticsPage";
+import FleetTrackBusinessPage from "./pages/FleetTrackBusinessPage";
 import AnalyticsDashboard from "./components/analytics/AnalyticsDashboard";
 import TripLogbookPage from "./pages/TripLogbookPage";
 import ProfileSettingsPage from "./pages/ProfileSettingsPage";
@@ -1578,6 +1579,16 @@ function App() {
                 <AdminRoute>
                   <AppShell>
                     <SystemAnalyticsPage />
+                  </AppShell>
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/business"
+              element={
+                <AdminRoute>
+                  <AppShell>
+                    <FleetTrackBusinessPage />
                   </AppShell>
                 </AdminRoute>
               }

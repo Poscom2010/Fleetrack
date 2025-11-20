@@ -62,6 +62,7 @@ const Navbar = () => {
         { path: "/admin?tab=dashboard", label: "Dashboard" },
         { path: "/admin?tab=companies", label: "Companies" },
         { path: "/admin?tab=users", label: "Users" },
+        { path: "/admin/business", label: "FleetTrack Business" },
         { path: "/admin/analytics", label: "Analytics" }
       ];
     }

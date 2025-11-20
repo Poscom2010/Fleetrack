@@ -21,6 +21,27 @@ const SystemAdminDashboard = () => {
     }
   };
   
+  // Dynamic heading and description based on active tab
+  const getHeaderContent = () => {
+    switch(activeTab) {
+      case 'companies':
+        return {
+          heading: 'Company Management',
+          description: 'View and manage all registered companies on the platform'
+        };
+      case 'users':
+        return {
+          heading: 'User Management',
+          description: 'View, manage, and monitor all platform users and their activities'
+        };
+      default:
+        return {
+          heading: 'Platform Overview',
+          description: 'Monitor all companies and users on the FleetTrack platform'
+        };
+    }
+  };
+  
   usePageTitle(getPageTitle());
   const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState([]);
@@ -708,8 +729,8 @@ This is an official communication from FleetTrack System Administration.
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white mb-1">FleetTrack Business Overview</h1>
-            <p className="text-slate-400 text-xs sm:text-sm">Platform performance, revenue, and growth metrics</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-white mb-1">{getHeaderContent().heading}</h1>
+            <p className="text-slate-400 text-xs sm:text-sm">{getHeaderContent().description}</p>
           </div>
           <button
             onClick={() => navigate('/admin/analytics')}
