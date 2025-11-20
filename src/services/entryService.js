@@ -164,6 +164,56 @@ export const getDailyEntries = async (userId, filters = {}) => {
 };
 
 /**
+ * Get all daily entries for a company (for admins/managers)
+ * @param {string} companyId - The company ID
+ * @param {Object} filters - Optional filters (vehicleId, startDate, endDate)
+ * @returns {Promise<Array>} - Array of daily entries
+ */
+export const getCompanyDailyEntries = async (companyId, filters = {}) => {
+  try {
+    const q = query(
+      collection(db, "dailyEntries"),
+      where("companyId", "==", companyId)
+    );
+
+    const querySnapshot = await getDocs(q);
+    let entries = querySnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        date: data.date?.toDate ? data.date.toDate() : new Date(data.date),
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : new Date(data.updatedAt),
+      };
+    });
+
+    // Apply filters client-side
+    if (filters.vehicleId) {
+      entries = entries.filter((entry) => entry.vehicleId === filters.vehicleId);
+    }
+
+    if (filters.startDate) {
+      const startDate = new Date(filters.startDate);
+      entries = entries.filter((entry) => entry.date >= startDate);
+    }
+
+    if (filters.endDate) {
+      const endDate = new Date(filters.endDate);
+      entries = entries.filter((entry) => entry.date <= endDate);
+    }
+
+    // Sort by date descending
+    entries.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    return entries;
+  } catch (error) {
+    console.error("Error getting company daily entries:", error);
+    throw error;
+  }
+};
+
+/**
  * Get a single daily entry by ID
  * @param {string} entryId - The entry ID
  * @returns {Promise<Object>} - The daily entry
@@ -363,6 +413,53 @@ export const getExpenses = async (userId, filters = {}) => {
     return expenses;
   } catch (error) {
     console.error("Error getting expenses:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get all expenses for a company (for admins/managers)
+ * @param {string} companyId - The company ID
+ * @param {Object} filters - Optional filters (vehicleId, startDate, endDate)
+ * @returns {Promise<Array>} - Array of expenses
+ */
+export const getCompanyExpenses = async (companyId, filters = {}) => {
+  try {
+    const q = query(collection(db, "expenses"), where("companyId", "==", companyId));
+
+    const querySnapshot = await getDocs(q);
+    let expenses = querySnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        date: data.date?.toDate ? data.date.toDate() : new Date(data.date),
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : new Date(data.updatedAt),
+      };
+    });
+
+    // Apply filters client-side
+    if (filters.vehicleId) {
+      expenses = expenses.filter((expense) => expense.vehicleId === filters.vehicleId);
+    }
+
+    if (filters.startDate) {
+      const startDate = new Date(filters.startDate);
+      expenses = expenses.filter((expense) => expense.date >= startDate);
+    }
+
+    if (filters.endDate) {
+      const endDate = new Date(filters.endDate);
+      expenses = expenses.filter((expense) => expense.date <= endDate);
+    }
+
+    // Sort by date descending
+    expenses.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    return expenses;
+  } catch (error) {
+    console.error("Error getting company expenses:", error);
     throw error;
   }
 };

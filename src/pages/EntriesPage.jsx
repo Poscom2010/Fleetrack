@@ -42,16 +42,32 @@ const EntriesPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteEntryConfirm, setDeleteEntryConfirm] = useState(null);
   const [deleteExpenseConfirm, setDeleteExpenseConfirm] = useState(null);
+  const [showExpensePrompt, setShowExpensePrompt] = useState(false);
+  const [lastAddedEntry, setLastAddedEntry] = useState(null);
 
   const loadData = useCallback(async () => {
     if (!user?.uid) return;
 
     try {
       setLoading(true);
-      const promises = [
-        getDailyEntries(user.uid),
-        getExpenses(user.uid),
-      ];
+      
+      // Fetch data based on role
+      let entriesPromise, expensesPromise;
+      if (isAdminOrManager && company?.id) {
+        // Admins and managers see all company data
+        entriesPromise = import('../services/entryService').then(module => 
+          module.getCompanyDailyEntries(company.id)
+        );
+        expensesPromise = import('../services/entryService').then(module =>
+          module.getCompanyExpenses(company.id)
+        );
+      } else {
+        // Drivers see only their own data
+        entriesPromise = getDailyEntries(user.uid);
+        expensesPromise = getExpenses(user.uid);
+      }
+      
+      const promises = [entriesPromise, expensesPromise];
 
       // Load drivers if admin or manager (both registered users and driver profiles)
       if (isAdminOrManager && company?.id) {
@@ -154,14 +170,32 @@ const EntriesPage = () => {
       if (editingEntry) {
         await updateDailyEntry(editingEntry.id, entryData);
         toast.success("Daily entry updated successfully", { id: toastId });
+        setIsEntryModalOpen(false);
+        setEditingEntry(null);
+        await loadData();
       } else {
         await createDailyEntry(user.uid, company?.id, entryData);
         toast.success("Daily entry added successfully", { id: toastId });
+        
+        // Reload data first
+        await loadData();
+        
+        // Close entry modal
+        setIsEntryModalOpen(false);
+        setEditingEntry(null);
+        
+        // Save entry details for expense linking
+        setLastAddedEntry({
+          vehicleId: entryData.vehicleId,
+          date: entryData.date,
+          driverId: entryData.driverId
+        });
+        
+        // Show expense prompt after a short delay to ensure modal transition completes
+        setTimeout(() => {
+          setShowExpensePrompt(true);
+        }, 100);
       }
-
-      await loadData();
-      setIsEntryModalOpen(false);
-      setEditingEntry(null);
     } catch (err) {
       toast.error(err.message || "Failed to save entry", { id: toastId });
     } finally {
@@ -173,6 +207,19 @@ const EntriesPage = () => {
   const handleAddExpense = () => {
     setEditingExpense(null);
     setIsExpenseModalOpen(true);
+  };
+
+  const handleExpensePromptYes = () => {
+    setShowExpensePrompt(false);
+    // Small delay to ensure smooth modal transition
+    setTimeout(() => {
+      setIsExpenseModalOpen(true);
+    }, 150);
+  };
+
+  const handleExpensePromptNo = () => {
+    setShowExpensePrompt(false);
+    setLastAddedEntry(null);
   };
 
   const handleEditExpense = (expense) => {
@@ -236,6 +283,7 @@ const EntriesPage = () => {
       await loadData();
       setIsExpenseModalOpen(false);
       setEditingExpense(null);
+      setLastAddedEntry(null);
     } catch (err) {
       toast.error(err.message || "Failed to save expense", { id: toastId });
     } finally {
@@ -251,7 +299,9 @@ const EntriesPage = () => {
   const handleCancelExpense = () => {
     setIsExpenseModalOpen(false);
     setEditingExpense(null);
+    setLastAddedEntry(null);
   };
+
 
   return (
     <div className="flex flex-col gap-4">
@@ -332,15 +382,51 @@ const EntriesPage = () => {
         title={editingExpense ? "Edit Expense" : "Add Expense"}
       >
         <ExpenseForm
-          key={editingExpense?.id || "new-expense"}
+          key={editingExpense?.id || lastAddedEntry?.vehicleId || "new-expense"}
           vehicles={vehicles}
           drivers={drivers}
           isAdminOrManager={isAdminOrManager}
           expense={editingExpense}
+          initialValues={!editingExpense ? lastAddedEntry : null}
           onSubmit={handleSubmitExpense}
           onCancel={handleCancelExpense}
           isSubmitting={isSubmitting}
         />
+      </Modal>
+
+      {/* Expense Prompt Modal */}
+      <Modal
+        isOpen={showExpensePrompt}
+        onClose={handleExpensePromptNo}
+        title="Add Expenses?"
+      >
+        <div className="space-y-4">
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+            <p className="text-sm text-slate-200 mb-2">
+              <strong className="text-blue-400">Daily entry saved! 🎉</strong>
+            </p>
+            <p className="text-sm text-slate-300">
+              Would you like to add expenses for this trip now? This will save you time linking expenses to the same vehicle and date.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={handleExpensePromptYes}
+              className="flex-1 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:from-green-700 hover:to-emerald-700 flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Yes, Add Expenses
+            </button>
+            <button
+              onClick={handleExpensePromptNo}
+              className="flex-1 rounded-xl border border-slate-600 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:bg-slate-800"
+            >
+              No, Maybe Later
+            </button>
+          </div>
+        </div>
       </Modal>
 
       <Modal

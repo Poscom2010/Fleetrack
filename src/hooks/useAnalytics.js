@@ -8,6 +8,8 @@ import {
   calculateWeeklyTotals,
   calculateMonthlyTotals,
 } from "../services/analyticsService";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../services/firebase";
 
 /**
  * Custom hook for managing analytics data
@@ -22,6 +24,7 @@ export const useAnalytics = (userId, timeRange = "all") => {
   const [licenseExpiryAlerts, setLicenseExpiryAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   // No mock data - production ready
 
   /**
@@ -30,24 +33,92 @@ export const useAnalytics = (userId, timeRange = "all") => {
   const getDateFilters = useCallback(() => {
     const now = new Date();
     let startDate = null;
+    let endDate = null;
 
     switch (timeRange) {
-      case "daily":
-        startDate = new Date(now.setHours(0, 0, 0, 0));
+      case "today":
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
         break;
-      case "weekly":
+        
+      case "yesterday":
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        startDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0);
+        endDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59);
+        break;
+        
+      case "thisWeek":
+        // Start of this week (Monday)
+        const dayOfWeek = now.getDay();
+        const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() + diffToMonday);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(now);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+        
+      case "lastWeek":
+        // Last week (Monday to Sunday)
+        const lastWeekEnd = new Date(now);
+        const daysToLastSunday = now.getDay() === 0 ? 0 : now.getDay();
+        lastWeekEnd.setDate(now.getDate() - daysToLastSunday - 1);
+        lastWeekEnd.setHours(23, 59, 59, 999);
+        
+        startDate = new Date(lastWeekEnd);
+        startDate.setDate(lastWeekEnd.getDate() - 6);
+        startDate.setHours(0, 0, 0, 0);
+        
+        endDate = lastWeekEnd;
+        break;
+        
+      case "thisMonth":
+        // Start of this calendar month
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+        endDate = new Date(now);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+        
+      case "lastMonth":
+        // Last calendar month
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+        break;
+        
+      case "last7Days":
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(now);
+        endDate.setHours(23, 59, 59, 999);
         break;
-      case "monthly":
+        
+      case "last30Days":
         startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(now);
+        endDate.setHours(23, 59, 59, 999);
         break;
+        
+      case "thisYear":
+        // Start of this calendar year
+        startDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0);
+        endDate = new Date(now);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+        
       case "all":
       default:
         startDate = null;
+        endDate = null;
         break;
     }
 
-    return startDate ? { startDate } : {};
+    const filters = {};
+    if (startDate) filters.startDate = startDate;
+    if (endDate) filters.endDate = endDate;
+    
+    return filters;
   }, [timeRange]);
 
   /**
@@ -60,10 +131,16 @@ export const useAnalytics = (userId, timeRange = "all") => {
       setLoading(true);
       setError(null);
 
+      // Fetch user profile first
+      const userDoc = await getDoc(doc(db, "users", userId));
+      const profile = userDoc.exists() ? { id: userDoc.id, ...userDoc.data() } : null;
+      setUserProfile(profile);
+
       const filters = getDateFilters();
 
+      // Fetch analytics data with userProfile
       const [analytics, mileage, alerts, licenseAlerts] = await Promise.all([
-        getAnalyticsData(userId, filters),
+        getAnalyticsData(userId, filters, profile),
         getMileageTrends(userId, filters),
         getServiceAlerts(userId),
         getLicenseExpiryAlerts(userId),

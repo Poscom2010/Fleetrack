@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   validateCashIn,
   validateMileage,
   validateMileageComparison,
 } from "../../utils/validators";
+import { getLastRecordedMileage, validateMileage as validateMileageAgainstLast } from "../../services/mileageValidationService";
 
 const createDefaultFormState = (entry) => {
   if (!entry) {
@@ -60,6 +61,21 @@ const DailyEntryForm = ({
 }) => {
   const [formData, setFormData] = useState(() => createDefaultFormState(entry));
   const [errors, setErrors] = useState({});
+  const [lastMileageInfo, setLastMileageInfo] = useState(null);
+  const [mileageWarning, setMileageWarning] = useState("");
+
+  // Fetch last recorded mileage when vehicle changes
+  useEffect(() => {
+    const fetchLastMileage = async () => {
+      if (formData.vehicleId && !entry) { // Only check for new entries
+        const lastMileage = await getLastRecordedMileage(formData.vehicleId);
+        setLastMileageInfo(lastMileage);
+        setMileageWarning(""); // Clear any previous warnings
+      }
+    };
+
+    fetchLastMileage();
+  }, [formData.vehicleId, entry]);
 
   const distanceTraveled = useMemo(() => {
     const start = parseFloat(formData.startMileage);
@@ -133,13 +149,26 @@ const DailyEntryForm = ({
       newErrors.endMileage = endMileageValidation.error;
     }
 
-    if (startMileageValidation.isValid && endMileageValidation.isValid) {
-      const comparisonValidation = validateMileageComparison(
+    const mileageComparisonValidation = validateMileageComparison(
+      formData.startMileage,
+      formData.endMileage
+    );
+    if (!mileageComparisonValidation.isValid) {
+      newErrors.endMileage = mileageComparisonValidation.error;
+    }
+
+    // Validate against last recorded mileage
+    if (lastMileageInfo && lastMileageInfo.lastMileage) {
+      const mileageValidation = validateMileageAgainstLast(
         formData.startMileage,
-        formData.endMileage
+        formData.endMileage,
+        lastMileageInfo.lastMileage
       );
-      if (!comparisonValidation.isValid) {
-        newErrors.endMileage = comparisonValidation.error;
+
+      if (!mileageValidation.isValid) {
+        newErrors.startMileage = mileageValidation.message;
+      } else if (mileageValidation.warning) {
+        setMileageWarning(mileageValidation.warning);
       }
     }
 
@@ -405,6 +434,16 @@ const DailyEntryForm = ({
           >
             Start Mileage (km) *
           </label>
+          {lastMileageInfo && (
+            <div className="mb-2 bg-blue-500/10 border border-blue-500/30 rounded-lg p-2">
+              <p className="text-xs text-blue-300">
+                📊 Last recorded: <strong>{lastMileageInfo.lastMileage.toLocaleString()} km</strong>
+                {lastMileageInfo.date && (
+                  <span className="text-slate-400"> on {lastMileageInfo.date.toLocaleDateString()}</span>
+                )}
+              </p>
+            </div>
+          )}
           <input
             type="number"
             id="startMileage"
@@ -424,6 +463,14 @@ const DailyEntryForm = ({
           {errors.startMileage && (
             <p className="mt-1 text-xs font-medium text-rose-300">
               {errors.startMileage}
+            </p>
+          )}
+          {mileageWarning && !errors.startMileage && (
+            <p className="mt-1 text-xs font-medium text-amber-300 flex items-start gap-1">
+              <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              {mileageWarning}
             </p>
           )}
         </div>

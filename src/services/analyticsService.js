@@ -1,5 +1,7 @@
-import { getDailyEntries, getExpenses } from "./entryService";
-import { getVehicles, updateVehicle } from "./vehicleService";
+import { getDailyEntries, getExpenses, getCompanyDailyEntries, getCompanyExpenses } from "./entryService";
+import { getVehicles, updateVehicle, getCompanyVehicles } from "./vehicleService";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "./firebase";
 import {
   calculateProfit,
   calculateTotal,
@@ -14,19 +16,40 @@ import {
 } from "../utils/calculations";
 
 /**
- * Get comprehensive analytics data for a user
+ * Get comprehensive analytics data for a user or company
  * @param {string} userId - The user ID
  * @param {Object} filters - Optional filters (startDate, endDate)
+ * @param {Object} userProfile - Optional user profile to determine if admin/manager
  * @returns {Promise<Object>} Analytics data
  */
-export const getAnalyticsData = async (userId, filters = {}) => {
+export const getAnalyticsData = async (userId, filters = {}, userProfile = null) => {
   try {
-    // Fetch all required data
-    const [vehicles, dailyEntries, expenses] = await Promise.all([
-      getVehicles(userId),
-      getDailyEntries(userId, filters),
-      getExpenses(userId, filters),
-    ]);
+    // Determine if user is admin/manager who should see all company data
+    const isAdminOrManager = userProfile && (
+      userProfile.role === 'company_admin' || 
+      userProfile.role === 'company_manager'
+    );
+    
+    const companyId = userProfile?.companyId;
+
+    // Fetch all required data - use company-wide functions for admins/managers
+    let vehicles, dailyEntries, expenses;
+    
+    if (isAdminOrManager && companyId) {
+      // Admins and managers see ALL company data
+      [vehicles, dailyEntries, expenses] = await Promise.all([
+        getCompanyVehicles(companyId),
+        getCompanyDailyEntries(companyId, filters),
+        getCompanyExpenses(companyId, filters),
+      ]);
+    } else {
+      // Drivers see only their own data
+      [vehicles, dailyEntries, expenses] = await Promise.all([
+        getVehicles(userId),
+        getDailyEntries(userId, filters),
+        getExpenses(userId, filters),
+      ]);
+    }
 
     // Calculate totals
     const totalCashIn = calculateTotal(dailyEntries.map((e) => e.cashIn));

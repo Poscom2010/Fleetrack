@@ -16,13 +16,13 @@ const categories = [
   "Other",
 ];
 
-const createDefaultFormState = (expense) => {
+const createDefaultFormState = (expense, initialValues = null) => {
   if (!expense) {
     return {
-      vehicleId: "",
-      driverId: "",
+      vehicleId: initialValues?.vehicleId || "",
+      driverId: initialValues?.driverId || "",
       newDriverName: "",
-      date: new Date().toISOString().split("T")[0],
+      date: initialValues?.date || new Date().toISOString().split("T")[0],
       description: "",
       amount: "",
       category: "Other",
@@ -48,6 +48,7 @@ const createDefaultFormState = (expense) => {
  * @param {Array} props.drivers - List of available drivers (for admin/manager)
  * @param {boolean} props.isAdminOrManager - Whether current user is admin or manager
  * @param {Object} props.expense - Existing expense data for editing (optional)
+ * @param {Object} props.initialValues - Initial values for vehicle and date (optional)
  * @param {Function} props.onSubmit - Callback function when form is submitted
  * @param {Function} props.onCancel - Callback function when form is cancelled
  * @param {boolean} props.isSubmitting - Whether the form is currently submitting
@@ -57,11 +58,12 @@ const ExpenseForm = ({
   drivers = [],
   isAdminOrManager = false,
   expense,
+  initialValues,
   onSubmit,
   onCancel,
   isSubmitting = false,
 }) => {
-  const [formData, setFormData] = useState(() => createDefaultFormState(expense));
+  const [formData, setFormData] = useState(() => createDefaultFormState(expense, initialValues));
   const [errors, setErrors] = useState({});
 
   const sortedCategories = useMemo(() => categories, []);
@@ -136,6 +138,23 @@ const ExpenseForm = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-sm text-slate-200">
+      {/* Info Banner - Shows when form is pre-filled */}
+      {initialValues && !expense && (
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+          <div className="flex items-start gap-2">
+            <svg className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <p className="text-xs text-blue-300 font-semibold">Linked to Last Entry</p>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Vehicle and date are automatically set from your last daily entry
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Driver Selection - Only for Admin/Manager */}
       {isAdminOrManager && (
         <div>

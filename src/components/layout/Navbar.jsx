@@ -100,7 +100,7 @@ const Navbar = () => {
   return (
     <nav className="relative">
       <div className="w-full">
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between px-4 py-2">
           {/* User Info - Mobile Only (Left Side) */}
           <div className="flex items-center gap-3 lg:hidden">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 shadow-lg">
@@ -130,7 +130,7 @@ const Navbar = () => {
               to="/dashboard"
               className="group flex items-center gap-3 transition"
             >
-              <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-brand-gradient shadow-brand transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_30px_rgba(99,102,241,0.6)]">
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-brand-gradient shadow-brand transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_30px_rgba(99,102,241,0.6)]">
                 {/* Animated glow ring */}
                 <div className="absolute inset-0 rounded-full bg-brand-gradient opacity-75 blur-xl animate-pulse"></div>
                 {/* Logo container */}
@@ -138,7 +138,7 @@ const Navbar = () => {
                   <img 
                     src={logo} 
                     alt="FleetTrack" 
-                    className="h-8 w-8 transition-transform duration-300 group-hover:scale-110 drop-shadow-lg" 
+                    className="h-6 w-6 transition-transform duration-300 group-hover:scale-110 drop-shadow-lg" 
                   />
                 </div>
               </div>
@@ -193,8 +193,8 @@ const Navbar = () => {
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 className="flex items-center gap-3 rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium text-slate-100 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-brand-500/70 focus:ring-offset-2 focus:ring-offset-surface-100"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 shadow-lg">
-                  <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 shadow-lg">
+                  <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>

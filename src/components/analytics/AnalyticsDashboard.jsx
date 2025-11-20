@@ -12,10 +12,16 @@ import ErrorMessage from "../common/ErrorMessage";
 import Tabs from "../common/Tabs";
 
 const timeRangeOptions = [
-  { value: "daily", label: "Daily" },
-  { value: "weekly", label: "Weekly" },
-  { value: "monthly", label: "Monthly" },
-  { value: "all", label: "All Time" },
+  { value: "today", label: "Today", icon: "📅" },
+  { value: "yesterday", label: "Yesterday", icon: "📆" },
+  { value: "thisWeek", label: "This Week", icon: "📊" },
+  { value: "lastWeek", label: "Last Week", icon: "📉" },
+  { value: "thisMonth", label: "This Month", icon: "📈" },
+  { value: "lastMonth", label: "Last Month", icon: "📋" },
+  { value: "last7Days", label: "Last 7 Days", icon: "🗓️" },
+  { value: "last30Days", label: "Last 30 Days", icon: "📅" },
+  { value: "thisYear", label: "This Year", icon: "🗓️" },
+  { value: "all", label: "All Time", icon: "♾️" },
 ];
 
 /**
@@ -79,12 +85,20 @@ const AnalyticsDashboard = () => {
     expensesByCategory,
   } = analyticsData;
 
+  // Helper function to get time range badge
+  const getTimeRangeBadge = () => {
+    const option = timeRangeOptions.find(opt => opt.value === timeRange);
+    return option ? { text: option.label, icon: option.icon } : { text: 'All Time', icon: '♾️' };
+  };
+
+  const timeRangeBadge = getTimeRangeBadge();
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Hero Header with Gradient */}
-      <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 shadow-xl">
+      <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-3 shadow-xl">
         <div className="absolute inset-0 bg-gradient-to-br from-brand-500/10 via-transparent to-purple-500/10" />
-        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 rounded-full bg-brand-500/20 px-3 py-1 text-xs font-semibold text-brand-300 backdrop-blur-sm">
               <span className="text-sm">📊</span>
@@ -136,50 +150,56 @@ const AnalyticsDashboard = () => {
 
       {/* Time Range Selector */}
       <div className="flex items-center justify-center">
-        <div className="inline-flex gap-1 rounded-xl border border-white/10 bg-slate-900/80 p-1 shadow-lg backdrop-blur-sm">
-          {timeRangeOptions.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => setTimeRange(option.value)}
-              className={`rounded-lg px-4 py-1.5 text-xs font-semibold transition-all duration-200 ${
-                timeRange === option.value
-                  ? "bg-gradient-to-r from-brand-500 to-purple-500 text-white shadow-md shadow-brand-500/50"
-                  : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
+        <div className="relative inline-block">
+          <label className="block text-xs font-semibold text-slate-400 mb-2 text-center">
+            Date Range
+          </label>
+          <select
+            value={timeRange}
+            onChange={(e) => setTimeRange(e.target.value)}
+            className="appearance-none rounded-xl border border-white/20 bg-gradient-to-br from-slate-900 to-slate-800 px-5 py-2 pr-10 text-sm font-semibold text-white shadow-lg backdrop-blur-sm transition-all hover:border-brand-500/50 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 cursor-pointer"
+          >
+            {timeRangeOptions.map((option) => (
+              <option key={option.value} value={option.value} className="bg-slate-800 text-white">
+                {option.icon} {option.label}
+              </option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 pt-6">
+            <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
         </div>
       </div>
 
       {/* Service Alerts */}
       {serviceAlerts.length > 0 && (
-        <div className="space-y-2 rounded-2xl border border-red-500/50 bg-gradient-to-br from-red-600/25 via-orange-600/20 to-yellow-600/15 p-3 shadow-2xl shadow-red-500/20 backdrop-blur-sm">
+        <div className="space-y-2 rounded-2xl border border-red-500/50 bg-gradient-to-br from-red-600/25 via-orange-600/20 to-yellow-600/15 p-2 shadow-2xl shadow-red-500/20 backdrop-blur-sm">
           <div className="flex items-center gap-2">
-            <div className="relative rounded-lg bg-red-500/40 p-1.5 shadow-lg shadow-red-500/50">
-              <span className="animate-bounce text-lg">⚠️</span>
+            <div className="relative rounded-lg bg-red-500/40 p-1 shadow-lg shadow-red-500/50">
+              <span className="animate-bounce text-base">⚠️</span>
               <span className="absolute -right-1 -top-1 flex h-3 w-3">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500"></span>
               </span>
             </div>
-            <h2 className="text-base font-bold text-white">⚠️ Service Alerts</h2>
+            <h2 className="text-sm font-bold text-white">⚠️ Service Alerts</h2>
           </div>
           <div className="space-y-2">
             {serviceAlerts.map((alert) => (
               <div
                 key={alert.vehicleId}
-                className="flex flex-col gap-2 rounded-xl border border-red-400/30 bg-gradient-to-r from-slate-900/80 to-slate-800/80 px-3 py-2 shadow-lg backdrop-blur-sm md:flex-row md:items-center md:justify-between"
+                className="flex flex-col gap-1.5 rounded-xl border border-red-400/30 bg-gradient-to-r from-slate-900/80 to-slate-800/80 px-2.5 py-1.5 shadow-lg backdrop-blur-sm md:flex-row md:items-center md:justify-between"
               >
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
                     <span className={`text-base ${
                       alert.severity === "high" ? "animate-pulse" : ""
                     }`}>
                       {alert.severity === "high" ? "🚨" : "⚠️"}
                     </span>
-                    <p className="text-sm font-bold text-white">{alert.vehicleName}</p>
+                    <p className="text-xs font-bold text-white">{alert.vehicleName}</p>
                     {alert.severity === "high" && (
                       <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white shadow-lg shadow-red-500/50">
                         URGENT
@@ -189,7 +209,7 @@ const AnalyticsDashboard = () => {
                   <p className="text-xs text-yellow-200">
                     {alert.registrationNumber} • Threshold {formatNumber(alert.threshold)} km
                   </p>
-                  <p className="text-xs font-semibold text-red-300">
+                  <p className="text-[11px] font-semibold text-red-300">
                     Mileage since service: {formatNumber(alert.mileageSinceService)} km
                   </p>
                 </div>
@@ -197,7 +217,7 @@ const AnalyticsDashboard = () => {
                   onClick={() =>
                     handleAcknowledgeAlert(alert.vehicleId, alert.currentMileage)
                   }
-                  className="inline-flex items-center justify-center rounded-lg border border-red-400/50 bg-gradient-to-r from-red-500 to-red-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-red-500/30 transition hover:from-red-600 hover:to-red-700 hover:shadow-red-500/50"
+                  className="inline-flex items-center justify-center rounded-lg border border-red-400/50 bg-gradient-to-r from-red-500 to-red-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-lg shadow-red-500/30 transition hover:from-red-600 hover:to-red-700 hover:shadow-red-500/50"
                 >
                   Acknowledge
                 </button>
@@ -209,22 +229,22 @@ const AnalyticsDashboard = () => {
 
       {/* License Expiry Alerts */}
       {licenseExpiryAlerts && licenseExpiryAlerts.length > 0 && (
-        <div className="space-y-2 rounded-2xl border border-orange-500/50 bg-gradient-to-br from-orange-600/25 via-amber-600/20 to-yellow-600/15 p-3 shadow-2xl shadow-orange-500/20 backdrop-blur-sm">
+        <div className="space-y-2 rounded-2xl border border-orange-500/50 bg-gradient-to-br from-orange-600/25 via-amber-600/20 to-yellow-600/15 p-2 shadow-2xl shadow-orange-500/20 backdrop-blur-sm">
           <div className="flex items-center gap-2">
-            <div className="relative rounded-lg bg-orange-500/40 p-1.5 shadow-lg shadow-orange-500/50">
-              <span className="animate-bounce text-lg">📋</span>
+            <div className="relative rounded-lg bg-orange-500/40 p-1 shadow-lg shadow-orange-500/50">
+              <span className="animate-bounce text-base">📋</span>
               <span className="absolute -right-1 -top-1 flex h-3 w-3">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"></span>
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-orange-500"></span>
               </span>
             </div>
-            <h2 className="text-base font-bold text-white">📋 License Expiry Alerts</h2>
+            <h2 className="text-sm font-bold text-white">📋 License Expiry Alerts</h2>
           </div>
           <div className="space-y-2">
             {licenseExpiryAlerts.map((alert) => (
               <div
                 key={alert.vehicleId}
-                className={`flex flex-col gap-2 rounded-xl border px-3 py-2 shadow-lg backdrop-blur-sm md:flex-row md:items-center md:justify-between ${
+                className={`flex flex-col gap-1.5 rounded-xl border px-2.5 py-1.5 shadow-lg backdrop-blur-sm md:flex-row md:items-center md:justify-between ${
                   alert.expired 
                     ? 'border-red-400/30 bg-gradient-to-r from-red-900/80 to-red-800/80'
                     : alert.severity === 'high'
@@ -232,14 +252,14 @@ const AnalyticsDashboard = () => {
                     : 'border-yellow-400/30 bg-gradient-to-r from-slate-900/80 to-slate-800/80'
                 }`}
               >
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
                     <span className={`text-base ${
                       alert.expired || alert.severity === "high" ? "animate-pulse" : ""
                     }`}>
                       {alert.expired ? "🚫" : alert.severity === "high" ? "⏰" : "📅"}
                     </span>
-                    <p className="text-sm font-bold text-white">{alert.vehicleName}</p>
+                    <p className="text-xs font-bold text-white">{alert.vehicleName}</p>
                     {alert.expired && (
                       <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white shadow-lg shadow-red-500/50">
                         EXPIRED
@@ -251,10 +271,10 @@ const AnalyticsDashboard = () => {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-yellow-200">
+                  <p className="text-[11px] text-yellow-200">
                     {alert.registrationNumber} • License Expiry: {new Date(alert.licenseExpiryDate).toLocaleDateString()}
                   </p>
-                  <p className={`text-xs font-semibold ${
+                  <p className={`text-[11px] font-semibold ${
                     alert.expired ? 'text-red-300' : alert.severity === 'high' ? 'text-orange-300' : 'text-yellow-300'
                   }`}>
                     {alert.expired 
@@ -263,7 +283,7 @@ const AnalyticsDashboard = () => {
                     }
                   </p>
                 </div>
-                <div className="inline-flex items-center justify-center rounded-lg border border-amber-400/50 bg-amber-500/20 px-3 py-1.5 text-xs font-semibold text-amber-200">
+                <div className="inline-flex items-center justify-center rounded-lg border border-amber-400/50 bg-amber-500/20 px-2.5 py-1 text-[11px] font-semibold text-amber-200">
                   Renew License
                 </div>
               </div>
@@ -273,16 +293,23 @@ const AnalyticsDashboard = () => {
       )}
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="group rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 bg-slate-900/40 p-3 shadow-lg transition-all hover:scale-105 hover:shadow-xl hover:shadow-emerald-500/20">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="group rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 bg-slate-900/40 p-2.5 shadow-lg transition-all hover:scale-105 hover:shadow-xl hover:shadow-emerald-500/20">
           <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-emerald-400">
-                Total Cash-In
-              </p>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-bold uppercase tracking-wide text-emerald-400">
+                  Total Cash-In
+                </p>
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-300 border border-emerald-400/40">
+                  <span>{timeRangeBadge.icon}</span>
+                  {timeRangeBadge.text}
+                </span>
+              </div>
               <p className="mt-1.5 text-xl font-bold text-white">{formatCurrency(summary.totalCashIn)}</p>
               <p className="mt-1 text-xs font-medium text-emerald-200">
-                Avg: {formatCurrency(summary.avgDailyCashIn || 0)}/day
+                {timeRange === 'today' || timeRange === 'yesterday' ? `${formatCurrency(summary.avgDailyCashIn || 0)}/entry avg` :
+                 `Avg: ${formatCurrency(summary.avgDailyCashIn || 0)}/day`}
               </p>
             </div>
             <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-2 text-lg shadow-md">
@@ -291,15 +318,22 @@ const AnalyticsDashboard = () => {
           </div>
         </div>
 
-        <div className="group rounded-2xl border border-rose-400/30 bg-gradient-to-br from-rose-500/10 to-rose-600/5 bg-slate-900/40 p-3 shadow-lg transition-all hover:scale-105 hover:shadow-xl hover:shadow-rose-500/20">
+        <div className="group rounded-2xl border border-rose-400/30 bg-gradient-to-br from-rose-500/10 to-rose-600/5 bg-slate-900/40 p-2.5 shadow-lg transition-all hover:scale-105 hover:shadow-xl hover:shadow-rose-500/20">
           <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-rose-400">
-                Total Expenses
-              </p>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-bold uppercase tracking-wide text-rose-400">
+                  Total Expenses
+                </p>
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/30 px-2 py-0.5 text-[10px] font-bold text-rose-300 border border-rose-400/40">
+                  <span>{timeRangeBadge.icon}</span>
+                  {timeRangeBadge.text}
+                </span>
+              </div>
               <p className="mt-1.5 text-xl font-bold text-white">{formatCurrency(summary.totalExpenses)}</p>
               <p className="mt-1 text-xs font-medium text-rose-200">
-                Avg: {formatCurrency(summary.avgDailyExpenses || 0)}/day
+                {timeRange === 'today' || timeRange === 'yesterday' ? `${formatCurrency(summary.avgDailyExpenses || 0)}/expense avg` :
+                 `Avg: ${formatCurrency(summary.avgDailyExpenses || 0)}/day`}
               </p>
             </div>
             <div className="rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 p-2 text-lg shadow-md">
@@ -308,18 +342,28 @@ const AnalyticsDashboard = () => {
           </div>
         </div>
 
-        <div className={`group rounded-2xl border p-3 shadow-lg transition-all hover:scale-105 hover:shadow-xl ${
+        <div className={`group rounded-2xl border p-2.5 shadow-lg transition-all hover:scale-105 hover:shadow-xl ${
           summary.totalProfit >= 0
             ? "border-emerald-400/30 bg-gradient-to-br from-emerald-500/10 to-teal-600/5 bg-slate-900/40 hover:shadow-emerald-500/20"
             : "border-amber-400/30 bg-gradient-to-br from-amber-500/10 to-rose-600/5 bg-slate-900/40 hover:shadow-amber-500/20"
         }`}>
           <div className="flex items-start justify-between">
-            <div>
-              <p className={`text-xs font-bold uppercase tracking-wide ${
-                summary.totalProfit >= 0 ? "text-emerald-400" : "text-amber-400"
-              }`}>
-                Total Profit
-              </p>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className={`text-xs font-bold uppercase tracking-wide ${
+                  summary.totalProfit >= 0 ? "text-emerald-400" : "text-amber-400"
+                }`}>
+                  Total Profit
+                </p>
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border ${
+                  summary.totalProfit >= 0 
+                    ? "bg-emerald-500/30 text-emerald-300 border-emerald-400/40"
+                    : "bg-amber-500/30 text-amber-300 border-amber-400/40"
+                }`}>
+                  <span>{timeRangeBadge.icon}</span>
+                  {timeRangeBadge.text}
+                </span>
+              </div>
               <p className="mt-1.5 text-xl font-bold text-white">{formatCurrency(summary.totalProfit)}</p>
               <p className={`mt-1 text-xs font-medium ${
                 summary.totalProfit >= 0 ? "text-emerald-200" : "text-amber-200"
@@ -335,15 +379,30 @@ const AnalyticsDashboard = () => {
           </div>
         </div>
 
-        <div className="group rounded-2xl border border-indigo-400/30 bg-gradient-to-br from-indigo-500/10 to-purple-600/5 bg-slate-900/40 p-3 shadow-lg transition-all hover:scale-105 hover:shadow-xl hover:shadow-indigo-500/20">
+        <div className="group rounded-2xl border border-indigo-400/30 bg-gradient-to-br from-indigo-500/10 to-purple-600/5 bg-slate-900/40 p-2.5 shadow-lg transition-all hover:scale-105 hover:shadow-xl hover:shadow-indigo-500/20">
           <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-indigo-300">
-                Total Mileage
-              </p>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-bold uppercase tracking-wide text-indigo-300">
+                  Total Mileage
+                </p>
+                <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/30 px-2 py-0.5 text-[10px] font-bold text-indigo-300 border border-indigo-400/40">
+                  <span>{timeRangeBadge.icon}</span>
+                  {timeRangeBadge.text}
+                </span>
+              </div>
               <p className="mt-1.5 text-xl font-bold text-white">{formatNumber(summary.totalMileage || 0)} km</p>
               <p className="mt-1 text-xs font-medium text-indigo-200">
-                Cumulative distance
+                {timeRange === 'today' ? 'All vehicles today' : 
+                 timeRange === 'yesterday' ? 'All vehicles yesterday' :
+                 timeRange === 'thisWeek' ? 'This week total' :
+                 timeRange === 'lastWeek' ? 'Last week total' :
+                 timeRange === 'thisMonth' ? 'This month total' :
+                 timeRange === 'lastMonth' ? 'Last month total' :
+                 timeRange === 'last7Days' ? 'Last 7 days' :
+                 timeRange === 'last30Days' ? 'Last 30 days' :
+                 timeRange === 'thisYear' ? 'This year total' :
+                 'Total cumulative'}
               </p>
             </div>
             <div className="rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 p-2 text-lg shadow-md">
@@ -356,12 +415,12 @@ const AnalyticsDashboard = () => {
       {/* Charts Section - 2 Column Grid */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <div className="h-0.5 w-8 rounded-full bg-gradient-to-r from-brand-500 to-purple-500" />
-          <h2 className="text-lg font-bold text-white">Performance Analytics</h2>
+          <div className="h-0.5 w-6 rounded-full bg-gradient-to-r from-brand-500 to-purple-500" />
+          <h2 className="text-base font-bold text-white">Performance Analytics</h2>
         </div>
         
         {/* Profit Charts Row */}
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
           <ProfitChart
             profitTrend={trends.profit}
             vehicleMetrics={vehicleMetrics}

@@ -71,16 +71,35 @@ const VehiclesPage = () => {
       };
     }
 
-    const nextService = new Date(vehicle.nextServiceDate);
-    const today = new Date();
-    const daysUntilService = Math.ceil((nextService - today) / (1000 * 60 * 60 * 24));
+    // Get current mileage (odometer reading)
+    const currentMileage = vehicle.currentMileage || vehicle.startMileage || 0;
+    const nextServiceMileage = parseInt(vehicle.nextServiceMileage) || 0;
+    const mileageRemaining = nextServiceMileage - currentMileage;
 
-    if (daysUntilService < 0) {
-      return { status: 'overdue', text: 'Service Overdue', color: 'red', icon: AlertCircle };
-    } else if (daysUntilService <= 7) {
-      return { status: 'due', text: `Service Due Soon`, color: 'orange', icon: AlertCircle, date: nextService.toLocaleDateString() };
+    if (mileageRemaining <= 0) {
+      return { 
+        status: 'overdue', 
+        text: 'Service Overdue', 
+        color: 'red', 
+        icon: AlertCircle,
+        mileage: `${Math.abs(mileageRemaining)} km overdue`
+      };
+    } else if (mileageRemaining <= 500) {
+      return { 
+        status: 'due', 
+        text: `Service Due Soon`, 
+        color: 'orange', 
+        icon: AlertCircle, 
+        mileage: `${mileageRemaining} km remaining`
+      };
     } else {
-      return { status: 'ok', text: 'Service OK', color: 'green', icon: CheckCircle, date: nextService.toLocaleDateString() };
+      return { 
+        status: 'ok', 
+        text: 'Service OK', 
+        color: 'green', 
+        icon: CheckCircle, 
+        mileage: `Next at ${nextServiceMileage.toLocaleString()} km`
+      };
     }
   };
 
@@ -397,8 +416,8 @@ const VehiclesPage = () => {
                       >
                         {serviceStatus.text}
                       </p>
-                      {serviceStatus.date && (
-                        <p className="text-xs text-slate-500 mt-0.5">Next: {serviceStatus.date}</p>
+                      {serviceStatus.mileage && (
+                        <p className="text-xs text-slate-500 mt-0.5">{serviceStatus.mileage}</p>
                       )}
                     </div>
                   </div>
