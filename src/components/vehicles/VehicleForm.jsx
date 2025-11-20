@@ -4,8 +4,8 @@ const createDefaultFormState = (vehicle) => ({
   name: vehicle?.name || "",
   registrationNumber: vehicle?.registrationNumber || "",
   model: vehicle?.model || "",
-  year: vehicle?.year || new Date().getFullYear(),
-  serviceAlertThreshold: vehicle?.serviceAlertThreshold || 5000,
+  year: vehicle?.year || "",
+  serviceInterval: vehicle?.serviceInterval || 5000,
   licenseExpiryDate: vehicle?.licenseExpiryDate || "",
 });
 
@@ -26,7 +26,7 @@ const VehicleForm = ({ vehicle, onSubmit, onCancel, isSubmitting = false }) => {
     setFormData((prev) => ({
       ...prev,
       [name]:
-        name === "year" || name === "serviceAlertThreshold"
+        name === "year" || name === "serviceInterval"
           ? parseInt(value, 10) || ""
           : value,
     }));
@@ -54,22 +54,19 @@ const VehicleForm = ({ vehicle, onSubmit, onCancel, isSubmitting = false }) => {
       newErrors.model = "Model is required";
     }
 
+    // Year is optional, but if provided, must be valid
     if (
-      !formData.year ||
-      formData.year < 1900 ||
-      formData.year > new Date().getFullYear() + 1
+      formData.year && 
+      (formData.year < 1900 || formData.year > new Date().getFullYear() + 1)
     ) {
       newErrors.year = `Year must be between 1900 and ${
         new Date().getFullYear() + 1
       }`;
     }
 
-    if (
-      !formData.serviceAlertThreshold ||
-      formData.serviceAlertThreshold <= 0
-    ) {
-      newErrors.serviceAlertThreshold =
-        "Service threshold must be greater than 0";
+    // Service interval is required
+    if (!formData.serviceInterval || formData.serviceInterval <= 0) {
+      newErrors.serviceInterval = "Service interval must be greater than 0";
     }
 
     setErrors(newErrors);
@@ -174,7 +171,7 @@ const VehicleForm = ({ vehicle, onSubmit, onCancel, isSubmitting = false }) => {
             htmlFor="year"
             className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
           >
-            Year *
+            Year (Optional)
           </label>
           <input
             type="number"
@@ -193,38 +190,43 @@ const VehicleForm = ({ vehicle, onSubmit, onCancel, isSubmitting = false }) => {
           {errors.year && (
             <p className="mt-1 text-xs font-medium text-rose-300">{errors.year}</p>
           )}
+          {!errors.year && (
+            <p className="mt-1 text-xs text-slate-400">
+              Year the vehicle was made (optional)
+            </p>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
           <label
-            htmlFor="serviceAlertThreshold"
+            htmlFor="serviceInterval"
             className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
           >
-            Service Alert Threshold (km) *
+            SERVICE INTERVAL (KM) *
           </label>
           <input
             type="number"
-            id="serviceAlertThreshold"
-            name="serviceAlertThreshold"
-            value={formData.serviceAlertThreshold}
+            id="serviceInterval"
+            name="serviceInterval"
+            value={formData.serviceInterval}
             onChange={handleChange}
             className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
-              errors.serviceAlertThreshold
+              errors.serviceInterval
                 ? "border-rose-400/60 bg-rose-500/10"
                 : "border-white/10 bg-surface-200/60"
             }`}
             placeholder="e.g., 5000"
             disabled={isSubmitting}
           />
-          {errors.serviceAlertThreshold && (
+          {errors.serviceInterval && (
             <p className="mt-1 text-xs font-medium text-rose-300">
-              {errors.serviceAlertThreshold}
+              {errors.serviceInterval}
             </p>
           )}
           <p className="mt-2 text-xs text-slate-400">
-            Alert when vehicle reaches this mileage since last service.
+            Example: Service every 5,000 km, enter 5000
           </p>
         </div>
 

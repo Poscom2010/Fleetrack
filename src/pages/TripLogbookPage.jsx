@@ -19,6 +19,13 @@ const TripLogbookPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [totalCashIn, setTotalCashIn] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    startDate: '',
+    endDate: '',
+    vehicleId: '',
+    driverId: ''
+  });
 
   useEffect(() => {
     loadTrips();
@@ -152,18 +159,63 @@ const TripLogbookPage = () => {
   };
 
   const filteredTrips = trips.filter(trip => {
-    if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase();
-    const driverName = users[trip.userId] || '';
-    const vehicleName = vehicles[trip.vehicleId] || '';
-    return (
-      trip.startLocation?.toLowerCase().includes(search) ||
-      trip.endLocation?.toLowerCase().includes(search) ||
-      vehicleName.toLowerCase().includes(search) ||
-      driverName.toLowerCase().includes(search) ||
-      trip.date?.toLocaleDateString().includes(search)
-    );
+    // Search filter
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      const driverName = users[trip.userId] || '';
+      const vehicleName = vehicles[trip.vehicleId] || '';
+      const matchesSearch = (
+        trip.startLocation?.toLowerCase().includes(search) ||
+        trip.endLocation?.toLowerCase().includes(search) ||
+        vehicleName.toLowerCase().includes(search) ||
+        driverName.toLowerCase().includes(search) ||
+        trip.date?.toLocaleDateString().includes(search)
+      );
+      if (!matchesSearch) return false;
+    }
+
+    // Date range filter
+    if (filters.startDate) {
+      const startDate = new Date(filters.startDate);
+      startDate.setHours(0, 0, 0, 0);
+      if (trip.date < startDate) return false;
+    }
+    if (filters.endDate) {
+      const endDate = new Date(filters.endDate);
+      endDate.setHours(23, 59, 59, 999);
+      if (trip.date > endDate) return false;
+    }
+
+    // Vehicle filter
+    if (filters.vehicleId && trip.vehicleId !== filters.vehicleId) {
+      return false;
+    }
+
+    // Driver filter (admin/manager only)
+    if (filters.driverId && trip.userId !== filters.driverId) {
+      return false;
+    }
+
+    return true;
   });
+
+  const handleFilterChange = (field, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      startDate: '',
+      endDate: '',
+      vehicleId: '',
+      driverId: ''
+    });
+  };
+
+  const hasActiveFilters = filters.startDate || filters.endDate || filters.vehicleId || filters.driverId;
 
   const handleExport = () => {
     // Create CSV content
@@ -249,9 +301,19 @@ const TripLogbookPage = () => {
           </div>
 
           {/* Filter Button */}
-          <button className="flex items-center gap-2 px-4 py-2 bg-slate-900/50 border border-slate-800 rounded-lg text-slate-400 hover:text-white hover:border-slate-700 transition text-sm">
+          <button 
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2 bg-slate-900/50 border rounded-lg transition text-sm relative ${
+              hasActiveFilters 
+                ? 'border-blue-500 text-blue-400 hover:text-blue-300' 
+                : 'border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+            }`}
+          >
             <Filter className="w-4 h-4" />
             <span>Filter</span>
+            {hasActiveFilters && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full"></span>
+            )}
           </button>
 
           {/* Export Button - Only for Admins and Managers */}
@@ -265,6 +327,79 @@ const TripLogbookPage = () => {
             </button>
           )}
         </div>
+
+        {/* Filter Panel */}
+        {showFilters && (
+          <div className="mb-4 bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-white">Filters</h3>
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="text-xs text-blue-400 hover:text-blue-300 transition"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Start Date */}
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={filters.startDate}
+                  onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                  className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition"
+                />
+              </div>
+
+              {/* End Date */}
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={filters.endDate}
+                  onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                  className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition"
+                />
+              </div>
+
+              {/* Vehicle Filter */}
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Vehicle</label>
+                <select
+                  value={filters.vehicleId}
+                  onChange={(e) => handleFilterChange('vehicleId', e.target.value)}
+                  className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition"
+                >
+                  <option value="">All Vehicles</option>
+                  {Object.entries(vehicles).map(([id, name]) => (
+                    <option key={id} value={id}>{name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Driver Filter (Admin/Manager only) */}
+              {isAdminOrManager && (
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Driver</label>
+                  <select
+                    value={filters.driverId}
+                    onChange={(e) => handleFilterChange('driverId', e.target.value)}
+                    className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition"
+                  >
+                    <option value="">All Drivers</option>
+                    {Object.entries(users).map(([id, name]) => (
+                      <option key={id} value={id}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Mobile Card View */}
         <div className="lg:hidden space-y-3">

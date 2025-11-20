@@ -1,4 +1,4 @@
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
 
 /**
@@ -80,6 +80,136 @@ export const validateMileage = (startMileage, endMileage, lastRecordedMileage) =
       return {
         isValid: true,
         warning: `Large mileage jump detected: ${mileageJump.toLocaleString()} km since last entry. Please verify this is correct.`
+      };
+    }
+  }
+
+  return {
+    isValid: true,
+    message: 'Mileage is valid'
+  };
+};
+
+/**
+ * Calculate cumulative total mileage for a vehicle from ALL daily entries
+ * @param {string} vehicleId - The vehicle ID
+ * @returns {Promise<number>} - Total cumulative mileage in km
+ */
+export const getCumulativeMileage = async (vehicleId) => {
+  if (!vehicleId) return 0;
+
+  try {
+    // Get ALL daily entries for this vehicle
+    const entriesQuery = query(
+      collection(db, 'dailyEntries'),
+      where('vehicleId', '==', vehicleId),
+      orderBy('date', 'asc')
+    );
+
+    const snapshot = await getDocs(entriesQuery);
+
+    if (snapshot.empty) {
+      return 0;
+    }
+
+    // Calculate total distance traveled from all entries
+    let totalMileage = 0;
+    snapshot.docs.forEach(doc => {
+      const entry = doc.data();
+      const distanceTraveled = entry.distanceTraveled || 0;
+      totalMileage += distanceTraveled;
+    });
+
+    return totalMileage;
+  } catch (error) {
+    console.error('Error calculating cumulative mileage:', error);
+    return 0;
+  }
+};
+
+/**
+ * Validate new entry mileage with comprehensive checks
+ * @param {number} startMileage - Start mileage for new entry
+ * @param {number} endMileage - End mileage for new entry
+ * @param {string} vehicleId - Vehicle ID
+ * @param {Date} entryDate - Date of the entry
+ * @returns {Promise<Object>} - Validation result
+ */
+export const validateNewEntryMileage = async (startMileage, endMileage, vehicleId, entryDate) => {
+  const start = parseFloat(startMileage);
+  const end = parseFloat(endMileage);
+
+  // Basic validation
+  if (isNaN(start) || isNaN(end)) {
+    return {
+      isValid: false,
+      message: 'Please enter valid mileage values'
+    };
+  }
+
+  if (start < 0 || end < 0) {
+    return {
+      isValid: false,
+      message: 'Mileage cannot be negative'
+    };
+  }
+
+  if (end <= start) {
+    return {
+      isValid: false,
+      message: 'End mileage must be greater than start mileage'
+    };
+  }
+
+  const distanceTraveled = end - start;
+
+  // Check for unrealistic distance in one trip (more than 2000 km)
+  if (distanceTraveled > 2000) {
+    return {
+      isValid: false,
+      message: `Distance traveled (${distanceTraveled.toLocaleString()} km) seems unrealistic for one trip. Please verify.`
+    };
+  }
+
+  // Get last recorded mileage
+  const lastMileageInfo = await getLastRecordedMileage(vehicleId);
+
+  if (lastMileageInfo) {
+    const lastMileage = lastMileageInfo.lastMileage;
+
+    // Start mileage must be >= last recorded end mileage
+    if (start < lastMileage) {
+      return {
+        isValid: false,
+        message: `Start mileage (${start.toLocaleString()} km) cannot be less than last recorded mileage (${lastMileage.toLocaleString()} km)`
+      };
+    }
+
+    // Check for backward date entry
+    const lastDate = lastMileageInfo.date;
+    const newDate = entryDate instanceof Date ? entryDate : new Date(entryDate);
+    
+    if (newDate < lastDate) {
+      return {
+        isValid: false,
+        message: 'Cannot enter mileage for a date before the last recorded entry'
+      };
+    }
+
+    // Warning for large mileage jump
+    const mileageJump = start - lastMileage;
+    if (mileageJump > 5000) {
+      return {
+        isValid: true,
+        warning: `Large mileage jump: ${mileageJump.toLocaleString()} km since last entry. Please verify this is correct.`
+      };
+    }
+
+    // Warning for very small distance (less than 1 km)
+    if (distanceTraveled < 1) {
+      return {
+        isValid: true,
+        warning: `Very small distance traveled (${distanceTraveled} km). Please verify this is correct.`
       };
     }
   }

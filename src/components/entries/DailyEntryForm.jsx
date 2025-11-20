@@ -48,6 +48,8 @@ const createDefaultFormState = (entry) => {
  * @param {Function} props.onSubmit - Callback function when form is submitted
  * @param {Function} props.onCancel - Callback function when form is cancelled
  * @param {boolean} props.isSubmitting - Whether the form is currently submitting
+ * @param {Function} props.onAddNewVehicle - Callback function when "Add New Vehicle" is selected
+ * @param {string} props.pendingVehicleId - ID of newly created vehicle to auto-select
  */
 const DailyEntryForm = ({
   vehicles = [],
@@ -58,11 +60,25 @@ const DailyEntryForm = ({
   onSubmit,
   onCancel,
   isSubmitting = false,
+  onAddNewVehicle,
+  pendingVehicleId,
 }) => {
   const [formData, setFormData] = useState(() => createDefaultFormState(entry));
   const [errors, setErrors] = useState({});
   const [lastMileageInfo, setLastMileageInfo] = useState(null);
   const [mileageWarning, setMileageWarning] = useState("");
+
+  // Auto-select newly created vehicle
+  useEffect(() => {
+    if (pendingVehicleId && vehicles.some(v => v.id === pendingVehicleId)) {
+      console.log('🎯 Auto-selecting newly created vehicle:', pendingVehicleId);
+      setFormData((prev) => ({
+        ...prev,
+        vehicleId: pendingVehicleId,
+      }));
+      // Note: Parent component should clear pendingVehicleId after vehicle is in dropdown
+    }
+  }, [pendingVehicleId, vehicles]);
 
   // Fetch last recorded mileage when vehicle changes
   useEffect(() => {
@@ -89,6 +105,16 @@ const DailyEntryForm = ({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // Handle "Add New Vehicle" selection
+    if (name === 'vehicleId' && value === 'ADD_NEW_VEHICLE') {
+      console.log('➕ User selected "Add New Vehicle"');
+      if (onAddNewVehicle) {
+        onAddNewVehicle();
+      }
+      return; // Don't update form data
+    }
+    
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -291,6 +317,11 @@ const DailyEntryForm = ({
             disabled={isSubmitting || Boolean(entry)}
           >
             <option value="">Select a vehicle</option>
+            {!entry && (
+              <option value="ADD_NEW_VEHICLE" className="text-green-400 font-semibold">
+                ➕ Add New Vehicle
+              </option>
+            )}
             {vehicles.map((vehicle) => (
               <option key={vehicle.id} value={vehicle.id}>
                 {vehicle.name} - {vehicle.registrationNumber}

@@ -5,6 +5,7 @@ import { useVehicles } from "../hooks/useVehicles";
 import DailyEntryForm from "../components/entries/DailyEntryForm";
 import ExpenseForm from "../components/entries/ExpenseForm";
 import EntryList from "../components/entries/EntryList";
+import VehicleForm from "../components/vehicles/VehicleForm";
 import Modal from "../components/common/Modal";
 import toast from "react-hot-toast";
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -20,6 +21,7 @@ import {
   getExpenses,
 } from "../services/entryService";
 import { getDriverProfiles } from "../services/driverProfileService";
+import { createVehicle } from "../services/vehicleService";
 
 /**
  * EntriesPage component for managing daily entries and expenses
@@ -44,6 +46,8 @@ const EntriesPage = () => {
   const [deleteExpenseConfirm, setDeleteExpenseConfirm] = useState(null);
   const [showExpensePrompt, setShowExpensePrompt] = useState(false);
   const [lastAddedEntry, setLastAddedEntry] = useState(null);
+  const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
+  const [pendingVehicleSelection, setPendingVehicleSelection] = useState(null);
 
   const loadData = useCallback(async () => {
     if (!user?.uid) return;
@@ -111,6 +115,18 @@ const EntriesPage = () => {
     loadData();
   }, [loadData]);
 
+  // Clear pending vehicle selection after it's available in the vehicles list
+  useEffect(() => {
+    if (pendingVehicleSelection && vehicles.some(v => v.id === pendingVehicleSelection)) {
+      // Give the form a moment to auto-select, then clear
+      const timer = setTimeout(() => {
+        console.log('🧹 Clearing pending vehicle selection');
+        setPendingVehicleSelection(null);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [pendingVehicleSelection, vehicles]);
+
   // Daily Entry Handlers
   const handleAddEntry = () => {
     setEditingEntry(null);
@@ -174,27 +190,41 @@ const EntriesPage = () => {
         setEditingEntry(null);
         await loadData();
       } else {
+        console.log('✅ Creating daily entry...');
         await createDailyEntry(user.uid, company?.id, entryData);
-        toast.success("Daily entry added successfully", { id: toastId });
         
-        // Reload data first
-        await loadData();
-        
-        // Close entry modal
-        setIsEntryModalOpen(false);
-        setEditingEntry(null);
-        
-        // Save entry details for expense linking
-        setLastAddedEntry({
+        // Save entry details for expense linking BEFORE closing modal
+        const savedEntry = {
           vehicleId: entryData.vehicleId,
           date: entryData.date,
           driverId: entryData.driverId
-        });
+        };
+        console.log('💾 Saved entry details:', savedEntry);
         
-        // Show expense prompt after a short delay to ensure modal transition completes
-        setTimeout(() => {
+        toast.success("Daily entry added successfully", { id: toastId });
+        
+        // Close entry modal immediately
+        console.log('🚪 Closing entry modal...');
+        setIsEntryModalOpen(false);
+        setEditingEntry(null);
+        
+        // Reload data in background
+        console.log('🔄 Reloading data...');
+        loadData();
+        
+        // Wait for modal close animation (300ms) + buffer
+        console.log('⏳ Waiting for modal transition...');
+        await new Promise(resolve => setTimeout(resolve, 400));
+        
+        // Set entry details and show expense prompt
+        console.log('💰 Setting up expense prompt...');
+        setLastAddedEntry(savedEntry);
+        
+        // Use requestAnimationFrame for smooth rendering
+        requestAnimationFrame(() => {
+          console.log('📢 Showing expense prompt!');
           setShowExpensePrompt(true);
-        }, 100);
+        });
       }
     } catch (err) {
       toast.error(err.message || "Failed to save entry", { id: toastId });
@@ -209,15 +239,26 @@ const EntriesPage = () => {
     setIsExpenseModalOpen(true);
   };
 
-  const handleExpensePromptYes = () => {
+  const handleExpensePromptYes = async () => {
+    console.log('👍 User clicked YES - Opening expense form...');
+    
+    // Close prompt modal
     setShowExpensePrompt(false);
-    // Small delay to ensure smooth modal transition
-    setTimeout(() => {
+    console.log('🚪 Closing expense prompt...');
+    
+    // Wait for modal close animation
+    console.log('⏳ Waiting for prompt transition...');
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Open expense modal with smooth rendering
+    requestAnimationFrame(() => {
+      console.log('📝 Opening expense modal!');
       setIsExpenseModalOpen(true);
-    }, 150);
+    });
   };
 
   const handleExpensePromptNo = () => {
+    console.log('👎 User clicked NO - Skipping expenses');
     setShowExpensePrompt(false);
     setLastAddedEntry(null);
   };
@@ -302,6 +343,47 @@ const EntriesPage = () => {
     setLastAddedEntry(null);
   };
 
+  // Vehicle Handlers
+  const handleAddNewVehicle = () => {
+    console.log('🚗 Opening vehicle creation modal...');
+    setIsVehicleModalOpen(true);
+  };
+
+  const handleSubmitVehicle = async (vehicleData) => {
+    setIsSubmitting(true);
+    const toastId = toast.loading("Creating vehicle...");
+    
+    try {
+      console.log('🚗 Creating new vehicle:', vehicleData);
+      const vehicleId = await createVehicle(user.uid, company?.id, vehicleData);
+      
+      toast.success("Vehicle added successfully! You can now select it.", { id: toastId });
+      
+      // Close vehicle modal
+      setIsVehicleModalOpen(false);
+      
+      // Store the new vehicle ID to auto-select it
+      setPendingVehicleSelection(vehicleId);
+      console.log('✅ Vehicle created with ID:', vehicleId);
+      
+      // Force reload vehicles (the useVehicles hook should update automatically)
+      // But we'll give it a moment to sync
+      setTimeout(() => {
+        console.log('🔄 Vehicles should be refreshed now');
+      }, 500);
+      
+    } catch (err) {
+      console.error('❌ Error creating vehicle:', err);
+      toast.error(err.message || "Failed to create vehicle", { id: toastId });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelVehicle = () => {
+    setIsVehicleModalOpen(false);
+  };
+
 
   return (
     <div className="flex flex-col gap-4">
@@ -373,6 +455,8 @@ const EntriesPage = () => {
           onSubmit={handleSubmitEntry}
           onCancel={handleCancelEntry}
           isSubmitting={isSubmitting}
+          onAddNewVehicle={handleAddNewVehicle}
+          pendingVehicleId={pendingVehicleSelection}
         />
       </Modal>
 
@@ -485,6 +569,19 @@ const EntriesPage = () => {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* Add New Vehicle Modal */}
+      <Modal
+        isOpen={isVehicleModalOpen}
+        onClose={handleCancelVehicle}
+        title="Add New Vehicle"
+      >
+        <VehicleForm
+          onSubmit={handleSubmitVehicle}
+          onCancel={handleCancelVehicle}
+          isSubmitting={isSubmitting}
+        />
       </Modal>
     </div>
   );

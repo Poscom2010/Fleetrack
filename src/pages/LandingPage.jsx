@@ -206,7 +206,7 @@ const LandingPage = () => {
               <div className="flex items-start gap-3 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50">
                 <BarChart3 className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
                 <div>
-                  <h3 className="text-white font-semibold mb-1 text-sm">Advanced Analytics</h3>
+                  <h3 className="text-white font-semibold mb-1 text-sm">Advanced AI Analytics</h3>
                   <p className="text-slate-400 text-xs">Profit trends & insights</p>
                 </div>
               </div>
@@ -241,7 +241,7 @@ const LandingPage = () => {
               <div className="flex items-start gap-2 sm:gap-3 bg-slate-900/30 p-2.5 sm:p-3 rounded-lg border border-slate-800/50 hover:border-purple-500/30 transition-all">
                 <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 mt-0.5 flex-shrink-0" />
                 <div>
-                  <h3 className="text-white font-semibold mb-1 text-sm">Advanced Analytics</h3>
+                  <h3 className="text-white font-semibold mb-1 text-sm">Advanced AI Analytics</h3>
                   <p className="text-slate-400 text-xs">Profit trends & insights</p>
                 </div>
               </div>

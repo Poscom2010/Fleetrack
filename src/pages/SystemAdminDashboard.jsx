@@ -29,7 +29,18 @@ const SystemAdminDashboard = () => {
   const [deleteModal, setDeleteModal] = useState({ show: false, userId: null, userName: '' });
   const [emailModal, setEmailModal] = useState({ show: false, user: null });
   const [emailForm, setEmailForm] = useState({ subject: '', message: '' });
-  const [wipeDataModal, setWipeDataModal] = useState({ show: false, companyId: null, companyName: '', confirmText: '' });
+  const [wipeDataModal, setWipeDataModal] = useState({ 
+    show: false, 
+    companyId: null, 
+    companyName: '', 
+    confirmText: '',
+    selections: {
+      dailyEntries: true,
+      expenses: true,
+      trips: true,
+      drivers: false
+    }
+  });
   
   // Privacy: Track which emails/phones are visible
   const [visibleEmails, setVisibleEmails] = useState({});
@@ -102,6 +113,24 @@ const SystemAdminDashboard = () => {
     }));
   };
 
+  // Format relative time (e.g., "1hr ago", "5 mins ago")
+  const formatRelativeTime = (date) => {
+    if (!date) return 'Never';
+    
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hr${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+    return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
+  };
+
   const loadSystemStats = async () => {
     try {
       setLoading(true);
@@ -123,10 +152,14 @@ const SystemAdminDashboard = () => {
 
       // Get all users
       const usersSnapshot = await getDocs(collection(db, 'users'));
-      const usersData = usersSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const usersData = usersSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          lastLoginAt: data.lastLoginAt?.toDate ? data.lastLoginAt.toDate() : data.lastLoginAt || null,
+        };
+      });
       setUsers(usersData);
 
       // Get all vehicles
@@ -598,32 +631,63 @@ This is an official communication from FleetTrack System Administration.
   };
 
   const handleWipeDataRequest = (companyId, companyName) => {
-    setWipeDataModal({ show: true, companyId, companyName, confirmText: '' });
+    setWipeDataModal({ 
+      show: true, 
+      companyId, 
+      companyName, 
+      confirmText: '',
+      selections: {
+        dailyEntries: true,
+        expenses: true,
+        trips: true,
+        drivers: false
+      }
+    });
   };
 
   const handleWipeDataConfirm = async () => {
-    if (wipeDataModal.confirmText !== 'WIPE DATA') {
-      toast.error('Please type "WIPE DATA" to confirm');
+    const confirmText = wipeDataModal.confirmText.trim().toUpperCase();
+    if (confirmText !== 'RESET DATA') {
+      toast.error('Please type "RESET DATA" to confirm');
       return;
     }
 
-    const toastId = toast.loading('Wiping company data...');
+    // Check if at least one option is selected
+    const { dailyEntries, expenses, trips, drivers } = wipeDataModal.selections;
+    if (!dailyEntries && !expenses && !trips && !drivers) {
+      toast.error('Please select at least one data type to reset');
+      return;
+    }
+
+    const toastId = toast.loading('Resetting company data...');
     
     try {
-      const stats = await wipeCompanyData(wipeDataModal.companyId);
+      const stats = await wipeCompanyData(wipeDataModal.companyId, wipeDataModal.selections);
+      
+      const deletedItems = [];
+      if (stats.dailyEntries > 0) deletedItems.push(`${stats.dailyEntries} entries`);
+      if (stats.expenses > 0) deletedItems.push(`${stats.expenses} expenses`);
+      if (stats.trips > 0) deletedItems.push(`${stats.trips} trips`);
+      if (stats.drivers > 0) deletedItems.push(`${stats.drivers} drivers`);
       
       toast.success(
-        `Successfully wiped ${stats.total} records (${stats.dailyEntries} entries, ${stats.expenses} expenses, ${stats.trips} trips)`,
+        `Successfully reset ${stats.total} records (${deletedItems.join(', ')})`,
         { id: toastId, duration: 5000 }
       );
       
-      setWipeDataModal({ show: false, companyId: null, companyName: '', confirmText: '' });
+      setWipeDataModal({ 
+        show: false, 
+        companyId: null, 
+        companyName: '', 
+        confirmText: '',
+        selections: { dailyEntries: true, expenses: true, trips: true, drivers: false }
+      });
       
       // Reload stats
       await loadSystemStats();
     } catch (error) {
-      console.error('Error wiping company data:', error);
-      toast.error(error.message || 'Failed to wipe company data', { id: toastId });
+      console.error('Error resetting company data:', error);
+      toast.error(error.message || 'Failed to reset company data', { id: toastId });
     }
   };
 
@@ -1090,9 +1154,9 @@ This is an official communication from FleetTrack System Administration.
                           <button
                             onClick={() => handleWipeDataRequest(company.id, company.name)}
                             className="flex-1 px-3 py-1.5 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 text-xs transition"
-                            title="Wipe all captured data"
+                            title="Reset captured data"
                           >
-                            Wipe Data
+                            Reset Data
                           </button>
                         </div>
                       </div>
@@ -1145,9 +1209,9 @@ This is an official communication from FleetTrack System Administration.
                               <button
                                 onClick={() => handleWipeDataRequest(company.id, company.name)}
                                 className="px-3 py-1 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 text-xs"
-                                title="Wipe all captured data"
+                                title="Reset captured data"
                               >
-                                Wipe Data
+                                Reset Data
                               </button>
                             </div>
                           </td>
@@ -1253,6 +1317,25 @@ This is an official communication from FleetTrack System Administration.
                               <option value="company_user">Driver</option>
                             </select>
                           </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-400">Last Seen:</span>
+                            {(() => {
+                              const lastSeen = formatRelativeTime(user.lastLoginAt);
+                              const isRecent = user.lastLoginAt && (Date.now() - user.lastLoginAt) < 24 * 60 * 60 * 1000;
+                              const isInactive = user.lastLoginAt && (Date.now() - user.lastLoginAt) > 7 * 24 * 60 * 60 * 1000;
+                              
+                              return (
+                                <span className={`${
+                                  lastSeen === 'Never' ? 'text-slate-500' :
+                                  isRecent ? 'text-green-400' :
+                                  isInactive ? 'text-red-400' :
+                                  'text-slate-300'
+                                }`}>
+                                  {lastSeen}
+                                </span>
+                              );
+                            })()}
+                          </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <button
@@ -1296,6 +1379,7 @@ This is an official communication from FleetTrack System Administration.
                       <th className="text-left py-3 px-2 text-slate-300 font-semibold">Phone</th>
                       <th className="text-left py-3 px-2 text-slate-300 font-semibold">Company</th>
                       <th className="text-left py-3 px-2 text-slate-300 font-semibold">Role</th>
+                      <th className="text-left py-3 px-2 text-slate-300 font-semibold">Last Seen</th>
                       <th className="text-left py-3 px-2 text-slate-300 font-semibold">Status</th>
                       <th className="text-right py-3 px-2 text-slate-300 font-semibold">Actions</th>
                     </tr>
@@ -1364,6 +1448,24 @@ This is an official communication from FleetTrack System Administration.
                               <option value="company_manager">Company Manager</option>
                               <option value="company_user">Driver</option>
                             </select>
+                          </td>
+                          <td className="py-3 px-2">
+                            {(() => {
+                              const lastSeen = formatRelativeTime(user.lastLoginAt);
+                              const isRecent = user.lastLoginAt && (Date.now() - user.lastLoginAt) < 24 * 60 * 60 * 1000; // within 24 hours
+                              const isInactive = user.lastLoginAt && (Date.now() - user.lastLoginAt) > 7 * 24 * 60 * 60 * 1000; // over 7 days
+                              
+                              return (
+                                <span className={`text-xs ${
+                                  lastSeen === 'Never' ? 'text-slate-500' :
+                                  isRecent ? 'text-green-400' :
+                                  isInactive ? 'text-red-400' :
+                                  'text-slate-400'
+                                }`}>
+                                  {lastSeen}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="py-3 px-2">
                             <span className={`px-2 py-1 rounded text-xs ${
@@ -1574,18 +1676,18 @@ This is an official communication from FleetTrack System Administration.
         </div>
       )}
 
-      {/* Wipe Data Confirmation Modal */}
+      {/* Reset Data Confirmation Modal */}
       {wipeDataModal.show && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-slate-800 rounded-2xl border border-red-500/30 p-6 max-w-lg w-full shadow-2xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
                 <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-white">Wipe Company Data?</h3>
+                <h3 className="text-xl font-bold text-white">Reset Company Data?</h3>
                 <p className="text-sm text-slate-400">This action cannot be undone</p>
               </div>
             </div>
@@ -1593,15 +1695,62 @@ This is an official communication from FleetTrack System Administration.
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-4">
               <p className="text-sm text-red-200 font-semibold mb-2">⚠️ CRITICAL WARNING</p>
               <p className="text-sm text-slate-300 mb-2">
-                You are about to permanently delete ALL captured data for:
+                You are about to permanently delete selected data for:
               </p>
               <p className="text-base font-bold text-white mb-3">{wipeDataModal.companyName}</p>
-              <p className="text-sm text-slate-300 mb-2">This will delete:</p>
-              <ul className="text-sm text-slate-300 list-disc list-inside space-y-1 mb-3">
-                <li>All daily entries and mileage records</li>
-                <li>All expenses and financial data</li>
-                <li>All trip logs and history</li>
-              </ul>
+              
+              <p className="text-sm text-slate-300 mb-2 font-semibold">Select data to reset:</p>
+              <div className="space-y-2 mb-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={wipeDataModal.selections.dailyEntries}
+                    onChange={(e) => setWipeDataModal({
+                      ...wipeDataModal,
+                      selections: { ...wipeDataModal.selections, dailyEntries: e.target.checked }
+                    })}
+                    className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-red-500 focus:ring-red-500"
+                  />
+                  <span className="text-sm text-slate-300">Daily entries and mileage records</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={wipeDataModal.selections.expenses}
+                    onChange={(e) => setWipeDataModal({
+                      ...wipeDataModal,
+                      selections: { ...wipeDataModal.selections, expenses: e.target.checked }
+                    })}
+                    className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-red-500 focus:ring-red-500"
+                  />
+                  <span className="text-sm text-slate-300">Expenses and financial data</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={wipeDataModal.selections.trips}
+                    onChange={(e) => setWipeDataModal({
+                      ...wipeDataModal,
+                      selections: { ...wipeDataModal.selections, trips: e.target.checked }
+                    })}
+                    className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-red-500 focus:ring-red-500"
+                  />
+                  <span className="text-sm text-slate-300">Trip logs and history</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={wipeDataModal.selections.drivers}
+                    onChange={(e) => setWipeDataModal({
+                      ...wipeDataModal,
+                      selections: { ...wipeDataModal.selections, drivers: e.target.checked }
+                    })}
+                    className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-red-500 focus:ring-red-500"
+                  />
+                  <span className="text-sm text-slate-300">Driver profiles</span>
+                </label>
+              </div>
+              
               <p className="text-sm text-amber-300 font-semibold">
                 ✓ Vehicles, users, and company profile will be preserved
               </p>
@@ -1609,31 +1758,37 @@ This is an official communication from FleetTrack System Administration.
 
             <div className="mb-4">
               <label className="block text-sm font-semibold text-slate-300 mb-2">
-                Type <span className="text-red-400 font-bold">WIPE DATA</span> to confirm:
+                Type <span className="text-red-400 font-bold">RESET DATA</span> to confirm:
               </label>
               <input
                 type="text"
                 value={wipeDataModal.confirmText}
                 onChange={(e) => setWipeDataModal({ ...wipeDataModal, confirmText: e.target.value })}
                 className="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-red-500"
-                placeholder="Type WIPE DATA here"
+                placeholder="Type RESET DATA here"
                 autoFocus
               />
             </div>
 
             <div className="flex gap-3">
               <button
-                onClick={() => setWipeDataModal({ show: false, companyId: null, companyName: '', confirmText: '' })}
+                onClick={() => setWipeDataModal({ 
+                  show: false, 
+                  companyId: null, 
+                  companyName: '', 
+                  confirmText: '',
+                  selections: { dailyEntries: true, expenses: true, trips: true, drivers: false }
+                })}
                 className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition font-medium"
               >
                 Cancel
               </button>
               <button
                 onClick={handleWipeDataConfirm}
-                disabled={wipeDataModal.confirmText !== 'WIPE DATA'}
+                disabled={wipeDataModal.confirmText.trim().toUpperCase() !== 'RESET DATA'}
                 className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Wipe All Data
+                Reset Selected Data
               </button>
             </div>
           </div>
