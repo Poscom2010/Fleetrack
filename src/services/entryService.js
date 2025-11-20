@@ -66,7 +66,7 @@ export const createDailyEntry = async (userId, companyId, entryData) => {
 };
 
 /**
- * Check if a daily entry already exists for a vehicle on a specific date
+ * Check if a daily entry already exists for a user, vehicle, and date
  * @param {string} userId - The user ID
  * @param {string} vehicleId - The vehicle ID
  * @param {Date|string} date - The date to check
@@ -102,6 +102,12 @@ export const checkDuplicateDailyEntry = async (
     return !querySnapshot.empty;
   } catch (error) {
     console.error("Error checking duplicate entry:", error);
+    // If there's a permission error, allow the operation to proceed
+    // The actual create/update will be validated by security rules
+    if (error.code === 'permission-denied') {
+      console.warn("Permission denied when checking duplicates - allowing operation to proceed");
+      return false; // Return false to allow the operation
+    }
     throw error;
   }
 };

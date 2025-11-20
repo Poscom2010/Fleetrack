@@ -131,10 +131,20 @@ service cloud.firestore {
     
     // Daily entries collection rules
     match /dailyEntries/{entryId} {
-      // Allow read if user has company access OR owns the resource (driver can see their own entries)
-      allow read: if isAuthenticated() && 
+      // Allow get (single document read) if user has company access OR owns the resource
+      allow get: if isAuthenticated() && 
                     (hasCompanyAccess(resource.data.companyId) || 
                      isOwner(resource.data.userId));
+      
+      // Allow list (query) if user is authenticated and has company access
+      // This is needed for duplicate checking and listing entries
+      allow list: if isAuthenticated() && (
+                     isAdmin() ||
+                     exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                     (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin' ||
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_manager' ||
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_user')
+                   );
       
       // Allow create if:
       // 1. User is creating for themselves (driver), OR
@@ -167,13 +177,25 @@ service cloud.firestore {
     
     // Expenses collection rules
     match /expenses/{expenseId} {
-      // Allow read if user has company access OR owns the resource (legacy support)
-      allow read: if isAuthenticated() && 
+      // Allow get (single document read) if user has company access OR owns the resource
+      allow get: if isAuthenticated() && 
                     (hasCompanyAccess(resource.data.companyId) || 
                      isOwner(resource.data.userId));
       
-      // Allow create if user is authenticated (with or without company)
-      allow create: if isCreatingOwnResource() &&
+      // Allow list (query) if user is authenticated and has company access
+      // This is needed for listing expenses and checking duplicates
+      allow list: if isAuthenticated() && (
+                     isAdmin() ||
+                     exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                     (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin' ||
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_manager' ||
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_user')
+                   );
+      
+      // Allow create if:
+      // 1. User is creating for themselves (driver), OR
+      // 2. Admin/Manager creating for a driver in their company
+      allow create: if isAuthenticated() &&
                       hasRequiredFields(['userId', 'vehicleId', 'date', 'description', 'amount']) &&
                       (request.resource.data.companyId == null || hasCompanyAccess(request.resource.data.companyId)) &&
                       request.resource.data.userId is string &&
@@ -183,14 +205,19 @@ service cloud.firestore {
                       request.resource.data.amount is number &&
                       request.resource.data.amount > 0;
       
-      // Allow update if user has company access and userId/companyId not changed
+      // Allow update if user has company access OR owns the expense
       allow update: if isAuthenticated() && 
-                      hasCompanyAccess(resource.data.companyId) &&
+                      (hasCompanyAccess(resource.data.companyId) || isOwner(resource.data.userId)) &&
                       request.resource.data.userId == resource.data.userId &&
                       request.resource.data.companyId == resource.data.companyId;
       
-      // Allow delete if user has company access
-      allow delete: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      // Allow delete if user has company access (NOT drivers)
+      allow delete: if isAuthenticated() && 
+                      hasCompanyAccess(resource.data.companyId) &&
+                      exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                      (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin' ||
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_manager' ||
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'system_admin');
     }
     
     // Service alerts collection rules
