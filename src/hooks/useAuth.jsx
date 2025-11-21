@@ -292,15 +292,28 @@ const useAuthProvider = () => {
     if (!user) return;
     
     try {
+      console.log('🔄 [useAuth] Refreshing user data...');
       const profile = await getUserProfile(user.uid);
       setUserProfile(profile);
       
       if (profile?.companyId) {
         const { getCompany } = await import("../services/companyService");
         const companyData = await getCompany(profile.companyId);
+        console.log('✅ [useAuth] Company data refreshed:', {
+          id: companyData.id,
+          name: companyData.name,
+          currency: companyData.currency,
+          'settings.currency': companyData.settings?.currency
+        });
         setCompany(companyData);
       } else if (profile?.role === 'company_owner') {
         const companyData = await getCompanyByOwner(user.uid);
+        console.log('✅ [useAuth] Company data refreshed (owner):', {
+          id: companyData.id,
+          name: companyData.name,
+          currency: companyData.currency,
+          'settings.currency': companyData.settings?.currency
+        });
         setCompany(companyData);
       } else {
         setCompany(null);

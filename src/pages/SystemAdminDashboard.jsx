@@ -152,6 +152,47 @@ const SystemAdminDashboard = () => {
     return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
   };
 
+  // Get currency symbol based on currency code
+  const getCurrencySymbol = (currencyCode) => {
+    const currencyMap = {
+      'USD': '$',
+      'ZAR': 'R',
+      'EUR': '€',
+      'GBP': '£',
+      'KES': 'KSh',
+      'NGN': '₦',
+      'TZS': 'TSh',
+      'UGX': 'USh',
+      'ZMW': 'ZK',
+      'BWP': 'P',
+      'GHS': 'GH₵'
+    };
+    return currencyMap[currencyCode] || currencyCode + ' ';
+  };
+
+  // Exchange rates to USD (as of common rates)
+  const getExchangeRateToUSD = (currencyCode) => {
+    const exchangeRates = {
+      'USD': 1,        // Base currency
+      'ZAR': 0.055,    // 1 ZAR ≈ $0.055 USD
+      'EUR': 1.09,     // 1 EUR ≈ $1.09 USD
+      'GBP': 1.27,     // 1 GBP ≈ $1.27 USD
+      'KES': 0.0077,   // 1 KES ≈ $0.0077 USD (130 KES = $1)
+      'NGN': 0.0013,   // 1 NGN ≈ $0.0013 USD (770 NGN = $1)
+      'TZS': 0.00043,  // 1 TZS ≈ $0.00043 USD (2,330 TZS = $1)
+      'UGX': 0.00027,  // 1 UGX ≈ $0.00027 USD (3,700 UGX = $1)
+      'ZMW': 0.037,    // 1 ZMW ≈ $0.037 USD (27 ZMW = $1)
+      'BWP': 0.073,    // 1 BWP ≈ $0.073 USD (13.7 BWP = $1)
+      'GHS': 0.063     // 1 GHS ≈ $0.063 USD (16 GHS = $1)
+    };
+    return exchangeRates[currencyCode] || 1; // Default to 1 if unknown
+  };
+
+  // Convert any currency amount to USD for ranking
+  const convertToUSD = (amount, currencyCode) => {
+    return amount * getExchangeRateToUSD(currencyCode);
+  };
+
   const loadSystemStats = async () => {
     try {
       setLoading(true);
@@ -190,9 +231,12 @@ const SystemAdminDashboard = () => {
         ...doc.data(),
       }));
 
-      // Get all entries
+      // Get all entries with IDs
       const entriesSnapshot = await getDocs(collection(db, 'dailyEntries'));
-      const entries = entriesSnapshot.docs.map(doc => doc.data());
+      const entries = entriesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
 
       // Get all expenses
       const expensesSnapshot = await getDocs(collection(db, 'expenses'));
@@ -209,48 +253,76 @@ const SystemAdminDashboard = () => {
       entries.forEach(entry => {
         const entryDate = entry.date?.toDate ? entry.date.toDate() : new Date(entry.date);
         if (entryDate >= last30Days) {
-          const user = usersData.find(u => u.id === entry.userId);
-          if (user?.companyId) {
-            activeCompanyIds.add(user.companyId);
-            if (!companyActivity[user.companyId]) {
-              companyActivity[user.companyId] = { trips: 0, revenue: 0, lastActivity: entryDate };
+          // Get companyId directly from entry first, fallback to user lookup
+          let entryCompanyId = entry.companyId;
+          if (!entryCompanyId) {
+            const userId = entry.userId || entry.createdBy;
+            const user = usersData.find(u => u.id === userId);
+            entryCompanyId = user?.companyId;
+          }
+          
+          if (entryCompanyId) {
+            activeCompanyIds.add(entryCompanyId);
+            if (!companyActivity[entryCompanyId]) {
+              companyActivity[entryCompanyId] = { trips: 0, revenue: 0, lastActivity: entryDate };
             }
-            companyActivity[user.companyId].trips++;
-            companyActivity[user.companyId].revenue += entry.cashIn || 0;
-            if (entryDate > companyActivity[user.companyId].lastActivity) {
-              companyActivity[user.companyId].lastActivity = entryDate;
+            companyActivity[entryCompanyId].trips++;
+            companyActivity[entryCompanyId].revenue += entry.cashIn || 0;
+            if (entryDate > companyActivity[entryCompanyId].lastActivity) {
+              companyActivity[entryCompanyId].lastActivity = entryDate;
             }
           }
         }
       });
 
-      // Revenue by company
+      // Revenue by company calculation
       const revenueByCompany = {};
-      entries.forEach(entry => {
-        const user = usersData.find(u => u.id === entry.userId);
-        if (user?.companyId) {
-          const company = companiesData.find(c => c.id === user.companyId);
-          if (company) {
-            if (!revenueByCompany[user.companyId]) {
-              revenueByCompany[user.companyId] = {
-                companyName: company.name,
-                revenue: 0,
-                entries: 0,
-                vehicles: vehicles.filter(v => v.companyId === user.companyId).length,
-                users: usersData.filter(u => u.companyId === user.companyId).length,
-              };
-            }
-            revenueByCompany[user.companyId].revenue += entry.cashIn || 0;
-            revenueByCompany[user.companyId].entries += 1;
-          }
+      
+      // Initialize all companies with their data
+      companiesData.forEach(company => {
+        const companyName = company.name || company.companyName || 'Unnamed Company';
+        // PRIORITY: currency field first (what company sees), then settings.currency (legacy), then USD default
+        const companyCurrency = company.currency || company.settings?.currency || 'USD';
+        
+        revenueByCompany[company.id] = {
+          companyName: companyName,
+          companyId: company.id,
+          currency: companyCurrency,
+          revenue: 0,
+          entries: 0,
+          vehicles: vehicles.filter(v => v.companyId === company.id).length,
+          users: usersData.filter(u => u.companyId === company.id).length,
+        };
+      });
+      
+      // Calculate revenue from entries
+      entries.forEach((entry) => {
+        // Use companyId directly from entry first, fallback to user lookup
+        let entryCompanyId = entry.companyId;
+        
+        if (!entryCompanyId) {
+          const userId = entry.userId || entry.createdBy;
+          const user = usersData.find(u => u.id === userId);
+          entryCompanyId = user?.companyId;
+        }
+        
+        if (entryCompanyId && revenueByCompany[entryCompanyId]) {
+          const cashIn = Number(entry.cashIn) || 0;
+          revenueByCompany[entryCompanyId].entries += 1;
+          revenueByCompany[entryCompanyId].revenue += cashIn;
         }
       });
 
       const revenueArray = Object.values(revenueByCompany);
       
-      // Top performing companies (by revenue)
+      // Add USD equivalent for each company for proper ranking
+      revenueArray.forEach(company => {
+        company.revenueUSD = convertToUSD(company.revenue, company.currency);
+      });
+      
+      // Top performing companies (by revenue in USD for fair comparison)
       const topPerforming = [...revenueArray]
-        .sort((a, b) => b.revenue - a.revenue)
+        .sort((a, b) => b.revenueUSD - a.revenueUSD) // Sort by USD equivalent!
         .slice(0, 5);
 
       // Underperforming companies (registered but low/no activity)
@@ -258,17 +330,25 @@ const SystemAdminDashboard = () => {
         .filter(company => {
           const companyUsers = usersData.filter(u => u.companyId === company.id);
           const companyEntries = entries.filter(entry => {
-            const user = usersData.find(u => u.id === entry.userId);
+            // Use companyId directly from entry first
+            if (entry.companyId === company.id) return true;
+            // Fallback to user lookup
+            const userId = entry.userId || entry.createdBy;
+            const user = usersData.find(u => u.id === userId);
             return user?.companyId === company.id;
           });
           return companyUsers.length > 0 && companyEntries.length < 10; // Less than 10 entries
         })
         .map(company => ({
           id: company.id,
-          name: company.name,
+          name: company.name || company.companyName || 'Unnamed Company', // Ensure name fallback
           users: usersData.filter(u => u.companyId === company.id).length,
           entries: entries.filter(entry => {
-            const user = usersData.find(u => u.id === entry.userId);
+            // Use companyId directly from entry first
+            if (entry.companyId === company.id) return true;
+            // Fallback to user lookup
+            const userId = entry.userId || entry.createdBy;
+            const user = usersData.find(u => u.id === userId);
             return user?.companyId === company.id;
           }).length,
           vehicles: vehicles.filter(v => v.companyId === company.id).length,
@@ -388,8 +468,8 @@ const SystemAdminDashboard = () => {
         companiesByCountry,
         companiesByCity,
         usersByRole,
-        topPerformingCompanies,
-        underperformingCompanies,
+        topPerformingCompanies: topPerforming,
+        underperformingCompanies: underperforming,
         growthMetrics: {
           companiesThisMonth: companiesThisMonth.length,
           companiesLastMonth: companiesLastMonth.length,
@@ -782,97 +862,97 @@ This is an official communication from FleetTrack System Administration.
         )}
 
         {/* FleetTrack Revenue & Profit Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          <div className="bg-gradient-to-br from-green-900/30 to-slate-800 rounded-xl p-4 border border-green-500/30">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs text-green-300 font-semibold">Total Revenue</p>
-              <svg className="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          <div className="bg-gradient-to-br from-green-900/30 to-slate-800 rounded-lg p-2.5 border border-green-500/30">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[10px] text-green-300 font-semibold">Total Revenue</p>
+              <svg className="h-3.5 w-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <p className="text-2xl sm:text-3xl font-bold text-white mb-1">${stats.totalRevenue.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
-            <p className="text-xs text-green-400">+${stats.growthMetrics.revenueThisMonth.toLocaleString(undefined, {maximumFractionDigits: 0})} this month</p>
+            <p className="text-lg font-bold text-white mb-0.5">${stats.totalRevenue.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
+            <p className="text-[10px] text-green-400">+${stats.growthMetrics.revenueThisMonth.toLocaleString(undefined, {maximumFractionDigits: 0})} this month</p>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-900/30 to-slate-800 rounded-xl p-4 border border-blue-500/30">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs text-blue-300 font-semibold">Net Profit</p>
-              <svg className="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-gradient-to-br from-blue-900/30 to-slate-800 rounded-lg p-2.5 border border-blue-500/30">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[10px] text-blue-300 font-semibold">Net Profit</p>
+              <svg className="h-3.5 w-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
-            <p className="text-2xl sm:text-3xl font-bold text-white mb-1">${stats.netProfit.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
-            <p className="text-xs text-blue-400">{stats.totalRevenue > 0 ? ((stats.netProfit / stats.totalRevenue) * 100).toFixed(1) : 0}% profit margin</p>
+            <p className="text-lg font-bold text-white mb-0.5">${stats.netProfit.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
+            <p className="text-[10px] text-blue-400">{stats.totalRevenue > 0 ? ((stats.netProfit / stats.totalRevenue) * 100).toFixed(1) : 0}% profit margin</p>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-900/30 to-slate-800 rounded-xl p-4 border border-purple-500/30">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs text-purple-300 font-semibold">Avg Revenue/Company</p>
-              <svg className="h-5 w-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-gradient-to-br from-purple-900/30 to-slate-800 rounded-lg p-2.5 border border-purple-500/30">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[10px] text-purple-300 font-semibold">Avg Revenue/Company</p>
+              <svg className="h-3.5 w-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
-            <p className="text-2xl sm:text-3xl font-bold text-white mb-1">${stats.avgRevenuePerCompany.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
-            <p className="text-xs text-purple-400">{stats.totalCompanies} active companies</p>
+            <p className="text-lg font-bold text-white mb-0.5">${stats.avgRevenuePerCompany.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
+            <p className="text-[10px] text-purple-400">{stats.totalCompanies} active companies</p>
           </div>
         </div>
 
         {/* Platform Stats */}
         <div>
-          <h2 className="text-lg font-bold text-white mb-3">📊 Platform Statistics</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-slate-400">Total Companies</p>
+          <h2 className="text-sm font-bold text-white mb-2">📊 Platform Statistics</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+          <div className="bg-slate-800 rounded-lg p-2.5 border border-slate-700">
+            <div className="flex items-center justify-between mb-0.5">
+              <p className="text-[10px] text-slate-400">Total Companies</p>
               <svg className="h-4 w-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
-            <p className="text-2xl font-bold text-white">{stats.totalCompanies}</p>
-            <p className="text-xs text-green-400 mt-0.5">+{stats.growthMetrics.companiesThisMonth} this month</p>
+            <p className="text-lg font-bold text-white">{stats.totalCompanies}</p>
+            <p className="text-[10px] text-green-400 mt-0.5">+{stats.growthMetrics.companiesThisMonth} this month</p>
           </div>
 
-          <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-slate-400">Total Users</p>
+          <div className="bg-slate-800 rounded-lg p-2.5 border border-slate-700">
+            <div className="flex items-center justify-between mb-0.5">
+              <p className="text-[10px] text-slate-400">Total Users</p>
               <svg className="h-4 w-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
             </div>
-            <p className="text-2xl font-bold text-white">{stats.totalUsers}</p>
-            <p className="text-xs text-green-400 mt-0.5">+{stats.growthMetrics.usersThisMonth} this month</p>
+            <p className="text-lg font-bold text-white">{stats.totalUsers}</p>
+            <p className="text-[10px] text-green-400 mt-0.5">+{stats.growthMetrics.usersThisMonth} this month</p>
           </div>
 
-          <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-slate-400">Total Vehicles</p>
+          <div className="bg-slate-800 rounded-lg p-2.5 border border-slate-700">
+            <div className="flex items-center justify-between mb-0.5">
+              <p className="text-[10px] text-slate-400">Total Vehicles</p>
               <svg className="h-4 w-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
               </svg>
             </div>
-            <p className="text-2xl font-bold text-white">{stats.totalVehicles}</p>
-            <p className="text-xs text-slate-400 mt-0.5">Across all companies</p>
+            <p className="text-lg font-bold text-white">{stats.totalVehicles}</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Across all companies</p>
           </div>
 
-          <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-slate-400">Total Entries</p>
+          <div className="bg-slate-800 rounded-lg p-2.5 border border-slate-700">
+            <div className="flex items-center justify-between mb-0.5">
+              <p className="text-[10px] text-slate-400">Total Entries</p>
               <svg className="h-4 w-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <p className="text-2xl font-bold text-white">{stats.totalEntries.toLocaleString()}</p>
-            <p className="text-xs text-green-400 mt-0.5">+{stats.growthMetrics.entriesThisMonth.toLocaleString()} this month</p>
+            <p className="text-lg font-bold text-white">{stats.totalEntries.toLocaleString()}</p>
+            <p className="text-[10px] text-green-400 mt-0.5">+{stats.growthMetrics.entriesThisMonth.toLocaleString()} this month</p>
           </div>
         </div>
         </div>
 
         {/* Activity & Geographic Distribution */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
           {/* Active vs Inactive Companies */}
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <h2 className="text-xl font-bold text-white mb-4">Company Activity</h2>
-            <div className="space-y-4">
+          <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
+            <h2 className="text-sm font-bold text-white mb-2">Company Activity</h2>
+            <div className="space-y-2.5">
               <div>
                 <div className="flex justify-between text-sm mb-2">
                   <span className="text-slate-300">Active (Last 30 days)</span>
@@ -897,9 +977,9 @@ This is an official communication from FleetTrack System Administration.
                   ></div>
                 </div>
               </div>
-              <div className="pt-4 border-t border-slate-700">
-                <p className="text-sm text-slate-400">Activity Rate</p>
-                <p className="text-2xl font-bold text-white">
+              <div className="pt-2 border-t border-slate-700">
+                <p className="text-[10px] text-slate-400">Activity Rate</p>
+                <p className="text-lg font-bold text-white">
                   {((stats.activeCompanies / stats.totalCompanies) * 100).toFixed(1)}%
                 </p>
               </div>
@@ -907,9 +987,9 @@ This is an official communication from FleetTrack System Administration.
           </div>
 
           {/* Companies by Country */}
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <h2 className="text-xl font-bold text-white mb-4">Geographic Distribution</h2>
-            <div className="space-y-3">
+          <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
+            <h2 className="text-sm font-bold text-white mb-2">Geographic Distribution</h2>
+            <div className="space-y-2">
               {Object.entries(stats.companiesByCountry)
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 5)
@@ -935,28 +1015,48 @@ This is an official communication from FleetTrack System Administration.
         </div>
 
         {/* Top Performing Companies */}
-        <div className="bg-slate-800 rounded-lg p-4 sm:p-6 border border-slate-700">
-          <h2 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">🏆 Top Performing Companies</h2>
+        <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-bold text-white">🏆 Top Performing Companies</h2>
+            <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+              💱 Ranked by USD equivalent
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-500 mb-2">Rankings use real-time exchange rates for fair multi-currency comparison</p>
           
           {/* Mobile Card View */}
           <div className="lg:hidden space-y-3">
             {stats.topPerformingCompanies.map((company, index) => (
               <div key={index} className="bg-slate-900 rounded-lg p-3 border border-slate-700">
                 <div className="flex items-center justify-between mb-2">
-                  <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
-                    index === 0 ? 'bg-yellow-500 text-slate-900' :
-                    index === 1 ? 'bg-slate-400 text-slate-900' :
-                    index === 2 ? 'bg-orange-600 text-white' :
-                    'bg-slate-700 text-white'
-                  }`}>
-                    {index + 1}
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                      index === 0 ? 'bg-yellow-500 text-slate-900' :
+                      index === 1 ? 'bg-slate-400 text-slate-900' :
+                      index === 2 ? 'bg-orange-600 text-white' :
+                      'bg-slate-700 text-white'
+                    }`}>
+                      {index + 1}
+                    </span>
+                    <span className="text-white font-semibold text-sm">{company.companyName || company.name || `Company ${index + 1}`}</span>
+                  </div>
+                  <span className="text-[9px] text-slate-400 bg-slate-700/50 px-1.5 py-0.5 rounded">
+                    {company.currency}
                   </span>
-                  <span className="text-white font-semibold text-sm">{company.companyName}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
                     <span className="text-slate-400">Revenue:</span>
-                    <p className="text-green-400 font-semibold">${company.revenue.toLocaleString()}</p>
+                    <p className="text-green-400 font-semibold">
+                      {company.currency && company.revenue !== undefined 
+                        ? `${getCurrencySymbol(company.currency)}${Number(company.revenue).toLocaleString()}`
+                        : 'N/A'}
+                    </p>
+                    {company.revenueUSD !== undefined && company.currency !== 'USD' && (
+                      <p className="text-[9px] text-slate-500 mt-0.5">
+                        ≈ ${company.revenueUSD.toLocaleString(undefined, {maximumFractionDigits: 2})} USD
+                      </p>
+                    )}
                   </div>
                   <div>
                     <span className="text-slate-400">Entries:</span>
@@ -982,6 +1082,7 @@ This is an official communication from FleetTrack System Administration.
                 <tr className="border-b border-slate-700">
                   <th className="text-left py-3 px-2 text-slate-300 font-semibold">Rank</th>
                   <th className="text-left py-3 px-2 text-slate-300 font-semibold">Company</th>
+                  <th className="text-center py-3 px-2 text-slate-300 font-semibold">Currency</th>
                   <th className="text-right py-3 px-2 text-slate-300 font-semibold">Revenue</th>
                   <th className="text-right py-3 px-2 text-slate-300 font-semibold">Entries</th>
                   <th className="text-right py-3 px-2 text-slate-300 font-semibold">Vehicles</th>
@@ -1001,9 +1102,25 @@ This is an official communication from FleetTrack System Administration.
                         {index + 1}
                       </span>
                     </td>
-                    <td className="py-3 px-2 text-white font-medium">{company.companyName}</td>
-                    <td className="py-3 px-2 text-right text-green-400 font-semibold">
-                      ${company.revenue.toLocaleString()}
+                    <td className="py-3 px-2 text-white font-medium">{company.companyName || company.name || `Company ${index + 1}`}</td>
+                    <td className="py-3 px-2 text-center">
+                      <span className="text-[10px] text-slate-400 bg-slate-700/50 px-2 py-0.5 rounded">
+                        {company.currency}
+                      </span>
+                    </td>
+                    <td className="py-3 px-2 text-right">
+                      <div>
+                        <p className="text-green-400 font-semibold">
+                          {company.currency && company.revenue !== undefined 
+                            ? `${getCurrencySymbol(company.currency)}${Number(company.revenue).toLocaleString()}`
+                            : 'N/A'}
+                        </p>
+                        {company.revenueUSD !== undefined && company.currency !== 'USD' && (
+                          <p className="text-[9px] text-slate-500 mt-0.5">
+                            ≈ ${company.revenueUSD.toLocaleString(undefined, {maximumFractionDigits: 2})} USD
+                          </p>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-2 text-right text-blue-400">{company.entries.toLocaleString()}</td>
                     <td className="py-3 px-2 text-right text-purple-400">{company.vehicles}</td>
@@ -1017,9 +1134,9 @@ This is an official communication from FleetTrack System Administration.
 
         {/* Underperforming Companies */}
         {stats.underperformingCompanies.length > 0 && (
-          <div className="bg-slate-800 rounded-lg p-4 sm:p-6 border border-red-900/30">
-            <h2 className="text-lg sm:text-xl font-bold text-white mb-2">⚠️ Companies Needing Attention</h2>
-            <p className="text-xs sm:text-sm text-slate-400 mb-3 sm:mb-4">Low activity - may need support or engagement</p>
+          <div className="bg-slate-800 rounded-lg p-3 border border-red-900/30">
+            <h2 className="text-sm font-bold text-white mb-1.5">⚠️ Companies Needing Attention</h2>
+            <p className="text-[10px] text-slate-400 mb-2">Low activity - may need support or engagement</p>
             
             {/* Mobile Card View */}
             <div className="lg:hidden space-y-3">
@@ -1096,21 +1213,21 @@ This is an official communication from FleetTrack System Administration.
         </div>
 
         {/* Cities Distribution */}
-        <div className="bg-slate-800 rounded-lg p-4 sm:p-6 border border-slate-700">
-          <h2 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">Top Cities</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+        <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
+          <h2 className="text-sm font-bold text-white mb-2">🏙️ Top Cities</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2.5">
             {Object.entries(stats.companiesByCity)
               .sort((a, b) => b[1] - a[1])
               .slice(0, 6)
               .map(([city, count]) => (
-                <div key={city} className="bg-slate-900 rounded-lg p-4 border border-slate-700">
+                <div key={city} className="bg-slate-900 rounded-lg p-2.5 border border-slate-700">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-300">{city}</span>
-                    <span className="text-brand-400 font-bold text-lg">{count}</span>
+                    <span className="text-slate-300 text-xs">{city}</span>
+                    <span className="text-brand-400 font-bold text-base">{count}</span>
                   </div>
-                  <div className="mt-2 w-full bg-slate-800 rounded-full h-2">
+                  <div className="mt-1.5 w-full bg-slate-800 rounded-full h-1.5">
                     <div 
-                      className="bg-brand-500 h-2 rounded-full"
+                      className="bg-brand-500 h-1.5 rounded-full"
                       style={{ width: `${(count / stats.totalCompanies) * 100}%` }}
                     ></div>
                   </div>

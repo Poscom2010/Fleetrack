@@ -101,9 +101,10 @@ const CompanySetupPage = () => {
           email: formData.contactEmail || user.email,
           phone: formData.contactPhone || null,
         },
+        currency: formData.currency, // Primary currency field (matches update behavior)
         settings: {
           timezone: formData.timezone,
-          currency: formData.currency,
+          currency: formData.currency, // Keep in settings for backward compatibility
           dateFormat: formData.dateFormat,
           serviceInterval: 5000,
         },
@@ -1148,9 +1149,12 @@ const CompanySettingsPage = () => {
           phone: profileForm.contactPhone || null,
         },
         currency: profileForm.currency || "USD",
+        'settings.currency': profileForm.currency || "USD", // Also update settings.currency for consistency
       });
 
+      console.log('✅ [CompanyProfile] Currency updated to:', profileForm.currency);
       await refreshUserData();
+      console.log('✅ [CompanyProfile] User data refreshed');
       setLogoFile(null);
       // Redirect to dashboard after successful save
       navigate('/dashboard');

@@ -17,7 +17,7 @@ const AnalyticsPage = () => {
   const [fleetSummary, setFleetSummary] = useState(null);
   const [showAiInsightsModal, setShowAiInsightsModal] = useState(false);
 
-  // Get currency symbol based on company currency
+  // Get currency symbol based on company currency - reactively updates when company changes
   const getCurrencySymbol = () => {
     const currencyMap = {
       'USD': '$',
@@ -34,10 +34,12 @@ const AnalyticsPage = () => {
     return currencyMap[company?.currency || 'USD'] || '$';
   };
 
+  // Always get fresh currency symbol from current company object
   const currencySymbol = getCurrencySymbol();
 
   useEffect(() => {
     if (company) {
+      console.log('🔄 [Analytics] Company currency updated:', company.currency);
       loadAnalytics();
     }
   }, [company]);

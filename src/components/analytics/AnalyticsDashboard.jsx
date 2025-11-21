@@ -28,9 +28,17 @@ const timeRangeOptions = [
  * AnalyticsDashboard component - Main analytics dashboard
  */
 const AnalyticsDashboard = () => {
-  const { user } = useAuth();
+  const { user, company } = useAuth();
   const [timeRange, setTimeRange] = useState("all");
   const [showDiagnostic, setShowDiagnostic] = useState(false);
+
+  // Get company currency for formatting
+  const companyCurrency = company?.currency || 'USD';
+  
+  // Log currency changes
+  React.useEffect(() => {
+    console.log('🔄 [AnalyticsDashboard] Company currency updated:', companyCurrency);
+  }, [companyCurrency]);
 
   const {
     analyticsData,
@@ -157,7 +165,7 @@ const AnalyticsDashboard = () => {
                 Avg Daily Cash-In
               </p>
               <p className="mt-1 text-lg font-bold text-white">
-                {formatCurrency(summary.avgDailyCashIn || 0)}
+                {formatCurrency(summary.avgDailyCashIn || 0, companyCurrency)}
               </p>
             </div>
             <div className="rounded-xl border border-sky-400/30 bg-gradient-to-br from-sky-500/20 to-sky-600/10 px-3 py-2 backdrop-blur-sm">
@@ -346,10 +354,10 @@ const AnalyticsDashboard = () => {
                   {timeRangeBadge.text}
                 </span>
               </div>
-              <p className="mt-1.5 text-xl font-bold text-white">{formatCurrency(summary.totalCashIn)}</p>
+              <p className="mt-1.5 text-xl font-bold text-white">{formatCurrency(summary.totalCashIn, companyCurrency)}</p>
               <p className="mt-1 text-xs font-medium text-emerald-200">
-                {timeRange === 'today' || timeRange === 'yesterday' ? `${formatCurrency(summary.avgDailyCashIn || 0)}/entry avg` :
-                 `Avg: ${formatCurrency(summary.avgDailyCashIn || 0)}/day`}
+                {timeRange === 'today' || timeRange === 'yesterday' ? `${formatCurrency(summary.avgDailyCashIn || 0, companyCurrency)}/entry avg` :
+                 `Avg: ${formatCurrency(summary.avgDailyCashIn || 0, companyCurrency)}/day`}
               </p>
             </div>
             <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-2 text-lg shadow-md">
@@ -370,10 +378,10 @@ const AnalyticsDashboard = () => {
                   {timeRangeBadge.text}
                 </span>
               </div>
-              <p className="mt-1.5 text-xl font-bold text-white">{formatCurrency(summary.totalExpenses)}</p>
+              <p className="mt-1.5 text-xl font-bold text-white">{formatCurrency(summary.totalExpenses, companyCurrency)}</p>
               <p className="mt-1 text-xs font-medium text-rose-200">
-                {timeRange === 'today' || timeRange === 'yesterday' ? `${formatCurrency(summary.avgDailyExpenses || 0)}/expense avg` :
-                 `Avg: ${formatCurrency(summary.avgDailyExpenses || 0)}/day`}
+                {timeRange === 'today' || timeRange === 'yesterday' ? `${formatCurrency(summary.avgDailyExpenses || 0, companyCurrency)}/expense avg` :
+                 `Avg: ${formatCurrency(summary.avgDailyExpenses || 0, companyCurrency)}/day`}
               </p>
             </div>
             <div className="rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 p-2 text-lg shadow-md">
@@ -404,7 +412,7 @@ const AnalyticsDashboard = () => {
                   {timeRangeBadge.text}
                 </span>
               </div>
-              <p className="mt-1.5 text-xl font-bold text-white">{formatCurrency(summary.totalProfit)}</p>
+              <p className="mt-1.5 text-xl font-bold text-white">{formatCurrency(summary.totalProfit, companyCurrency)}</p>
               <p className={`mt-1 text-xs font-medium ${
                 summary.totalProfit >= 0 ? "text-emerald-200" : "text-amber-200"
               }`}>
