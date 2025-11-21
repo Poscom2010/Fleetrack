@@ -32,13 +32,13 @@ const OnboardingPage = () => {
       )}
 
       {/* Header */}
-      <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-            <Lightbulb className="w-6 h-6 text-yellow-400" />
+      <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-3">
+        <div className="flex items-start gap-2">
+          <div className="p-1.5 bg-yellow-500/10 border border-yellow-500/30 rounded-md">
+            <Lightbulb className="w-4 h-4 text-yellow-400" />
           </div>
           <div className="flex-1">
-            <h1 className="text-lg font-bold text-white mb-1">
+            <h1 className="text-base font-bold text-white mb-0.5">
               Onboarding Guide
             </h1>
             <p className="text-slate-300 text-xs">
@@ -49,20 +49,20 @@ const OnboardingPage = () => {
       </div>
 
       {/* Main Content */}
-      <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4">
-        <div className="max-w-3xl mx-auto text-center">
+      <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-3">
+        <div className="max-w-2xl mx-auto text-center">
           {/* Icon */}
-          <div className="inline-flex p-4 bg-blue-500/10 border border-blue-500/30 rounded-full mb-4">
-            <Play className="w-8 h-8 text-blue-400" />
+          <div className="inline-flex p-2 bg-blue-500/10 border border-blue-500/30 rounded-full mb-2">
+            <Play className="w-5 h-5 text-blue-400" />
           </div>
 
           {/* Title */}
-          <h2 className="text-base font-bold text-white mb-3">
+          <h2 className="text-sm font-bold text-white mb-1.5">
             Ready to Learn?
           </h2>
 
           {/* Description */}
-          <p className="text-slate-300 mb-6 text-xs">
+          <p className="text-slate-300 mb-3 text-xs">
             The onboarding guide will walk you through the key features and workflows 
             based on your role. It takes just a few minutes and will help you get the 
             most out of FleetTrack.
@@ -71,32 +71,32 @@ const OnboardingPage = () => {
           {/* Start Button */}
           <button
             onClick={handleStartOnboarding}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold text-sm shadow-lg transition transform hover:scale-105"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold text-xs shadow-lg transition transform hover:scale-105"
           >
-            <Play className="w-4 h-4" />
+            <Play className="w-3.5 h-3.5" />
             Start Onboarding Tour
           </button>
 
           {/* Info Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-8">
-            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
-              <div className="text-2xl mb-1.5">🎯</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-4">
+            <div className="bg-slate-800/50 border border-slate-700 rounded-md p-2">
+              <div className="text-lg mb-1">🎯</div>
               <h3 className="text-white font-semibold mb-0.5 text-xs">Role-Based</h3>
               <p className="text-slate-400 text-[10px]">
                 Tailored content for your specific role
               </p>
             </div>
 
-            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
-              <div className="text-2xl mb-1.5">⚡</div>
+            <div className="bg-slate-800/50 border border-slate-700 rounded-md p-2">
+              <div className="text-lg mb-1">⚡</div>
               <h3 className="text-white font-semibold mb-0.5 text-xs">Quick & Easy</h3>
               <p className="text-slate-400 text-[10px]">
                 Takes only 2-3 minutes to complete
               </p>
             </div>
 
-            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
-              <div className="text-2xl mb-1.5">💡</div>
+            <div className="bg-slate-800/50 border border-slate-700 rounded-md p-2">
+              <div className="text-lg mb-1">💡</div>
               <h3 className="text-white font-semibold mb-0.5 text-xs">Step-by-Step</h3>
               <p className="text-slate-400 text-[10px]">
                 Clear instructions for each feature
@@ -107,11 +107,11 @@ const OnboardingPage = () => {
       </div>
 
       {/* What You'll Learn */}
-      <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4">
-        <h2 className="text-sm font-bold text-white mb-4">What You'll Learn</h2>
+      <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-3">
+        <h2 className="text-sm font-bold text-white mb-2.5">What You'll Learn</h2>
         
         {userProfile?.role === 'company_admin' || userProfile?.role === 'company_manager' ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-start gap-2.5">
               <div className="mt-0.5 p-1 bg-blue-500/10 rounded-full">
                 <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -161,7 +161,7 @@ const OnboardingPage = () => {
             </div>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-start gap-2.5">
               <div className="mt-0.5 p-1 bg-blue-500/10 rounded-full">
                 <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -214,12 +214,12 @@ const OnboardingPage = () => {
       </div>
 
       {/* Help Section */}
-      <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <div className="text-2xl">💬</div>
+      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+        <div className="flex items-start gap-2">
+          <div className="text-lg">💬</div>
           <div className="flex-1">
-            <h3 className="text-white font-semibold mb-1.5 text-xs">Need More Help?</h3>
-            <p className="text-blue-200 text-[10px] mb-3">
+            <h3 className="text-white font-semibold mb-1 text-xs">Need More Help?</h3>
+            <p className="text-blue-200 text-[10px] mb-2">
               If you have questions after completing the onboarding, visit our Support page 
               or contact your administrator.
             </p>
