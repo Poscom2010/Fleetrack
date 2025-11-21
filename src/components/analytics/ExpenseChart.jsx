@@ -185,13 +185,19 @@ const ExpenseChart = ({ expensesByCategory = {}, expenseTrend = [] }) => {
             <span className="text-base">📉</span>
           </div>
           <h3 className="text-base font-bold text-white">
-            Expense Trends Over Time
+            Cumulative Expenses Over Time
           </h3>
         </div>
         {trendData.length > 0 ? (
-          <div className="mt-3 h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendData}>
+          <>
+            {trendData.length === 1 && (
+              <div className="mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-200">
+                💡 <span className="font-semibold">Tip:</span> Add expenses on different dates to see the trend grow over time!
+              </div>
+            )}
+            <div className="mt-3 h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trendData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} />
                 <XAxis
                   dataKey="date"
@@ -223,6 +229,7 @@ const ExpenseChart = ({ expensesByCategory = {}, expenseTrend = [] }) => {
               </LineChart>
             </ResponsiveContainer>
           </div>
+          </>
         ) : (
           <div className="mt-3 rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 py-12 text-center text-xs text-slate-400">
             No expense trend data available

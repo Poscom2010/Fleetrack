@@ -141,7 +141,7 @@ export const useAnalytics = (userId, timeRange = "all") => {
       // Fetch analytics data with userProfile
       const [analytics, mileage, alerts, licenseAlerts] = await Promise.all([
         getAnalyticsData(userId, filters, profile),
-        getMileageTrends(userId, filters),
+        getMileageTrends(userId, filters, profile),
         getServiceAlerts(userId),
         getLicenseExpiryAlerts(userId),
       ]);

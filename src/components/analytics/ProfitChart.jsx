@@ -93,7 +93,7 @@ const ProfitChart = ({
           <div className="rounded-lg bg-emerald-500/20 p-1.5">
             <span className="text-base">📈</span>
           </div>
-          <h3 className="text-base font-bold text-white">Profit Trends Over Time</h3>
+          <h3 className="text-base font-bold text-white">Cumulative Profit Over Time</h3>
         </div>
         {trendData.length > 0 ? (
           <div className="mt-3 h-56">

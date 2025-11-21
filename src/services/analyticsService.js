@@ -110,9 +110,28 @@ export const getAnalyticsData = async (userId, filters = {}, userProfile = null)
     const dailyCashInTrend = calculateDailyTotals(entriesByDate, "cashIn");
     const dailyExpenseTrend = calculateDailyTotals(expensesByDate, "amount");
 
-    // Calculate daily profit trend
-    const profitTrend = dailyCashInTrend.map((cashInData) => {
-      const expenseData = dailyExpenseTrend.find(
+    // Convert to cumulative trends
+    let cumulativeCashIn = 0;
+    const cumulativeCashInTrend = dailyCashInTrend.map(item => {
+      cumulativeCashIn += item.total;
+      return {
+        date: item.date,
+        total: cumulativeCashIn
+      };
+    });
+
+    let cumulativeExpenses = 0;
+    const cumulativeExpenseTrend = dailyExpenseTrend.map(item => {
+      cumulativeExpenses += item.total;
+      return {
+        date: item.date,
+        total: cumulativeExpenses
+      };
+    });
+
+    // Calculate cumulative profit trend
+    const profitTrend = cumulativeCashInTrend.map((cashInData) => {
+      const expenseData = cumulativeExpenseTrend.find(
         (e) => e.date === cashInData.date
       );
       return {
@@ -144,8 +163,8 @@ export const getAnalyticsData = async (userId, filters = {}, userProfile = null)
       lowPerformer,
       trends: {
         profit: profitTrend,
-        cashIn: dailyCashInTrend,
-        expenses: dailyExpenseTrend,
+        cashIn: cumulativeCashInTrend,
+        expenses: cumulativeExpenseTrend,
       },
       expensesByCategory,
       vehicles,
@@ -162,11 +181,26 @@ export const getAnalyticsData = async (userId, filters = {}, userProfile = null)
  * Get mileage trends per vehicle
  * @param {string} userId - The user ID
  * @param {Object} filters - Optional filters (startDate, endDate)
+ * @param {Object} userProfile - Optional user profile to determine if admin/manager
  * @returns {Promise<Object>} Mileage trends by vehicle
  */
-export const getMileageTrends = async (userId, filters = {}) => {
+export const getMileageTrends = async (userId, filters = {}, userProfile = null) => {
   try {
-    const dailyEntries = await getDailyEntries(userId, filters);
+    // Determine if user is admin/manager who should see all company data
+    const isAdminOrManager = userProfile && (
+      userProfile.role === 'company_admin' || 
+      userProfile.role === 'company_manager'
+    );
+    
+    const companyId = userProfile?.companyId;
+
+    // Fetch daily entries - use company-wide function for admins/managers
+    let dailyEntries;
+    if (isAdminOrManager && companyId) {
+      dailyEntries = await getCompanyDailyEntries(companyId, filters);
+    } else {
+      dailyEntries = await getDailyEntries(userId, filters);
+    }
 
     // Group entries by vehicle and date
     const mileageByVehicle = {};
@@ -189,15 +223,25 @@ export const getMileageTrends = async (userId, filters = {}) => {
       mileageByVehicle[vehicleId][dateStr] += entry.distanceTraveled || 0;
     });
 
-    // Convert to array format for charts
+    // Convert to array format for charts with cumulative mileage per vehicle
     const mileageTrends = {};
     Object.entries(mileageByVehicle).forEach(([vehicleId, dateData]) => {
-      mileageTrends[vehicleId] = Object.entries(dateData)
+      const sortedEntries = Object.entries(dateData)
         .map(([date, mileage]) => ({
           date,
           mileage,
         }))
         .sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      // Calculate cumulative mileage for this vehicle
+      let vehicleRunningTotal = 0;
+      mileageTrends[vehicleId] = sortedEntries.map(entry => {
+        vehicleRunningTotal += entry.mileage;
+        return {
+          date: entry.date,
+          mileage: vehicleRunningTotal,
+        };
+      });
     });
 
     // Calculate cumulative mileage
@@ -214,6 +258,8 @@ export const getMileageTrends = async (userId, filters = {}) => {
       (a, b) => new Date(a) - new Date(b)
     );
 
+    // Calculate cumulative mileage (running total)
+    let runningTotal = 0;
     const cumulativeMileage = sortedDates.map((date) => {
       const totalForDate = dailyEntries
         .filter((entry) => {
@@ -225,9 +271,11 @@ export const getMileageTrends = async (userId, filters = {}) => {
         })
         .reduce((sum, entry) => sum + (entry.distanceTraveled || 0), 0);
 
+      runningTotal += totalForDate;
+
       return {
         date,
-        totalMileage: totalForDate,
+        totalMileage: runningTotal,
       };
     });
 

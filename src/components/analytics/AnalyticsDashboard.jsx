@@ -30,6 +30,7 @@ const timeRangeOptions = [
 const AnalyticsDashboard = () => {
   const { user } = useAuth();
   const [timeRange, setTimeRange] = useState("all");
+  const [showDiagnostic, setShowDiagnostic] = useState(false);
 
   const {
     analyticsData,
@@ -83,6 +84,9 @@ const AnalyticsDashboard = () => {
     lowPerformer,
     trends,
     expensesByCategory,
+    vehicles,
+    dailyEntries,
+    expenses,
   } = analyticsData;
 
   // Helper function to get time range badge
@@ -95,6 +99,42 @@ const AnalyticsDashboard = () => {
 
   return (
     <div className="space-y-3">
+      {/* Diagnostic Info Panel - Toggleable */}
+      {showDiagnostic && (
+        <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs relative">
+          <button
+            onClick={() => setShowDiagnostic(false)}
+            className="absolute top-2 right-2 text-yellow-400 hover:text-yellow-200 transition"
+            title="Hide diagnostic info"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div className="font-semibold text-yellow-400 mb-1">📊 Data Diagnostic Info (Filter: {timeRangeBadge.text}):</div>
+          <div className="text-yellow-200 grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-0.5">
+            <div>• Daily Entries: <span className="font-semibold">{dailyEntries?.length || 0}</span> trips</div>
+            <div>• Expenses: <span className="font-semibold">{expenses?.length || 0}</span> records</div>
+            <div>• Vehicles: <span className="font-semibold">{vehicles?.length || 0}</span></div>
+            <div>• Mileage Points: <span className="font-semibold">{mileageTrends?.cumulativeMileage?.length || 0}</span> dates</div>
+            <div>• Expense Trend: <span className="font-semibold">{trends?.expenses?.length || 0}</span> dates</div>
+            <div>• Profit Trend: <span className="font-semibold">{trends?.profit?.length || 0}</span> dates</div>
+          </div>
+          {expenses && expenses.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-yellow-500/20 text-yellow-200">
+              <div className="font-semibold text-yellow-300 mb-1">Expense Date Range:</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>First: {expenses[expenses.length - 1]?.date?.toLocaleDateString() || 'N/A'}</div>
+                <div>Last: {expenses[0]?.date?.toLocaleDateString() || 'N/A'}</div>
+              </div>
+              <div className="mt-1">
+                Unique Dates: {new Set(expenses.map(e => e.date?.toISOString().split('T')[0])).size}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Hero Header with Gradient */}
       <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-3 shadow-xl">
         <div className="absolute inset-0 bg-gradient-to-br from-brand-500/10 via-transparent to-purple-500/10" />
