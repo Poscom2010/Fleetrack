@@ -32,6 +32,26 @@ const TeamPage = () => {
   const isCompanyAdmin = userProfile?.role === 'company_admin';
   const isCompanyManager = userProfile?.role === 'company_manager';
 
+  // Helper function to format time ago (like system admin dashboard)
+  const getTimeAgo = (date) => {
+    if (!date) return 'Never';
+    
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffSecs < 60) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    
+    // For older dates, show the actual date
+    return date.toLocaleDateString();
+  };
+
   // Only admins and managers can access
   useEffect(() => {
     if (userProfile && !isSystemAdmin && !isCompanyAdmin && !isCompanyManager) {
@@ -178,6 +198,8 @@ const TeamPage = () => {
       const { collection, query, where, getDocs } = await import('firebase/firestore');
       const { db } = await import('../services/firebase');
 
+      console.log('📊 Loading driver stats for company:', company?.id);
+
       let q;
       
       if (isSystemAdmin) {
@@ -192,17 +214,41 @@ const TeamPage = () => {
       const snapshot = await getDocs(q);
       const stats = {};
 
+      console.log('📊 Found', snapshot.size, 'daily entries');
+
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
         const userId = data.userId;
+        const vehicleId = data.vehicleId;
         const distance = data.distanceTraveled || 0;
-        if (!userId) return;
+        
+        if (!userId) {
+          console.log('⚠️ Entry without userId:', docSnap.id, data);
+          return;
+        }
+        
         if (!stats[userId]) {
-          stats[userId] = { totalKm: 0 };
+          stats[userId] = { 
+            totalKm: 0,
+            vehiclesUsed: new Set() // Track all vehicles this driver has used
+          };
         }
         stats[userId].totalKm += distance;
+        
+        // Track which vehicles this driver has used
+        if (vehicleId) {
+          stats[userId].vehiclesUsed.add(vehicleId);
+        }
+        
+        console.log('✅ Added', distance, 'km for user:', userId, 'Vehicle:', vehicleId, 'Total:', stats[userId].totalKm);
+      });
+      
+      // Convert Sets to Arrays for easier use in UI
+      Object.keys(stats).forEach(userId => {
+        stats[userId].vehiclesUsed = Array.from(stats[userId].vehiclesUsed);
       });
 
+      console.log('📊 Final driver stats:', stats);
       setDriverStats(stats);
     } catch (error) {
       console.error('Error loading driver stats:', error);
@@ -210,7 +256,29 @@ const TeamPage = () => {
   };
 
   // Show all company users in the table (not just drivers)
-  const teamMembers = users;
+  // Also include driver profiles who have trip data but aren't invited yet
+  const teamMembers = React.useMemo(() => {
+    const members = [...users];
+    
+    // Add uninvited driver profiles who have trip data
+    driverProfiles.forEach(profile => {
+      // Check if this profile has any trip data
+      if (driverStats[profile.id] && driverStats[profile.id].totalKm > 0) {
+        // Add as a pseudo-user with special flag
+        members.push({
+          id: profile.id,
+          fullName: profile.fullName,
+          email: profile.email || 'Not provided',
+          phoneNumber: profile.phoneNumber,
+          role: 'driver_profile', // Special role to identify uninvited drivers
+          isDriverProfile: true,
+          lastLoginAt: null, // Not invited yet
+        });
+      }
+    });
+    
+    return members;
+  }, [users, driverProfiles, driverStats]);
 
   const handleUpdateUserRole = async (userId, newRole) => {
     try {
@@ -405,18 +473,22 @@ const TeamPage = () => {
                 ) : (
                   teamMembers.map((driver) => {
                     const assignedVehicle = vehicles.find((v) => v.userId === driver.id);
-                    const stats = driverStats[driver.id] || { totalKm: 0 };
+                    const stats = driverStats[driver.id] || { totalKm: 0, vehiclesUsed: [] };
+                    const vehicleCount = stats.vehiclesUsed?.length || 0;
+                    console.log('🔍 Driver:', driver.id, driver.fullName, 'Stats:', stats, 'Vehicle count:', vehicleCount);
                     let lastLogin = driver.lastLoginAt;
                     if (lastLogin && lastLogin.toDate) {
                       lastLogin = lastLogin.toDate();
                     }
                     
-                    const lastLoginText = lastLogin
-                      ? `${lastLogin.toLocaleDateString()} ${lastLogin.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                      : 'Never';
+                    const lastLoginText = driver.isDriverProfile
+                      ? 'Not yet invited'
+                      : getTimeAgo(lastLogin);
 
                     let loginStatus = 'active';
-                    if (lastLogin) {
+                    if (driver.isDriverProfile) {
+                      loginStatus = 'pending'; // Special status for uninvited drivers
+                    } else if (lastLogin) {
                       const daysSinceLogin = Math.floor((Date.now() - lastLogin.getTime()) / (1000 * 60 * 60 * 24));
                       if (daysSinceLogin > 30) {
                         loginStatus = 'inactive';
@@ -444,21 +516,50 @@ const TeamPage = () => {
                           </div>
                         </div>
 
-                        {/* Assigned Vehicle */}
+                        {/* Vehicle Assignment */}
                         <div className="mb-3">
-                          <span className="text-slate-500 text-xs">Assigned Vehicle:</span>
-                          <select
-                            value={assignedVehicle?.id || ''}
-                            onChange={(e) => handleAssignVehicle(driver.id, e.target.value)}
-                            className="w-full mt-1 bg-slate-800 text-white px-3 py-2 rounded border border-slate-600 text-sm focus:border-blue-500 focus:outline-none"
-                          >
-                            <option value="">No vehicle</option>
-                            {vehicles.map((vehicle) => (
-                              <option key={vehicle.id} value={vehicle.id}>
-                                {vehicle.name} ({vehicle.registrationNumber})
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-slate-500 text-xs">Vehicle{vehicleCount > 1 ? 's' : ''}:</span>
+                            {vehicleCount > 1 && (
+                              <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded">
+                                {vehicleCount} vehicles
+                              </span>
+                            )}
+                          </div>
+                          {stats.vehiclesUsed && stats.vehiclesUsed.length > 0 ? (
+                            vehicleCount === 1 ? (
+                              // Single vehicle - just display it
+                              (() => {
+                                const vehicle = vehicles.find(v => v.id === stats.vehiclesUsed[0]);
+                                return vehicle ? (
+                                  <div className="flex items-center gap-2 text-xs bg-slate-800 px-3 py-2 rounded border border-slate-600">
+                                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    <span className="text-slate-200 font-medium">{vehicle.name} ({vehicle.registrationNumber})</span>
+                                  </div>
+                                ) : <p className="text-xs text-slate-400">Vehicle not found</p>;
+                              })()
+                            ) : (
+                              // Multiple vehicles - show dropdown to select
+                              <div className="space-y-2">
+                                {stats.vehiclesUsed.map(vehicleId => {
+                                  const vehicle = vehicles.find(v => v.id === vehicleId);
+                                  return vehicle ? (
+                                    <div key={vehicleId} className="flex items-center gap-2 text-xs bg-slate-800 px-2 py-1.5 rounded border border-slate-600">
+                                      <svg className="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                      </svg>
+                                      <span className="text-slate-200">{vehicle.name} ({vehicle.registrationNumber})</span>
+                                    </div>
+                                  ) : null;
+                                })}
+                                <p className="text-xs text-slate-500 italic">Used multiple vehicles</p>
+                              </div>
+                            )
+                          ) : (
+                            <p className="text-xs text-slate-400 mt-1">No trips captured yet</p>
+                          )}
                         </div>
 
                         {/* Stats Grid */}
@@ -474,12 +575,14 @@ const TeamPage = () => {
                                 loginStatus === 'active' ? 'bg-green-500' :
                                 loginStatus === 'warning' ? 'bg-orange-500' :
                                 loginStatus === 'inactive' ? 'bg-red-500' :
+                                loginStatus === 'pending' ? 'bg-yellow-500' :
                                 'bg-slate-500'
                               }`} />
                               <span className={`text-xs ${
                                 loginStatus === 'active' ? 'text-slate-200' :
                                 loginStatus === 'warning' ? 'text-orange-400' :
                                 loginStatus === 'inactive' ? 'text-red-400' :
+                                loginStatus === 'pending' ? 'text-yellow-400' :
                                 'text-slate-500'
                               }`}>
                                 {lastLoginText}
@@ -491,7 +594,14 @@ const TeamPage = () => {
                         {/* Role */}
                         <div className="mb-3">
                           <span className="text-slate-500 text-xs">Role:</span>
-                          {driver.id === user?.uid ? (
+                          {driver.isDriverProfile ? (
+                            <div className="mt-1">
+                              <span className="inline-block px-3 py-1.5 rounded text-xs font-medium bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                                ⏳ Pending Invitation
+                              </span>
+                              <p className="text-xs text-slate-500 mt-1">Driver has trip data but hasn't been invited yet</p>
+                            </div>
+                          ) : driver.id === user?.uid ? (
                             <div className="flex items-center gap-2 mt-1">
                               <span className={`px-3 py-1.5 rounded text-xs font-medium ${
                                 driver.role === 'company_admin' 
@@ -526,12 +636,21 @@ const TeamPage = () => {
 
                         {/* Actions */}
                         <div className="pt-3 border-t border-slate-700/50">
-                          <button
-                            onClick={() => handleResetPassword(driver.id, driver.email)}
-                            className="w-full px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm transition"
-                          >
-                            Reset Password
-                          </button>
+                          {driver.isDriverProfile ? (
+                            <button
+                              onClick={() => setShowInviteModal(true)}
+                              className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition"
+                            >
+                              Invite Driver
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleResetPassword(driver.id, driver.email)}
+                              className="w-full px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm transition"
+                            >
+                              Reset Password
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -548,7 +667,10 @@ const TeamPage = () => {
                       Driver
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      Assigned Vehicle
+                      Vehicles Used
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      # Vehicles
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">
                       Total km travelled
@@ -567,7 +689,7 @@ const TeamPage = () => {
                 <tbody className="divide-y divide-slate-800">
                   {teamMembers.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="px-4 py-12 text-center">
+                      <td colSpan="7" className="px-4 py-12 text-center">
                         <svg className="mx-auto h-12 w-12 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
@@ -578,19 +700,22 @@ const TeamPage = () => {
                   ) : (
                     teamMembers.map((driver) => {
                       const assignedVehicle = vehicles.find((v) => v.userId === driver.id);
-                      const stats = driverStats[driver.id] || { totalKm: 0 };
+                      const stats = driverStats[driver.id] || { totalKm: 0, vehiclesUsed: [] };
+                      const vehicleCount = stats.vehiclesUsed?.length || 0;
                       let lastLogin = driver.lastLoginAt;
                       if (lastLogin && lastLogin.toDate) {
                         lastLogin = lastLogin.toDate();
                       }
                       
-                      const lastLoginText = lastLogin
-                        ? `${lastLogin.toLocaleDateString()} ${lastLogin.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                        : 'Never';
+                      const lastLoginText = driver.isDriverProfile
+                        ? 'Not yet invited'
+                        : getTimeAgo(lastLogin);
 
                       // Calculate days since last login for status indicator
                       let loginStatus = 'active'; // green
-                      if (lastLogin) {
+                      if (driver.isDriverProfile) {
+                        loginStatus = 'pending'; // yellow - uninvited driver
+                      } else if (lastLogin) {
                         const daysSinceLogin = Math.floor((Date.now() - lastLogin.getTime()) / (1000 * 60 * 60 * 24));
                         if (daysSinceLogin > 30) {
                           loginStatus = 'inactive'; // red
@@ -619,18 +744,52 @@ const TeamPage = () => {
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            <select
-                              value={assignedVehicle?.id || ''}
-                              onChange={(e) => handleAssignVehicle(driver.id, e.target.value)}
-                              className="bg-slate-800 text-white px-3 py-1.5 rounded border border-slate-600 text-xs focus:border-blue-500 focus:outline-none min-w-[150px]"
-                            >
-                              <option value="">No vehicle</option>
-                              {vehicles.map((vehicle) => (
-                                <option key={vehicle.id} value={vehicle.id}>
-                                  {vehicle.name} ({vehicle.registrationNumber})
-                                </option>
-                              ))}
-                            </select>
+                            {stats.vehiclesUsed && stats.vehiclesUsed.length > 0 ? (
+                              vehicleCount === 1 ? (
+                                // Single vehicle - display prominently
+                                (() => {
+                                  const vehicle = vehicles.find(v => v.id === stats.vehiclesUsed[0]);
+                                  return vehicle ? (
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                      <span className="text-slate-200 font-medium">{vehicle.name} ({vehicle.registrationNumber})</span>
+                                    </div>
+                                  ) : <span className="text-xs text-slate-400">Vehicle not found</span>;
+                                })()
+                              ) : (
+                                // Multiple vehicles - show list
+                                <div className="space-y-1">
+                                  {stats.vehiclesUsed.map(vehicleId => {
+                                    const vehicle = vehicles.find(v => v.id === vehicleId);
+                                    return vehicle ? (
+                                      <div key={vehicleId} className="flex items-center gap-1.5 text-xs bg-slate-800 px-2 py-1 rounded border border-slate-600">
+                                        <svg className="w-3 h-3 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span className="text-slate-200">{vehicle.name} ({vehicle.registrationNumber})</span>
+                                      </div>
+                                    ) : null;
+                                  })}
+                                </div>
+                              )
+                            ) : (
+                              <span className="text-xs text-slate-400">No trips yet</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {vehicleCount > 0 ? (
+                              <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
+                                vehicleCount === 1 ? 'bg-green-500/20 text-green-400' :
+                                vehicleCount === 2 ? 'bg-blue-500/20 text-blue-400' :
+                                'bg-purple-500/20 text-purple-400'
+                              }`}>
+                                {vehicleCount}
+                              </span>
+                            ) : (
+                              <span className="text-slate-500 text-sm">-</span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-right">
                             <span className="text-sm font-semibold text-slate-200">
@@ -644,12 +803,14 @@ const TeamPage = () => {
                                 loginStatus === 'active' ? 'bg-green-500' :
                                 loginStatus === 'warning' ? 'bg-orange-500' :
                                 loginStatus === 'inactive' ? 'bg-red-500' :
+                                loginStatus === 'pending' ? 'bg-yellow-500' :
                                 'bg-slate-500'
                               }`} />
                               <span className={`text-xs ${
                                 loginStatus === 'active' ? 'text-slate-200' :
                                 loginStatus === 'warning' ? 'text-orange-400' :
                                 loginStatus === 'inactive' ? 'text-red-400' :
+                                loginStatus === 'pending' ? 'text-yellow-400' :
                                 'text-slate-500'
                               }`}>
                                 {lastLoginText}
@@ -657,7 +818,11 @@ const TeamPage = () => {
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            {driver.id === user?.uid ? (
+                            {driver.isDriverProfile ? (
+                              <span className="px-3 py-1.5 rounded text-xs font-medium bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                                ⏳ Pending Invitation
+                              </span>
+                            ) : driver.id === user?.uid ? (
                               // Current user - show locked badge regardless of role
                               <div className="flex items-center gap-2">
                                 <span className={`px-3 py-1.5 rounded text-xs font-medium ${
@@ -693,13 +858,23 @@ const TeamPage = () => {
                             )}
                           </td>
                           <td className="px-4 py-3">
-                            <button
-                              onClick={() => handleResetPassword(driver.id, driver.email)}
-                              className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs transition"
-                              title="Reset Password"
-                            >
-                              Reset Password
-                            </button>
+                            {driver.isDriverProfile ? (
+                              <button
+                                onClick={() => setShowInviteModal(true)}
+                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition"
+                                title="Invite Driver"
+                              >
+                                Invite Driver
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleResetPassword(driver.id, driver.email)}
+                                className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs transition"
+                                title="Reset Password"
+                              >
+                                Reset Password
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );

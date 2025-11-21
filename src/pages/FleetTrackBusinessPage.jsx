@@ -353,21 +353,21 @@ const FleetTrackBusinessPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-slate-950 p-4 overflow-x-hidden">
+      <div className="max-w-7xl mx-auto space-y-6 w-full">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-1">
               FleetTrack Business Analytics
             </h1>
-            <p className="text-slate-400 text-sm">
+            <p className="text-slate-400 text-xs sm:text-sm">
               Track FleetTrack's growth, revenue, and business performance
             </p>
           </div>
           <button
             onClick={fetchBusinessMetrics}
-            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-medium transition flex items-center justify-center gap-2 shadow-lg"
+            className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-medium transition flex items-center justify-center gap-2 shadow-lg text-sm"
           >
             <Activity className="w-4 h-4" />
             <span className="hidden sm:inline">Refresh Data</span>
@@ -382,17 +382,17 @@ const FleetTrackBusinessPage = () => {
             Revenue & Financial Metrics
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-br from-green-900/40 to-slate-900 border border-green-500/30 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
+            <div className="bg-gradient-to-br from-green-900/40 to-slate-900 border border-green-500/30 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
                 <p className="text-xs text-green-300 font-semibold uppercase tracking-wide">MRR</p>
                 <DollarSign className="w-5 h-5 text-green-400" />
               </div>
-              <p className="text-3xl font-bold text-white mb-1">
+              <p className="text-2xl sm:text-3xl font-bold text-white mb-1">
                 ${businessMetrics.mrr.toLocaleString()}
               </p>
-              <div className="flex items-center gap-1 text-xs">
+              <div className="flex items-center gap-1 text-xs flex-wrap">
                 {businessMetrics.revenueGrowth >= 0 ? (
-                  <ArrowUpRight className="w-3 h-3 text-green-400" />
+                  <ArrowUpRight className="w-3 h-3 text-green-400 flex-shrink-0" />
                 ) : (
                   <ArrowDownRight className="w-3 h-3 text-red-400" />
                 )}
@@ -402,34 +402,34 @@ const FleetTrackBusinessPage = () => {
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-blue-900/40 to-slate-900 border border-blue-500/30 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
+            <div className="bg-gradient-to-br from-blue-900/40 to-slate-900 border border-blue-500/30 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
                 <p className="text-xs text-blue-300 font-semibold uppercase tracking-wide">ARR</p>
                 <TrendingUp className="w-5 h-5 text-blue-400" />
               </div>
-              <p className="text-3xl font-bold text-white mb-1">
+              <p className="text-2xl sm:text-3xl font-bold text-white mb-1">
                 ${businessMetrics.arr.toLocaleString()}
               </p>
               <p className="text-xs text-blue-300">Annual recurring revenue</p>
             </div>
 
-            <div className="bg-gradient-to-br from-purple-900/40 to-slate-900 border border-purple-500/30 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
+            <div className="bg-gradient-to-br from-purple-900/40 to-slate-900 border border-purple-500/30 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
                 <p className="text-xs text-purple-300 font-semibold uppercase tracking-wide">ARPC</p>
                 <PieChart className="w-5 h-5 text-purple-400" />
               </div>
-              <p className="text-3xl font-bold text-white mb-1">
+              <p className="text-2xl sm:text-3xl font-bold text-white mb-1">
                 ${businessMetrics.averageRevenuePerCustomer}
               </p>
               <p className="text-xs text-purple-300">Avg revenue per customer</p>
             </div>
 
-            <div className="bg-gradient-to-br from-amber-900/40 to-slate-900 border border-amber-500/30 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
+            <div className="bg-gradient-to-br from-amber-900/40 to-slate-900 border border-amber-500/30 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
                 <p className="text-xs text-amber-300 font-semibold uppercase tracking-wide">LTV</p>
                 <Target className="w-5 h-5 text-amber-400" />
               </div>
-              <p className="text-3xl font-bold text-white mb-1">
+              <p className="text-2xl sm:text-3xl font-bold text-white mb-1">
                 ${businessMetrics.customerLifetimeValue}
               </p>
               <p className="text-xs text-amber-300">Customer lifetime value</p>
@@ -444,12 +444,12 @@ const FleetTrackBusinessPage = () => {
             Customer Growth & Acquisition
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
+            <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
                 <p className="text-xs text-slate-400 uppercase tracking-wide">Total Customers</p>
                 <Building2 className="w-5 h-5 text-blue-400" />
               </div>
-              <p className="text-3xl font-bold text-white mb-1">
+              <p className="text-2xl sm:text-3xl font-bold text-white mb-1">
                 {businessMetrics.totalCustomers}
               </p>
               <div className="flex items-center gap-1 text-xs">
@@ -464,12 +464,12 @@ const FleetTrackBusinessPage = () => {
               </div>
             </div>
 
-            <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
+            <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
                 <p className="text-xs text-slate-400 uppercase tracking-wide">Paid Customers</p>
                 <DollarSign className="w-5 h-5 text-green-400" />
               </div>
-              <p className="text-3xl font-bold text-white mb-1">
+              <p className="text-2xl sm:text-3xl font-bold text-white mb-1">
                 {businessMetrics.paidCustomers}
               </p>
               <p className="text-xs text-slate-400">
@@ -479,23 +479,23 @@ const FleetTrackBusinessPage = () => {
               </p>
             </div>
 
-            <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
+            <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
                 <p className="text-xs text-slate-400 uppercase tracking-wide">Trial Customers</p>
                 <Calendar className="w-5 h-5 text-orange-400" />
               </div>
-              <p className="text-3xl font-bold text-white mb-1">
+              <p className="text-2xl sm:text-3xl font-bold text-white mb-1">
                 {businessMetrics.trialCustomers}
               </p>
               <p className="text-xs text-slate-400">Potential conversions</p>
             </div>
 
-            <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
+            <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
                 <p className="text-xs text-slate-400 uppercase tracking-wide">New This Month</p>
                 <TrendingUp className="w-5 h-5 text-purple-400" />
               </div>
-              <p className="text-3xl font-bold text-white mb-1">
+              <p className="text-2xl sm:text-3xl font-bold text-white mb-1">
                 +{businessMetrics.newCustomersThisMonth}
               </p>
               <p className="text-xs text-slate-400">
@@ -512,9 +512,9 @@ const FleetTrackBusinessPage = () => {
             Platform Usage & Engagement
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-5">
-              <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">Total Users</p>
-              <p className="text-3xl font-bold text-white mb-1">
+            <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4">
+              <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">Total Users</p>
+              <p className="text-2xl sm:text-3xl font-bold text-white mb-1">
                 {businessMetrics.totalUsers}
               </p>
               <p className="text-xs text-slate-400">
@@ -522,9 +522,9 @@ const FleetTrackBusinessPage = () => {
               </p>
             </div>
 
-            <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-5">
-              <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">Total Vehicles</p>
-              <p className="text-3xl font-bold text-white mb-1">
+            <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4">
+              <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">Total Vehicles</p>
+              <p className="text-2xl sm:text-3xl font-bold text-white mb-1">
                 {businessMetrics.totalVehicles}
               </p>
               <p className="text-xs text-slate-400">
@@ -532,17 +532,17 @@ const FleetTrackBusinessPage = () => {
               </p>
             </div>
 
-            <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-5">
-              <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">Total Trips</p>
-              <p className="text-3xl font-bold text-white mb-1">
+            <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4">
+              <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">Total Trips</p>
+              <p className="text-2xl sm:text-3xl font-bold text-white mb-1">
                 {businessMetrics.totalTrips.toLocaleString()}
               </p>
               <p className="text-xs text-slate-400">All-time entries captured</p>
             </div>
 
-            <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-5">
-              <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">Active Rate</p>
-              <p className="text-3xl font-bold text-white mb-1">
+            <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4">
+              <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">Active Rate</p>
+              <p className="text-2xl sm:text-3xl font-bold text-white mb-1">
                 {businessMetrics.activeUsageRate}%
               </p>
               <p className="text-xs text-slate-400">
@@ -554,14 +554,15 @@ const FleetTrackBusinessPage = () => {
 
         {/* Growth Chart */}
         {growthHistory.length > 0 && (
-          <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-6">
+          <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4 sm:p-6">
             <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-green-400" />
               Revenue & Customer Growth Trend
             </h2>
             <div className="space-y-4">
               {/* Chart */}
-              <div className="relative h-64">
+              <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+                <div className="relative h-64 min-w-[500px] sm:min-w-0">
                 <div className="absolute inset-0 flex items-end justify-between gap-2 px-2">
                   {growthHistory.map((data, index) => {
                     const maxRevenue = Math.max(...growthHistory.map(d => d.revenue), 1);
@@ -601,9 +602,10 @@ const FleetTrackBusinessPage = () => {
                   })}
                 </div>
               </div>
+              </div>
               
               {/* Legend */}
-              <div className="flex items-center justify-center gap-6 pt-4 border-t border-slate-700">
+              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 pt-4 border-t border-slate-700 text-xs sm:text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded bg-gradient-to-t from-blue-900/60 to-blue-700/60"></div>
                   <span className="text-xs text-slate-400">Historical Months</span>
@@ -619,7 +621,7 @@ const FleetTrackBusinessPage = () => {
               </div>
 
               {/* Key Metrics Summary */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-700">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 pt-4 border-t border-slate-700">
                 <div className="text-center">
                   <p className="text-xs text-slate-400 mb-1">Revenue Growth Rate</p>
                   <p className={`text-2xl font-bold ${businessMetrics.revenueGrowth >= 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -671,7 +673,7 @@ const FleetTrackBusinessPage = () => {
 
         {/* Top Performing Companies */}
         {topPerformers.length > 0 && (
-          <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-6">
+          <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4 sm:p-6">
             <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
               <Target className="w-5 h-5 text-yellow-400" />
               Top Performing Companies
@@ -704,9 +706,9 @@ const FleetTrackBusinessPage = () => {
         )}
 
         {/* Key Growth Metrics Summary */}
-        <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-xl p-6">
+        <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-xl p-4 sm:p-6">
           <h2 className="text-lg font-bold text-white mb-4">📊 Growth Summary</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-sm">
             <div>
               <p className="text-slate-400 mb-1">Customer Acquisition</p>
               <p className="text-xl font-bold text-white">
