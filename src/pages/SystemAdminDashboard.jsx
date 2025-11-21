@@ -199,7 +199,7 @@ const SystemAdminDashboard = () => {
       const expenses = expensesSnapshot.docs.map(doc => doc.data());
 
       // Calculate total revenue and expenses
-      const totalRevenue = entries.reduce((sum, entry) => sum + (entry.revenue || 0), 0);
+      const totalRevenue = entries.reduce((sum, entry) => sum + (entry.cashIn || 0), 0);
       const totalExpenses = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
       const netProfit = totalRevenue - totalExpenses;
 
@@ -216,7 +216,7 @@ const SystemAdminDashboard = () => {
               companyActivity[user.companyId] = { trips: 0, revenue: 0, lastActivity: entryDate };
             }
             companyActivity[user.companyId].trips++;
-            companyActivity[user.companyId].revenue += entry.revenue || 0;
+            companyActivity[user.companyId].revenue += entry.cashIn || 0;
             if (entryDate > companyActivity[user.companyId].lastActivity) {
               companyActivity[user.companyId].lastActivity = entryDate;
             }
@@ -240,7 +240,7 @@ const SystemAdminDashboard = () => {
                 users: usersData.filter(u => u.companyId === user.companyId).length,
               };
             }
-            revenueByCompany[user.companyId].revenue += entry.totalCash || 0;
+            revenueByCompany[user.companyId].revenue += entry.cashIn || 0;
             revenueByCompany[user.companyId].entries += 1;
           }
         }
@@ -303,8 +303,8 @@ const SystemAdminDashboard = () => {
         return date >= startOfLastMonth && date < startOfMonth;
       });
 
-      const revenueThisMonth = tripsThisMonth.reduce((sum, e) => sum + (e.revenue || 0), 0);
-      const revenueLastMonth = tripsLastMonth.reduce((sum, e) => sum + (e.revenue || 0), 0);
+      const revenueThisMonth = tripsThisMonth.reduce((sum, e) => sum + (e.cashIn || 0), 0);
+      const revenueLastMonth = tripsLastMonth.reduce((sum, e) => sum + (e.cashIn || 0), 0);
 
       // Top companies by revenue
       const topCompanies = Object.entries(companyActivity)
@@ -470,7 +470,7 @@ const SystemAdminDashboard = () => {
         insights.push({
           type: 'success',
           title: 'Healthy Profit Margins',
-          message: `Operating at ${profitMargin.toFixed(1)}% profit margin with R${stats.netProfit.toFixed(0)} net profit.`
+          message: `Operating at ${profitMargin.toFixed(1)}% profit margin with $${stats.netProfit.toFixed(0)} net profit.`
         });
       } else if (profitMargin < 10) {
         insights.push({
@@ -790,8 +790,8 @@ This is an official communication from FleetTrack System Administration.
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <p className="text-2xl sm:text-3xl font-bold text-white mb-1">R{stats.totalRevenue.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
-            <p className="text-xs text-green-400">+R{stats.growthMetrics.revenueThisMonth.toLocaleString(undefined, {maximumFractionDigits: 0})} this month</p>
+            <p className="text-2xl sm:text-3xl font-bold text-white mb-1">${stats.totalRevenue.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
+            <p className="text-xs text-green-400">+${stats.growthMetrics.revenueThisMonth.toLocaleString(undefined, {maximumFractionDigits: 0})} this month</p>
           </div>
 
           <div className="bg-gradient-to-br from-blue-900/30 to-slate-800 rounded-xl p-4 border border-blue-500/30">
@@ -801,7 +801,7 @@ This is an official communication from FleetTrack System Administration.
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
-            <p className="text-2xl sm:text-3xl font-bold text-white mb-1">R{stats.netProfit.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-white mb-1">${stats.netProfit.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
             <p className="text-xs text-blue-400">{stats.totalRevenue > 0 ? ((stats.netProfit / stats.totalRevenue) * 100).toFixed(1) : 0}% profit margin</p>
           </div>
 
@@ -812,7 +812,7 @@ This is an official communication from FleetTrack System Administration.
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
-            <p className="text-2xl sm:text-3xl font-bold text-white mb-1">R{stats.avgRevenuePerCompany.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-white mb-1">${stats.avgRevenuePerCompany.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
             <p className="text-xs text-purple-400">{stats.totalCompanies} active companies</p>
           </div>
         </div>
@@ -956,7 +956,7 @@ This is an official communication from FleetTrack System Administration.
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
                     <span className="text-slate-400">Revenue:</span>
-                    <p className="text-green-400 font-semibold">R{company.revenue.toLocaleString()}</p>
+                    <p className="text-green-400 font-semibold">${company.revenue.toLocaleString()}</p>
                   </div>
                   <div>
                     <span className="text-slate-400">Entries:</span>
@@ -1003,7 +1003,7 @@ This is an official communication from FleetTrack System Administration.
                     </td>
                     <td className="py-3 px-2 text-white font-medium">{company.companyName}</td>
                     <td className="py-3 px-2 text-right text-green-400 font-semibold">
-                      R {company.revenue.toLocaleString()}
+                      ${company.revenue.toLocaleString()}
                     </td>
                     <td className="py-3 px-2 text-right text-blue-400">{company.entries.toLocaleString()}</td>
                     <td className="py-3 px-2 text-right text-purple-400">{company.vehicles}</td>

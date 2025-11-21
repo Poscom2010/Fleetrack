@@ -635,7 +635,7 @@ const DriverDashboard = () => {
             startKm: data.startKm || 0,
             endKm: data.endKm || 0,
             distance: distance,
-            cashIn: data.totalCash || 0,
+            cashIn: data.cashIn || 0,
             expenses: expenseMap[doc.id] || 0,
           };
         })
@@ -857,6 +857,7 @@ const CompanySettingsPage = () => {
     city: "",
     contactEmail: "",
     contactPhone: "",
+    currency: "USD",
   });
 
   React.useEffect(() => {
@@ -870,6 +871,7 @@ const CompanySettingsPage = () => {
         city: company.address?.city || "",
         contactEmail: company.contact?.email || "",
         contactPhone: company.contact?.phone || "",
+        currency: company.currency || "USD",
       });
     }
   }, [company]);
@@ -1145,6 +1147,7 @@ const CompanySettingsPage = () => {
           email: profileForm.contactEmail || null,
           phone: profileForm.contactPhone || null,
         },
+        currency: profileForm.currency || "USD",
       });
 
       await refreshUserData();
@@ -1293,6 +1296,26 @@ const CompanySettingsPage = () => {
                   className="w-full bg-slate-900 text-white px-4 py-2 rounded-lg border border-slate-600"
                   placeholder="company@example.com"
                 />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-300 mb-1">Currency</label>
+                <select
+                  value={profileForm.currency}
+                  onChange={(e) => setProfileForm({ ...profileForm, currency: e.target.value })}
+                  className="w-full bg-slate-900 text-white px-4 py-2 rounded-lg border border-slate-600"
+                >
+                  <option value="USD">$ - US Dollar (USD)</option>
+                  <option value="ZAR">R - South African Rand (ZAR)</option>
+                  <option value="EUR">€ - Euro (EUR)</option>
+                  <option value="GBP">£ - British Pound (GBP)</option>
+                  <option value="NGN">₦ - Nigerian Naira (NGN)</option>
+                  <option value="KES">KSh - Kenyan Shilling (KES)</option>
+                  <option value="GHS">₵ - Ghanaian Cedi (GHS)</option>
+                  <option value="TZS">TSh - Tanzanian Shilling (TZS)</option>
+                  <option value="UGX">USh - Ugandan Shilling (UGX)</option>
+                  <option value="ZMW">ZK - Zambian Kwacha (ZMW)</option>
+                </select>
+                <p className="text-xs text-slate-500 mt-1">This currency will be used across all financial displays for your company</p>
               </div>
               {profileForm.logoUrl && (
                 <div className="flex items-end justify-end">

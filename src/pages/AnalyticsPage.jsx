@@ -17,6 +17,25 @@ const AnalyticsPage = () => {
   const [fleetSummary, setFleetSummary] = useState(null);
   const [showAiInsightsModal, setShowAiInsightsModal] = useState(false);
 
+  // Get currency symbol based on company currency
+  const getCurrencySymbol = () => {
+    const currencyMap = {
+      'USD': '$',
+      'ZAR': 'R',
+      'EUR': '€',
+      'GBP': '£',
+      'NGN': '₦',
+      'KES': 'KSh',
+      'GHS': '₵',
+      'TZS': 'TSh',
+      'UGX': 'USh',
+      'ZMW': 'ZK'
+    };
+    return currencyMap[company?.currency || 'USD'] || '$';
+  };
+
+  const currencySymbol = getCurrencySymbol();
+
   useEffect(() => {
     if (company) {
       loadAnalytics();
@@ -68,7 +87,7 @@ const AnalyticsPage = () => {
         }, 0);
 
         const totalRevenue = vehicleEntries.reduce((sum, entry) => {
-          return sum + (entry.revenue || 0);
+          return sum + (entry.cashIn || 0);
         }, 0);
 
         const profit = totalRevenue - totalExpenses;
@@ -133,7 +152,7 @@ const AnalyticsPage = () => {
         type: 'mileage',
         severity: vehicle.profit < 0 ? 'warning' : 'info',
         title: 'Highest Mileage Vehicle',
-        message: `${vehicle.vehicle.name} (${vehicle.vehicle.registrationNumber}) has the highest mileage with ${vehicle.totalDistance.toFixed(0)} km traveled, ${profitStatus} of R${Math.abs(vehicle.profit).toFixed(2)}.`
+        message: `${vehicle.vehicle.name} (${vehicle.vehicle.registrationNumber}) has the highest mileage with ${vehicle.totalDistance.toFixed(0)} km traveled, ${profitStatus} of ${currencySymbol}${Math.abs(vehicle.profit).toFixed(2)}.`
       });
     }
 
@@ -144,7 +163,7 @@ const AnalyticsPage = () => {
         type: 'profit',
         severity: 'success',
         title: 'Top Performer',
-        message: `${vehicle.vehicle.name} (${vehicle.vehicle.registrationNumber}) is your most profitable vehicle with R${vehicle.profit.toFixed(2)} profit and ${vehicle.profitMargin.toFixed(1)}% profit margin.`
+        message: `${vehicle.vehicle.name} (${vehicle.vehicle.registrationNumber}) is your most profitable vehicle with ${currencySymbol}${vehicle.profit.toFixed(2)} profit and ${vehicle.profitMargin.toFixed(1)}% profit margin.`
       });
     }
 
@@ -155,7 +174,7 @@ const AnalyticsPage = () => {
         type: 'loss',
         severity: 'danger',
         title: 'Underperforming Vehicle',
-        message: `${vehicle.vehicle.name} (${vehicle.vehicle.registrationNumber}) is operating at a loss of R${Math.abs(vehicle.profit).toFixed(2)}. Consider reviewing its expenses or increasing revenue.`
+        message: `${vehicle.vehicle.name} (${vehicle.vehicle.registrationNumber}) is operating at a loss of ${currencySymbol}${Math.abs(vehicle.profit).toFixed(2)}. Consider reviewing its expenses or increasing revenue.`
       });
     }
 
@@ -168,7 +187,7 @@ const AnalyticsPage = () => {
           type: 'cost',
           severity: 'warning',
           title: 'High Operating Cost',
-          message: `${vehicle.vehicle.name} (${vehicle.vehicle.registrationNumber}) has the highest cost per km at R${vehicle.costPerKm.toFixed(2)}/km, which is ${((vehicle.costPerKm / avgCost - 1) * 100).toFixed(0)}% above fleet average.`
+          message: `${vehicle.vehicle.name} (${vehicle.vehicle.registrationNumber}) has the highest cost per km at ${currencySymbol}${vehicle.costPerKm.toFixed(2)}/km, which is ${((vehicle.costPerKm / avgCost - 1) * 100).toFixed(0)}% above fleet average.`
         });
       }
     }
@@ -180,7 +199,7 @@ const AnalyticsPage = () => {
         type: 'efficiency',
         severity: 'success',
         title: 'Most Efficient Vehicle',
-        message: `${vehicle.vehicle.name} (${vehicle.vehicle.registrationNumber}) has the best profit margin at ${vehicle.profitMargin.toFixed(1)}%, earning R${vehicle.revenuePerKm.toFixed(2)}/km.`
+        message: `${vehicle.vehicle.name} (${vehicle.vehicle.registrationNumber}) has the best profit margin at ${vehicle.profitMargin.toFixed(1)}%, earning ${currencySymbol}${vehicle.revenuePerKm.toFixed(2)}/km.`
       });
     }
 
@@ -275,18 +294,18 @@ const AnalyticsPage = () => {
             </div>
             <div className="bg-slate-800 rounded-xl p-3 sm:p-4 border border-slate-700">
               <p className="text-xs text-slate-400 mb-1">Total Revenue</p>
-              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-400">R{fleetSummary.totalRevenue.toFixed(0)}</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-400">{currencySymbol}{fleetSummary.totalRevenue.toFixed(0)}</p>
               <p className="text-xs text-slate-500 mt-1">{fleetSummary.totalTrips} trips</p>
             </div>
             <div className="bg-slate-800 rounded-xl p-3 sm:p-4 border border-slate-700">
               <p className="text-xs text-slate-400 mb-1">Total Expenses</p>
-              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-400">R{fleetSummary.totalExpenses.toFixed(0)}</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-400">{currencySymbol}{fleetSummary.totalExpenses.toFixed(0)}</p>
               <p className="text-xs text-slate-500 mt-1">operating costs</p>
             </div>
             <div className="bg-slate-800 rounded-xl p-3 sm:p-4 border border-slate-700">
               <p className="text-xs text-slate-400 mb-1">Net Profit</p>
               <p className={`text-xl sm:text-2xl lg:text-3xl font-bold ${fleetSummary.totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                R{fleetSummary.totalProfit.toFixed(0)}
+                {currencySymbol}{fleetSummary.totalProfit.toFixed(0)}
               </p>
               <p className="text-xs text-slate-500 mt-1">
                 {fleetSummary.totalRevenue > 0 ? ((fleetSummary.totalProfit / fleetSummary.totalRevenue) * 100).toFixed(1) : 0}% margin
@@ -355,16 +374,16 @@ const AnalyticsPage = () => {
                       </div>
                       <div>
                         <span className="text-slate-500">Revenue:</span>
-                        <p className="text-green-400 font-semibold">R{metric.totalRevenue.toFixed(0)}</p>
+                        <p className="text-green-400 font-semibold">{currencySymbol}{metric.totalRevenue.toFixed(0)}</p>
                       </div>
                       <div>
                         <span className="text-slate-500">Expenses:</span>
-                        <p className="text-orange-400 font-semibold">R{metric.totalExpenses.toFixed(0)}</p>
+                        <p className="text-orange-400 font-semibold">{currencySymbol}{metric.totalExpenses.toFixed(0)}</p>
                       </div>
                       <div>
                         <span className="text-slate-500">Profit:</span>
                         <p className={`font-semibold ${metric.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          R{metric.profit.toFixed(0)}
+                          {currencySymbol}{metric.profit.toFixed(0)}
                         </p>
                       </div>
                       <div>
@@ -375,7 +394,7 @@ const AnalyticsPage = () => {
                       </div>
                     </div>
                     <div className="text-xs text-slate-400">
-                      Cost/km: <span className="text-orange-400 font-semibold">R{metric.costPerKm.toFixed(2)}</span>
+                      Cost/km: <span className="text-orange-400 font-semibold">{currencySymbol}{metric.costPerKm.toFixed(2)}</span>
                     </div>
                   </div>
                 ))}
@@ -407,15 +426,15 @@ const AnalyticsPage = () => {
                       </td>
                       <td className="px-4 py-3 text-right text-slate-200">{metric.tripCount}</td>
                       <td className="px-4 py-3 text-right text-slate-200">{metric.totalDistance.toFixed(0)} km</td>
-                      <td className="px-4 py-3 text-right text-green-400">R{metric.totalRevenue.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right text-orange-400">R{metric.totalExpenses.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right text-green-400">{currencySymbol}{metric.totalRevenue.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right text-orange-400">{currencySymbol}{metric.totalExpenses.toFixed(2)}</td>
                       <td className={`px-4 py-3 text-right font-semibold ${metric.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        R{metric.profit.toFixed(2)}
+                        {currencySymbol}{metric.profit.toFixed(2)}
                       </td>
                       <td className={`px-4 py-3 text-right ${metric.profitMargin >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {metric.profitMargin.toFixed(1)}%
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-200">R{metric.costPerKm.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right text-slate-200">{currencySymbol}{metric.costPerKm.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>

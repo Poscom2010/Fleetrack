@@ -388,7 +388,7 @@ const FleetTrackBusinessPage = () => {
                 <DollarSign className="w-5 h-5 text-green-400" />
               </div>
               <p className="text-3xl font-bold text-white mb-1">
-                R{businessMetrics.mrr.toLocaleString()}
+                ${businessMetrics.mrr.toLocaleString()}
               </p>
               <div className="flex items-center gap-1 text-xs">
                 {businessMetrics.revenueGrowth >= 0 ? (
@@ -408,7 +408,7 @@ const FleetTrackBusinessPage = () => {
                 <TrendingUp className="w-5 h-5 text-blue-400" />
               </div>
               <p className="text-3xl font-bold text-white mb-1">
-                R{businessMetrics.arr.toLocaleString()}
+                ${businessMetrics.arr.toLocaleString()}
               </p>
               <p className="text-xs text-blue-300">Annual recurring revenue</p>
             </div>
@@ -419,7 +419,7 @@ const FleetTrackBusinessPage = () => {
                 <PieChart className="w-5 h-5 text-purple-400" />
               </div>
               <p className="text-3xl font-bold text-white mb-1">
-                R{businessMetrics.averageRevenuePerCustomer}
+                ${businessMetrics.averageRevenuePerCustomer}
               </p>
               <p className="text-xs text-purple-300">Avg revenue per customer</p>
             </div>
@@ -430,7 +430,7 @@ const FleetTrackBusinessPage = () => {
                 <Target className="w-5 h-5 text-amber-400" />
               </div>
               <p className="text-3xl font-bold text-white mb-1">
-                R{businessMetrics.customerLifetimeValue}
+                ${businessMetrics.customerLifetimeValue}
               </p>
               <p className="text-xs text-amber-300">Customer lifetime value</p>
             </div>
@@ -572,7 +572,7 @@ const FleetTrackBusinessPage = () => {
                       <div key={index} className="flex-1 flex flex-col items-center gap-2">
                         {/* Value label */}
                         <div className="text-xs font-semibold text-green-400 mb-1">
-                          R{(data.revenue / 1000).toFixed(1)}k
+                          ${(data.revenue / 1000).toFixed(1)}k
                         </div>
                         {/* Bar */}
                         <div 
