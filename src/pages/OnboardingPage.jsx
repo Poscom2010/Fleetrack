@@ -9,7 +9,7 @@ import { Lightbulb, Play } from 'lucide-react';
  */
 const OnboardingPage = () => {
   usePageTitle('Onboarding Guide');
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, company } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   const handleStartOnboarding = () => {
@@ -27,6 +27,7 @@ const OnboardingPage = () => {
         <Onboarding 
           user={user} 
           userProfile={userProfile} 
+          company={company}
           onComplete={handleOnboardingComplete} 
         />
       )}
@@ -119,8 +120,8 @@ const OnboardingPage = () => {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-white font-semibold mb-0.5 text-xs">Setting Up Your Fleet</h3>
-                <p className="text-slate-400 text-[10px]">Learn how to add vehicles and configure your fleet management system.</p>
+                <h3 className="text-white font-semibold mb-0.5 text-xs">Vehicle Monitoring Setup</h3>
+                <p className="text-slate-400 text-[10px]">Learn how to add vehicles, set up alerts, and monitor your fleet in real-time.</p>
               </div>
             </div>
 
@@ -131,8 +132,12 @@ const OnboardingPage = () => {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-white font-semibold mb-0.5 text-xs">Inviting Your Drivers (Critical!)</h3>
-                <p className="text-slate-400 text-[10px]">Understand why and how to properly invite drivers to ensure data ownership.</p>
+                <h3 className="text-white font-semibold mb-0.5 text-xs">Inviting Your Team (Critical!)</h3>
+                <p className="text-slate-400 text-[10px]">
+                  {userProfile?.role === 'company_manager' 
+                    ? 'Learn how to invite Admins (to help manage) and Drivers (to capture data) to ensure proper data ownership.'
+                    : 'Understand why and how to properly invite drivers to ensure data ownership.'}
+                </p>
               </div>
             </div>
 
@@ -143,8 +148,8 @@ const OnboardingPage = () => {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-white font-semibold mb-0.5 text-xs">Capturing Data</h3>
-                <p className="text-slate-400 text-[10px]">Record daily trips, expenses, and manage your fleet operations.</p>
+                <h3 className="text-white font-semibold mb-0.5 text-xs">Capturing Trips & Expenses</h3>
+                <p className="text-slate-400 text-[10px]">Record daily trips, add multiple expenses per trip, and track your operations.</p>
               </div>
             </div>
 
@@ -155,8 +160,8 @@ const OnboardingPage = () => {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-white font-semibold mb-0.5 text-xs">Viewing Analytics</h3>
-                <p className="text-slate-400 text-[10px]">Access reports, insights, and AI-powered recommendations.</p>
+                <h3 className="text-white font-semibold mb-0.5 text-xs">Analytics & Reports</h3>
+                <p className="text-slate-400 text-[10px]">Access real-time insights, AI-powered recommendations, and export detailed reports.</p>
               </div>
             </div>
           </div>
@@ -182,7 +187,7 @@ const OnboardingPage = () => {
               </div>
               <div className="flex-1">
                 <h3 className="text-white font-semibold mb-0.5 text-xs">Capturing Daily Trips</h3>
-                <p className="text-slate-400 text-[10px]">Learn how to record your daily operations and expenses.</p>
+                <p className="text-slate-400 text-[10px]">Learn how to record trips, add multiple expenses, and track your daily operations.</p>
               </div>
             </div>
 
@@ -193,8 +198,8 @@ const OnboardingPage = () => {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-white font-semibold mb-0.5 text-xs">Managing Vehicles</h3>
-                <p className="text-slate-400 text-[10px]">View and update vehicle information (note: you cannot delete vehicles).</p>
+                <h3 className="text-white font-semibold mb-0.5 text-xs">Vehicle Monitoring</h3>
+                <p className="text-slate-400 text-[10px]">View vehicles, check alerts, and update information (note: you cannot delete vehicles).</p>
               </div>
             </div>
 

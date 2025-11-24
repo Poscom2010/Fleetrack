@@ -3,13 +3,16 @@ import { useAuth } from '../hooks/useAuth';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "../services/firebase";
-import { Plus, Car, Edit2, Trash2, AlertCircle, CheckCircle } from "lucide-react";
+import { Plus, Car, Edit2, Trash2, AlertCircle, CheckCircle, Gauge } from "lucide-react";
 import toast from "react-hot-toast";
+import { getLastRecordedMileage } from '../services/mileageValidationService';
+import VehicleAlertsSection from '../components/vehicles/VehicleAlertsSection';
 
 const VehiclesPage = () => {
   usePageTitle('Vehicle Monitoring');
   const { user, company, userProfile } = useAuth();
   const [vehicles, setVehicles] = useState([]);
+  const [vehicleMileages, setVehicleMileages] = useState({});
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState(null);
@@ -52,6 +55,23 @@ const VehiclesPage = () => {
       }));
 
       setVehicles(vehiclesData);
+
+      // Load current mileage for each vehicle
+      const mileages = {};
+      for (const vehicle of vehiclesData) {
+        try {
+          const lastMileage = await getLastRecordedMileage(vehicle.id);
+          if (lastMileage && lastMileage.lastMileage) {
+            mileages[vehicle.id] = lastMileage.lastMileage;
+          } else {
+            mileages[vehicle.id] = 0;
+          }
+        } catch (error) {
+          console.error('Error loading mileage for vehicle:', error);
+          mileages[vehicle.id] = 0;
+        }
+      }
+      setVehicleMileages(mileages);
     } catch (error) {
       console.error('Error loading vehicles:', error);
       toast.error('Failed to load vehicles');
@@ -71,8 +91,8 @@ const VehiclesPage = () => {
       };
     }
 
-    // Get current mileage (odometer reading)
-    const currentMileage = vehicle.currentMileage || vehicle.startMileage || 0;
+    // Get current mileage from vehicleMileages state (most recent recorded mileage)
+    const currentMileage = vehicleMileages[vehicle.id] || 0;
     const nextServiceMileage = parseInt(vehicle.nextServiceMileage) || 0;
     const mileageRemaining = nextServiceMileage - currentMileage;
 
@@ -250,20 +270,50 @@ const VehiclesPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-slate-950 p-4 md:p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white mb-1">Vehicles</h1>
-            <p className="text-slate-400 text-sm">Manage your fleet vehicles and service schedules.</p>
+            <h1 className="text-3xl font-bold text-white mb-1">Vehicle Monitoring</h1>
+            <p className="text-slate-400 text-sm">Monitor your fleet, alerts, and service schedules.</p>
           </div>
           <button
             onClick={() => handleOpenModal()}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition shadow-lg shadow-blue-500/20 text-sm">
-            <Plus className="w-4 h-4" />
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition shadow-lg shadow-blue-500/20">
+            <Plus className="w-5 h-5" />
             Add Vehicle
           </button>
+        </div>
+
+        {/* Vehicle Alerts Section */}
+        <VehicleAlertsSection vehicles={vehicles} />
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Total Vehicles */}
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
+            <p className="text-slate-400 text-xs font-medium mb-2">Total Vehicles</p>
+            <p className="text-3xl font-bold text-white">{stats.total}</p>
+          </div>
+
+          {/* Active Vehicles */}
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
+            <p className="text-slate-400 text-xs font-medium mb-2">Active</p>
+            <p className="text-3xl font-bold text-green-400">{stats.active}</p>
+          </div>
+
+          {/* Service Due */}
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
+            <p className="text-slate-400 text-xs font-medium mb-2">Service Due</p>
+            <p className="text-3xl font-bold text-orange-400">{stats.serviceDue}</p>
+          </div>
+
+          {/* Missing Data */}
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
+            <p className="text-slate-400 text-xs font-medium mb-2">Missing Data</p>
+            <p className="text-3xl font-bold text-yellow-400">{stats.missingData}</p>
+          </div>
         </div>
 
         {/* Missing Data Alert Banner */}
@@ -290,35 +340,15 @@ const VehiclesPage = () => {
           </div>
         )}
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-          {/* Total Vehicles */}
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
-            <p className="text-slate-400 text-xs font-medium mb-1">Total Vehicles</p>
-            <p className="text-3xl font-bold text-white">{stats.total}</p>
+        {/* Vehicles Section */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-white">Your Fleet</h2>
+            <p className="text-sm text-slate-400">{vehicles.length} {vehicles.length === 1 ? 'vehicle' : 'vehicles'}</p>
           </div>
-
-          {/* Active Vehicles */}
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
-            <p className="text-slate-400 text-xs font-medium mb-1">Active Vehicles</p>
-            <p className="text-3xl font-bold text-green-400">{stats.active}</p>
-          </div>
-
-          {/* Service Due */}
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
-            <p className="text-slate-400 text-xs font-medium mb-1">Service Due</p>
-            <p className="text-3xl font-bold text-orange-400">{stats.serviceDue}</p>
-          </div>
-
-          {/* Missing Data */}
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
-            <p className="text-slate-400 text-xs font-medium mb-1">Missing Data</p>
-            <p className="text-3xl font-bold text-yellow-400">{stats.missingData}</p>
-          </div>
-        </div>
-
-        {/* Vehicles Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          
+          {/* Vehicles Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {vehicles.length === 0 ? (
             <div className="col-span-full bg-slate-900/30 border border-slate-800 rounded-2xl p-12 text-center">
               <Car className="w-16 h-16 text-slate-600 mx-auto mb-4" />
@@ -364,6 +394,19 @@ const VehiclesPage = () => {
                   {/* Vehicle Name */}
                   <h3 className="text-xl font-bold text-white mb-1">{vehicle.name}</h3>
                   <p className="text-slate-400 text-sm mb-4">{vehicle.registrationNumber}</p>
+
+                  {/* Current Mileage - Compact */}
+                  <div className="mb-3 flex items-center gap-1.5 px-2 py-1 bg-blue-500/10 border border-blue-500/20 rounded">
+                    <Gauge className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-blue-300 text-[10px] font-medium">Current:</span>
+                      <span className="text-white font-semibold text-xs">
+                        {vehicleMileages[vehicle.id] !== undefined 
+                          ? `${vehicleMileages[vehicle.id].toLocaleString()} km`
+                          : '...'}
+                      </span>
+                    </div>
+                  </div>
 
                   {/* Model */}
                   <div className="mb-4">
@@ -474,10 +517,10 @@ const VehiclesPage = () => {
               );
             })
           )}
+          </div>
         </div>
-      </div>
 
-      {/* Add/Edit Vehicle Modal */}
+        {/* Add/Edit Vehicle Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -612,6 +655,7 @@ const VehiclesPage = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

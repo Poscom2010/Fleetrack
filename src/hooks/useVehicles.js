@@ -69,7 +69,7 @@ export const useVehicles = (userId, companyId = null, userRole = null) => {
 
     // Cleanup listener on unmount
     return () => unsubscribe();
-  }, [userId]);
+  }, [userId, companyId, userRole]);
 
   useEffect(() => {
     if (userId) {

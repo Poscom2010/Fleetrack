@@ -12,12 +12,16 @@ const TeamPage = () => {
   const { company, userProfile, user } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
+  const [invitations, setInvitations] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [driverStats, setDriverStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successInvitationData, setSuccessInvitationData] = useState(null);
+  const [showPendingInvites, setShowPendingInvites] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [invitationToDelete, setInvitationToDelete] = useState(null);
   const [driverProfiles, setDriverProfiles] = useState([]);
   const [inviteForm, setInviteForm] = useState({
     email: '',
@@ -78,6 +82,7 @@ const TeamPage = () => {
       setLoading(true);
       await Promise.all([
         loadCompanyUsers(),
+        loadInvitations(),
         loadCompanyVehicles(),
         loadDriverStats(),
         loadDriverProfiles(),
@@ -97,6 +102,118 @@ const TeamPage = () => {
       setDriverProfiles(profiles.filter(p => !p.isInvited)); // Only uninvited profiles
     } catch (error) {
       console.error('Error loading driver profiles:', error);
+    }
+  };
+
+  const loadInvitations = async () => {
+    try {
+      if (!company?.id) {
+        console.log('⚠️ No company ID available');
+        setInvitations([]);
+        return;
+      }
+      
+      console.log('📨 Loading invitations for company:', company.id);
+      const { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs } = await import('firebase/firestore');
+      const { db } = await import('../services/firebase');
+
+      const companyRef = doc(db, 'companies', company.id);
+      const companyDoc = await getDoc(companyRef);
+
+      if (!companyDoc.exists()) {
+        console.log('❌ Company document not found');
+        setInvitations([]);
+        return;
+      }
+
+      const companyData = companyDoc.data();
+      const pendingInvitations = companyData.pendingInvitations || [];
+      
+      console.log('📋 Raw pending invitations:', pendingInvitations);
+      
+      // Check if any "pending" invitations have actually registered
+      // Get all users in this company
+      const usersRef = collection(db, 'users');
+      const usersQuery = query(usersRef, where('companyId', '==', company.id));
+      const usersSnapshot = await getDocs(usersQuery);
+      const registeredEmails = new Set(
+        usersSnapshot.docs.map(doc => doc.data().email?.toLowerCase())
+      );
+      
+      console.log('👥 Registered users in company:', registeredEmails.size);
+      
+      // Update invitations that have registered users
+      let needsUpdate = false;
+      const updatedInvitations = pendingInvitations.map(inv => {
+        if (inv.status === 'pending' && inv.email && registeredEmails.has(inv.email.toLowerCase())) {
+          console.log('🔄 Marking invitation as accepted for registered user:', inv.email);
+          needsUpdate = true;
+          // Find the user ID
+          const userDoc = usersSnapshot.docs.find(doc => 
+            doc.data().email?.toLowerCase() === inv.email.toLowerCase()
+          );
+          return {
+            ...inv,
+            status: 'accepted',
+            userId: userDoc?.id || null,
+            acceptedAt: new Date().toISOString(),
+          };
+        }
+        return inv;
+      });
+      
+      // Update Firestore if needed
+      if (needsUpdate) {
+        console.log('💾 Updating invitation statuses in Firestore...');
+        await updateDoc(companyRef, {
+          pendingInvitations: updatedInvitations,
+          updatedAt: serverTimestamp(),
+        });
+        console.log('✅ Invitation statuses synced with registered users');
+      }
+      
+      // Filter only pending invitations and validate data
+      const invitationsData = updatedInvitations
+        .filter(inv => {
+          if (!inv) {
+            console.warn('⚠️ Null invitation found');
+            return false;
+          }
+          if (inv.status !== 'pending') {
+            console.log('⏭️ Skipping non-pending invitation:', inv.email, inv.status);
+            return false;
+          }
+          if (!inv.email || !inv.fullName) {
+            console.warn('⚠️ Invalid invitation data:', inv);
+            return false;
+          }
+          return true;
+        })
+        .map(inv => {
+          try {
+            return {
+              id: inv.id || `inv_${Date.now()}`,
+              fullName: inv.fullName || 'Unknown',
+              email: inv.email || 'No email',
+              phoneNumber: inv.phoneNumber || null,
+              role: inv.role || 'company_user',
+              status: inv.status,
+              createdAt: inv.invitedAt ? { seconds: new Date(inv.invitedAt).getTime() / 1000 } : null,
+              isPending: true,
+            };
+          } catch (err) {
+            console.error('Error mapping invitation:', inv, err);
+            return null;
+          }
+        })
+        .filter(inv => inv !== null);
+
+      console.log('✅ Loaded invitations:', invitationsData.length);
+      console.log('📊 Invitations data:', invitationsData);
+      setInvitations(invitationsData);
+    } catch (error) {
+      console.error('❌ Error loading invitations:', error);
+      setInvitations([]);
     }
   };
 
@@ -284,17 +401,28 @@ const TeamPage = () => {
     try {
       // Prevent users from changing their own role
       if (userId === user?.uid) {
-        alert('You cannot change your own role. Another admin must change it for you.');
+        alert('You cannot change your own role. Another manager must change it for you.');
         return;
       }
 
-      // Prevent changing admin/manager roles (only drivers can be changed)
       const targetUser = users.find(u => u.id === userId);
-      if (targetUser && (targetUser.role === 'company_admin' || targetUser.role === 'company_manager')) {
-        if (newRole === 'company_user') {
-          alert('Cannot demote admins or managers to driver. Only system admins can change admin/manager roles.');
-          return;
-        }
+      
+      // Prevent changing manager role - only manager can exist (company owner)
+      if (targetUser && targetUser.role === 'company_manager') {
+        alert('Cannot change the Company Manager role. The manager is the company owner.');
+        return;
+      }
+
+      // Only company managers can promote/demote between driver and admin
+      if (!isCompanyManager) {
+        alert('Only the Company Manager can change user roles.');
+        return;
+      }
+
+      // Validate role change
+      if (newRole !== 'company_user' && newRole !== 'company_admin') {
+        alert('Invalid role. Can only assign Driver or Admin roles.');
+        return;
       }
 
       const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
@@ -350,6 +478,65 @@ const TeamPage = () => {
     } catch (error) {
       console.error('Error assigning vehicle:', error);
       alert('Failed to assign vehicle: ' + error.message);
+    }
+  };
+
+  const handleDeleteInvitation = (invitationId, invitationEmail, invitationName) => {
+    setInvitationToDelete({ id: invitationId, email: invitationEmail, name: invitationName });
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteInvitation = async () => {
+    if (!invitationToDelete) return;
+
+    try {
+      console.log('🗑️ Deleting invitation:', invitationToDelete.id, invitationToDelete.email);
+      const { doc, getDoc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+      const { db } = await import('../services/firebase');
+
+      const companyRef = doc(db, 'companies', company.id);
+      const companyDoc = await getDoc(companyRef);
+
+      if (!companyDoc.exists()) {
+        alert('Company not found. Please refresh and try again.');
+        setShowDeleteModal(false);
+        setInvitationToDelete(null);
+        return;
+      }
+
+      const pendingInvitations = companyDoc.data().pendingInvitations || [];
+      
+      // Filter out the invitation to delete
+      const updatedInvitations = pendingInvitations.filter(inv => inv.id !== invitationToDelete.id);
+
+      console.log('📝 Updating invitations:', {
+        before: pendingInvitations.length,
+        after: updatedInvitations.length
+      });
+
+      await updateDoc(companyRef, {
+        pendingInvitations: updatedInvitations,
+        updatedAt: serverTimestamp(),
+      });
+
+      console.log('✅ Invitation deleted successfully');
+      
+      // Close modal and reset
+      setShowDeleteModal(false);
+      setInvitationToDelete(null);
+      
+      // Reload invitations
+      await loadInvitations();
+      
+      // Show success toast
+      const toast = await import('react-hot-toast');
+      toast.default.success('Invitation deleted successfully!');
+    } catch (error) {
+      console.error('❌ Error deleting invitation:', error);
+      const toast = await import('react-hot-toast');
+      toast.default.error('Failed to delete invitation: ' + error.message);
+      setShowDeleteModal(false);
+      setInvitationToDelete(null);
     }
   };
 
@@ -415,7 +602,8 @@ const TeamPage = () => {
       setSuccessInvitationData({
         email: inviteForm.email,
         fullName: inviteForm.fullName,
-        role: inviteForm.role === 'company_user' ? 'Driver' : 'Manager',
+        role: inviteForm.role === 'company_user' ? 'Driver' : 
+              inviteForm.role === 'company_admin' ? 'Admin' : 'Manager',
         companyName: company.name,
         registrationLink: registrationLink,
         invitationToken: invitationToken,
@@ -443,21 +631,156 @@ const TeamPage = () => {
         {/* Driver Activity Table */}
         <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">Driver Activity</h2>
-            <button
-              onClick={() => setShowInviteModal(true)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition flex items-center gap-2 text-sm"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Invite Driver
-            </button>
+            <h2 className="text-lg font-semibold text-white">
+              {showPendingInvites ? 'Pending Invitations' : 'Driver Activity'}
+            </h2>
+            <div className="flex items-center gap-2">
+              {/* Pending Invites Button */}
+              <button
+                onClick={() => setShowPendingInvites(!showPendingInvites)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
+                  showPendingInvites 
+                    ? 'bg-slate-700 hover:bg-slate-600 text-white' 
+                    : 'bg-orange-600 hover:bg-orange-700 text-white shadow-lg'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                {showPendingInvites ? 'Back to Team' : `Pending Invites ${invitations.length > 0 ? `(${invitations.length})` : ''}`}
+              </button>
+              
+              {/* Invite Team Member Button */}
+              {!showPendingInvites && (
+                <button
+                  onClick={() => setShowInviteModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition shadow-lg"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  {isCompanyManager || isCompanyAdmin ? 'Invite Team Member' : 'Invite Driver'}
+                </button>
+              )}
+            </div>
           </div>
           {loading ? (
             <div className="text-center py-8">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
             </div>
+          ) : showPendingInvites ? (
+            <>
+              {/* Pending Invitations View */}
+              {invitations.length === 0 ? (
+                <div className="bg-slate-900 rounded-lg border border-slate-700 p-8 text-center">
+                  <svg className="mx-auto h-12 w-12 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  <p className="mt-4 text-slate-400">No pending invitations</p>
+                  <p className="text-xs text-slate-500 mt-1">All invited members have registered</p>
+                </div>
+              ) : (
+                <>
+                  {/* Mobile View - Pending Invitations */}
+                  <div className="lg:hidden space-y-3">
+                    {invitations.map((invitation) => (
+                      <div key={invitation.id} className="bg-slate-900 rounded-lg border border-slate-700 p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h3 className="text-white font-semibold">{invitation.fullName}</h3>
+                            <p className="text-xs text-slate-400">{invitation.email}</p>
+                          </div>
+                          <span className="px-2 py-1 rounded text-xs font-medium bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                            📧 Pending
+                          </span>
+                        </div>
+                        
+                        <div className="space-y-2 text-sm mb-3">
+                          <div>
+                            <span className="text-slate-500">Role:</span>
+                            <p className="text-slate-200">{invitation.role === 'company_admin' ? 'Admin' : 'Driver'}</p>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Phone:</span>
+                            <p className="text-slate-200">{invitation.phoneNumber || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Invited:</span>
+                            <p className="text-slate-200">{invitation.createdAt ? new Date(invitation.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown'}</p>
+                          </div>
+                        </div>
+
+                        {/* Delete Button */}
+                        <button
+                          onClick={() => handleDeleteInvitation(invitation.id, invitation.email, invitation.fullName)}
+                          className="w-full px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition flex items-center justify-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Delete Invitation
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Desktop View - Pending Invitations */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-slate-700">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Name</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Email</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Phone</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Role</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Invited</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Status</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-700">
+                        {invitations.map((invitation) => (
+                          <tr key={invitation.id} className="hover:bg-slate-700/30 transition">
+                            <td className="px-4 py-3 text-sm text-white">{invitation.fullName}</td>
+                            <td className="px-4 py-3 text-sm text-slate-300">{invitation.email}</td>
+                            <td className="px-4 py-3 text-sm text-slate-300">{invitation.phoneNumber || 'Not provided'}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                invitation.role === 'company_admin' 
+                                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                  : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                              }`}>
+                                {invitation.role === 'company_admin' ? 'Admin' : 'Driver'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-300">
+                              {invitation.createdAt ? new Date(invitation.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown'}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-1 rounded text-xs font-medium bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                                📧 Awaiting Registration
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <button
+                                onClick={() => handleDeleteInvitation(invitation.id, invitation.email, invitation.fullName)}
+                                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition flex items-center gap-1"
+                                title="Delete Invitation"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </>
           ) : (
             <>
               {/* Mobile Card View */}
@@ -627,9 +950,10 @@ const TeamPage = () => {
                               value={driver.role}
                               onChange={(e) => handleUpdateUserRole(driver.id, e.target.value)}
                               className="w-full mt-1 bg-slate-800 text-white px-3 py-2 rounded border border-slate-600 text-sm focus:border-blue-500 focus:outline-none"
-                              disabled={!isCompanyAdmin && !isCompanyManager}
+                              disabled={!isCompanyManager}
                             >
                               <option value="company_user">Driver</option>
+                              {isCompanyManager && <option value="company_admin">Admin</option>}
                             </select>
                           )}
                         </div>
@@ -846,14 +1170,15 @@ const TeamPage = () => {
                                 🔒 {driver.role === 'company_admin' ? 'Admin' : 'Manager'}
                               </span>
                             ) : (
-                              // Other drivers - show dropdown (only admins/managers can change)
+                              // Other drivers - show dropdown (only managers can change)
                               <select
                                 value={driver.role}
                                 onChange={(e) => handleUpdateUserRole(driver.id, e.target.value)}
                                 className="bg-slate-800 text-white px-3 py-1.5 rounded border border-slate-600 text-xs focus:border-blue-500 focus:outline-none"
-                                disabled={!isCompanyAdmin && !isCompanyManager}
+                                disabled={!isCompanyManager}
                               >
                                 <option value="company_user">Driver</option>
+                                {isCompanyManager && <option value="company_admin">Admin</option>}
                               </select>
                             )}
                           </td>
@@ -914,10 +1239,10 @@ const TeamPage = () => {
 
         {/* Invite Driver Modal */}
         {showInviteModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 border border-slate-700">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-white">Invite New Driver</h3>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-md p-4 border border-slate-700 my-4 max-h-[95vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-white">Invite Team Member</h3>
                 <button
                   onClick={() => setShowInviteModal(false)}
                   className="text-slate-400 hover:text-white transition"
@@ -928,12 +1253,12 @@ const TeamPage = () => {
                 </button>
               </div>
 
-              <form onSubmit={handleInviteDriver} className="space-y-4">
+              <form onSubmit={handleInviteDriver} className="space-y-3">
                 {/* Driver Profile Selection */}
                 {driverProfiles.length > 0 && (
-                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-4">
-                    <label className="block text-sm font-medium text-blue-300 mb-2">
-                      📋 Select Existing Driver (Optional)
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-3">
+                    <label className="block text-xs font-medium text-blue-300 mb-1.5">
+                      📋 Invite New / Select Existing
                     </label>
                     <select
                       value={inviteForm.driverProfileId}
@@ -945,7 +1270,7 @@ const TeamPage = () => {
                           // Check if profile has email
                           if (!profile.email || profile.email.trim() === '') {
                             const addEmail = window.confirm(
-                              `⚠️ Driver "${profile.fullName}" has no email!\n\n` +
+                              `⚠️ "${profile.fullName}" has no email!\n\n` +
                               'Email is required for sending invitation and login.\n\n' +
                               'Please add their email address in the form below before sending invitation.\n\n' +
                               'Continue?'
@@ -975,7 +1300,7 @@ const TeamPage = () => {
                       }}
                       className="w-full bg-slate-900 text-white px-4 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
                     >
-                      <option value="">New Driver (No existing data)</option>
+                      <option value="">➕ Add New Team Member</option>
                       {driverProfiles.map(profile => (
                         <option key={profile.id} value={profile.id}>
                           👤 {profile.fullName} {profile.email ? `(${profile.email})` : ''}
@@ -983,33 +1308,33 @@ const TeamPage = () => {
                       ))}
                     </select>
                     <p className="text-xs text-blue-200 mt-2">
-                      Select a driver you've captured data for. Their existing trips will be linked to their account.
+                      Link to someone who already has trip data. Their existing trips will be connected to their account.
                     </p>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
                     Name *
                   </label>
                   <input
                     type="text"
                     value={inviteForm.fullName}
                     onChange={(e) => setInviteForm({...inviteForm, fullName: e.target.value})}
-                    className="w-full bg-slate-900 text-white px-4 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
+                    className="w-full bg-slate-900 text-white px-3 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none text-sm"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
                     Email *
                   </label>
                   <input
                     type="email"
                     value={inviteForm.email}
                     onChange={(e) => setInviteForm({...inviteForm, email: e.target.value})}
-                    className="w-full bg-slate-900 text-white px-4 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
+                    className="w-full bg-slate-900 text-white px-3 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none text-sm"
                     placeholder="driver@example.com"
                     required
                   />
@@ -1022,42 +1347,71 @@ const TeamPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
                     Phone Number
                   </label>
                   <input
                     type="tel"
                     value={inviteForm.phoneNumber}
                     onChange={(e) => setInviteForm({...inviteForm, phoneNumber: e.target.value})}
-                    className="w-full bg-slate-900 text-white px-4 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
+                    className="w-full bg-slate-900 text-white px-3 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none text-sm"
                     placeholder="+27 82 123 4567"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
                     Location
                   </label>
                   <input
                     type="text"
                     value={inviteForm.location}
                     onChange={(e) => setInviteForm({...inviteForm, location: e.target.value})}
-                    className="w-full bg-slate-900 text-white px-4 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
+                    className="w-full bg-slate-900 text-white px-3 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none text-sm"
                     placeholder="City, Region"
                   />
                 </div>
 
-                <div className="flex gap-3 pt-4">
+                {/* Role Selection */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                    Role *
+                  </label>
+                  <select
+                    value={inviteForm.role}
+                    onChange={(e) => setInviteForm({...inviteForm, role: e.target.value})}
+                    className="w-full bg-slate-900 text-white px-3 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none text-sm"
+                    required
+                  >
+                    <option value="company_user">Driver</option>
+                    {isCompanyManager && <option value="company_admin">Admin</option>}
+                  </select>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {inviteForm.role === 'company_admin' 
+                      ? '🔑 Admins can manage vehicles, view analytics, and manage drivers'
+                      : '🚗 Drivers can capture trips and view their own data'}
+                  </p>
+                  {!isCompanyManager && (
+                    <p className="text-xs text-yellow-400 mt-2 flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                      Only Company Managers can invite Admins
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-2 pt-3">
                   <button
                     type="button"
                     onClick={() => setShowInviteModal(false)}
-                    className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition"
+                    className="flex-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition text-sm"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
+                    className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition text-sm"
                   >
                     Send Invitation
                   </button>
@@ -1073,6 +1427,82 @@ const TeamPage = () => {
           onClose={() => setShowSuccessModal(false)}
           invitationData={successInvitationData}
         />
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && invitationToDelete && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-red-500/20 animate-slideUp">
+              {/* Header */}
+              <div className="p-6 border-b border-slate-700/50">
+                <div className="flex items-center gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-white">Delete Invitation</h3>
+                    <p className="text-sm text-slate-400 mt-0.5">This action cannot be undone</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-4">
+                <p className="text-slate-300">
+                  Are you sure you want to delete the invitation for:
+                </p>
+                
+                <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                      <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-semibold">{invitationToDelete.name}</p>
+                      <p className="text-sm text-slate-400 truncate">{invitationToDelete.email}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <p className="text-sm text-red-300">
+                      The invitation link will no longer work and they won't be able to register using it.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="p-6 bg-slate-900/50 border-t border-slate-700/50 flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setInvitationToDelete(null);
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-all duration-200 transform hover:scale-105"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteInvitation}
+                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg shadow-red-500/30 flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Delete Invitation
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,13 +1,22 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
-import { Search, Filter, Download } from 'lucide-react';
+import { Search, Filter, Download, Edit2, Trash2 } from 'lucide-react';
 import { fetchDriverNames } from '../utils/driverUtils';
+import { deleteDailyEntry, deleteExpense } from '../services/entryService';
+import toast from 'react-hot-toast';
+import Modal from '../components/common/Modal';
+import DailyEntryForm from '../components/entries/DailyEntryForm';
+import ExpenseForm from '../components/entries/ExpenseForm';
+import { useVehicles } from '../hooks/useVehicles';
+import { getDriverProfiles } from '../services/driverProfileService';
 
 const TripLogbookPage = () => {
   usePageTitle('Trip Logbook');
+  const location = useLocation();
   const { user, userProfile, company } = useAuth();
   const isDriver = userProfile?.role === 'company_user';
   const isAdminOrManager = userProfile?.role === 'company_admin' || userProfile?.role === 'company_manager';
@@ -26,10 +35,35 @@ const TripLogbookPage = () => {
     vehicleId: '',
     driverId: ''
   });
+  const [editingEntry, setEditingEntry] = useState(null);
+  const [editingExpense, setEditingExpense] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [drivers, setDrivers] = useState([]);
+  const { vehicles: vehiclesList, loading: vehiclesLoading } = useVehicles(user?.uid, company?.id, userProfile?.role);
 
   useEffect(() => {
     loadTrips();
   }, [user]);
+
+  // Reload data when page becomes visible (user returns to tab/page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && user) {
+        loadTrips();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [user]);
+
+  // Reload data whenever user navigates to this page
+  useEffect(() => {
+    if (user) {
+      loadTrips();
+    }
+  }, [location, user]);
 
   const loadTrips = async () => {
     if (!user) return;
@@ -142,11 +176,11 @@ const TripLogbookPage = () => {
         return sum + fuel + repairs + other;
       }, 0);
 
-      // Add expenses from expenses collection
-      Object.values(expensesData).forEach(expenseList => {
-        expenseList.forEach(expense => {
-          totalExpensesAmount += expense.amount;
-        });
+      // Add ALL expenses from expenses collection (not just those with matching trips)
+      // This ensures the total matches Analytics
+      expensesSnapshot.docs.forEach(doc => {
+        const expense = doc.data();
+        totalExpensesAmount += expense.amount || 0;
       });
 
       setTotalCashIn(cashIn);
@@ -198,6 +232,37 @@ const TripLogbookPage = () => {
 
     return true;
   });
+
+  // Calculate totals from FILTERED trips (recalculates when filters change)
+  useEffect(() => {
+    if (trips.length === 0) return; // Don't calculate if no trips loaded yet
+    
+    const cashIn = filteredTrips.reduce((sum, trip) => sum + (trip.cashIn || 0), 0);
+    let totalExpensesAmount = filteredTrips.reduce((sum, trip) => {
+      const fuel = trip.fuelExpense || 0;
+      const repairs = trip.repairsExpense || 0;
+      const other = trip.otherExpenses || 0;
+      return sum + fuel + repairs + other;
+    }, 0);
+
+    // Add expenses from expenses collection for filtered trips
+    // Create a Set of filtered trip identifiers for efficient lookup (use dash to match loadTrips format)
+    const filteredTripKeys = new Set(
+      filteredTrips.map(trip => `${trip.date?.toDateString()}-${trip.vehicleId}`)
+    );
+
+    // Sum expenses that match filtered trips
+    Object.entries(expenses).forEach(([expenseKey, expenseList]) => {
+      if (filteredTripKeys.has(expenseKey)) {
+        expenseList.forEach(expense => {
+          totalExpensesAmount += expense.amount || 0;
+        });
+      }
+    });
+
+    setTotalCashIn(cashIn);
+    setTotalExpenses(totalExpensesAmount);
+  }, [filteredTrips, expenses, trips]);
 
   const handleFilterChange = (field, value) => {
     setFilters(prev => ({

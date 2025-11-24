@@ -129,7 +129,7 @@ ${invitationData.registrationLink}
                   Share These Instructions
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Send to the driver
+                  Send to the {invitationData.role.toLowerCase()}
                 </p>
               </div>
             </div>
@@ -140,7 +140,7 @@ ${invitationData.registrationLink}
                   1
                 </span>
                 <p className="text-sm text-slate-300">
-                  Copy and send the <span className="text-white font-bold">registration link</span> to driver
+                  Copy and send the <span className="text-white font-bold">registration link</span> to {invitationData.role.toLowerCase()}
                 </p>
               </div>
               <div className="flex items-start gap-2">
@@ -148,7 +148,7 @@ ${invitationData.registrationLink}
                   2
                 </span>
                 <p className="text-sm text-slate-300">
-                  Driver clicks the link from anywhere
+                  {invitationData.role} clicks the link from anywhere
                 </p>
               </div>
               <div className="flex items-start gap-2">
@@ -156,7 +156,7 @@ ${invitationData.registrationLink}
                   3
                 </span>
                 <p className="text-sm text-slate-300">
-                  Driver creates account with password
+                  {invitationData.role} creates account with password
                 </p>
               </div>
               <div className="flex items-start gap-2">

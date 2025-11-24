@@ -425,6 +425,59 @@ npm run build && vercel --prod
 
 ---
 
-**Last Updated:** November 19, 2025
-**Version:** 2.0 - Mobile Responsive
-**Status:** ✅ Ready for Production
+## 🐛 **Recent Bug Fixes (November 24, 2025)**
+
+### **1. Expense Date Pre-fill Issue - FIXED ✅**
+- **Problem:** Expense form wasn't pre-filling date from associated trip
+- **Impact:** Expenses saved with incorrect dates (Jan 01 2000)
+- **Fix:** Pass `company` object to Onboarding component, use `company?.name` for actual company name
+- **Files Modified:**
+  - `src/pages/EntriesPage.jsx` - Date conversion for `lastAddedEntry`
+  - `src/components/entries/ExpenseForm.jsx` - Fixed date pre-fill logic
+
+### **2. Trip Logbook vs Analytics Expense Discrepancy - FIXED ✅**
+- **Problem:** Trip Logbook showed $70 for ABC123, Analytics showed $85 ($15 difference)
+- **Root Cause:** Trip Logbook only counted expenses with matching trips
+- **Impact:** Expenses without trips weren't included in totals
+- **Fix:** Changed Trip Logbook to count ALL expenses directly from database
+- **File Modified:** `src/pages/TripLogbookPage.jsx`
+
+### **3. Onboarding Company Name Issue - FIXED ✅**
+- **Problem:** Onboarding showed "your company" instead of actual company name
+- **Root Cause:** Used `userProfile.companyName` (doesn't exist), should use `company.name`
+- **Fix:** Pass `company` prop to Onboarding component
+- **Files Modified:**
+  - `src/pages/OnboardingPage.jsx`
+  - `src/components/onboarding/Onboarding.jsx`
+
+### **4. Team Invitations - IMPROVED ✅**
+- **Enhancement:** Updated onboarding to clarify managers can invite both admins and drivers
+- **File Modified:** `src/components/onboarding/Onboarding.jsx`
+
+---
+
+## 🔒 **Security & Environment**
+
+### **Environment Variables:**
+- ✅ `.env.example` created with all required variables
+- ✅ Firebase config uses `import.meta.env` (secure)
+- ✅ No hardcoded API keys or secrets
+- ✅ `.gitignore` updated with security items
+
+### **Sensitive Files Protected:**
+- ✅ `.env` and all variants
+- ✅ Service account keys
+- ✅ Debug/fix markdown files
+- ✅ Firebase debug logs
+- ✅ Deployment artifacts
+
+### **Console Logging:**
+- ✅ Debug logs removed from production code
+- ✅ Error logs retained for monitoring (console.error)
+- ✅ No sensitive data in logs
+
+---
+
+**Last Updated:** November 24, 2025
+**Version:** 2.1 - Bug Fixes & Production Ready
+**Status:** ✅ PRODUCTION READY - All Issues Resolved

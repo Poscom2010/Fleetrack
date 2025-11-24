@@ -2,20 +2,21 @@ import { collection, query, where, orderBy, limit, getDocs, Timestamp } from 'fi
 import { db } from './firebase';
 
 /**
- * Get the last recorded mileage for a specific vehicle
+ * Get the last recorded mileage for a specific vehicle BEFORE a given date
+ * This checks entries chronologically to ensure cumulative mileage progression
  * @param {string} vehicleId - The vehicle ID
+ * @param {Date|string} beforeDate - The date to check before
+ * @param {string} excludeEntryId - Optional entry ID to exclude (when editing)
  * @returns {Promise<Object|null>} - Object with lastMileage and date, or null if no entries found
  */
-export const getLastRecordedMileage = async (vehicleId) => {
+export const getLastRecordedMileage = async (vehicleId, beforeDate = null, excludeEntryId = null) => {
   if (!vehicleId) return null;
 
   try {
-    // Query daily entries for this vehicle, ordered by date descending
+    // Query ALL daily entries for this vehicle
     const entriesQuery = query(
       collection(db, 'dailyEntries'),
-      where('vehicleId', '==', vehicleId),
-      orderBy('date', 'desc'),
-      limit(1)
+      where('vehicleId', '==', vehicleId)
     );
 
     const snapshot = await getDocs(entriesQuery);
@@ -24,12 +25,59 @@ export const getLastRecordedMileage = async (vehicleId) => {
       return null;
     }
 
-    const lastEntry = snapshot.docs[0].data();
+    // Sort entries by date manually (client-side) to avoid index requirements
+    const entries = [];
+    snapshot.docs.forEach(doc => {
+      const entry = doc.data();
+      const entryDate = entry.date?.toDate ? entry.date.toDate() : new Date(entry.date);
+      entries.push({
+        id: doc.id,
+        data: entry,
+        date: entryDate
+      });
+    });
+
+    // Sort by date descending (most recent first)
+    entries.sort((a, b) => b.date - a.date);
+
+    // Convert beforeDate to Date object for comparison
+    const checkDate = beforeDate ? (beforeDate instanceof Date ? beforeDate : new Date(beforeDate)) : null;
+
+    // Find the most recent entry BEFORE the given date
+    let lastEntry = null;
+    
+    for (const entryObj of entries) {
+      // Skip the entry being edited
+      if (excludeEntryId && entryObj.id === excludeEntryId) {
+        continue;
+      }
+
+      const entry = entryObj.data;
+      const entryDate = entryObj.date;
+      
+      // If checking before a specific date, only consider entries before that date
+      if (checkDate) {
+        if (entryDate < checkDate) {
+          lastEntry = { ...entry, id: entryObj.id, date: entryDate };
+          break; // Found the most recent entry before the date
+        }
+      } else {
+        // No date filter, just get the most recent entry
+        lastEntry = { ...entry, id: entryObj.id, date: entryDate };
+        break;
+      }
+    }
+
+    if (!lastEntry) {
+      return null;
+    }
+    
+    const mileage = lastEntry.endMileage || lastEntry.startMileage || 0;
     
     return {
-      lastMileage: lastEntry.endMileage || lastEntry.startMileage || 0,
-      date: lastEntry.date?.toDate ? lastEntry.date.toDate() : new Date(lastEntry.date),
-      entryId: snapshot.docs[0].id
+      lastMileage: mileage,
+      date: lastEntry.date,
+      entryId: lastEntry.id
     };
   } catch (error) {
     console.error('Error fetching last mileage:', error);
@@ -38,16 +86,16 @@ export const getLastRecordedMileage = async (vehicleId) => {
 };
 
 /**
- * Validate mileage against last recorded mileage
+ * Validate mileage chronologically - today's start must be >= previous day's end
  * @param {number} startMileage - The start mileage to validate
  * @param {number} endMileage - The end mileage to validate
- * @param {number} lastRecordedMileage - The last recorded mileage for this vehicle
+ * @param {number} previousEndMileage - The end mileage from the previous chronological entry
  * @returns {Object} - Validation result with isValid and message
  */
-export const validateMileage = (startMileage, endMileage, lastRecordedMileage) => {
+export const validateMileage = (startMileage, endMileage, previousEndMileage) => {
   const start = parseFloat(startMileage);
   const end = parseFloat(endMileage);
-  const lastMileage = parseFloat(lastRecordedMileage);
+  const prevEnd = parseFloat(previousEndMileage);
 
   // Check if values are valid numbers
   if (isNaN(start) || isNaN(end)) {
@@ -65,21 +113,21 @@ export const validateMileage = (startMileage, endMileage, lastRecordedMileage) =
     };
   }
 
-  // Check against last recorded mileage
-  if (lastMileage && !isNaN(lastMileage)) {
-    if (start < lastMileage) {
+  // CUMULATIVE CHECK: Start mileage must be >= previous entry's end mileage (chronologically)
+  if (prevEnd && !isNaN(prevEnd)) {
+    if (start < prevEnd) {
       return {
         isValid: false,
-        message: `Start mileage (${start.toLocaleString()} km) cannot be less than last recorded mileage (${lastMileage.toLocaleString()} km)`
+        message: `❌ Invalid: Start mileage (${start.toLocaleString()} km) cannot be less than previous entry's end mileage (${prevEnd.toLocaleString()} km). Odometer must progress forward chronologically!`
       };
     }
 
-    // Warning if start mileage is significantly higher than last recorded (more than 5000 km jump)
-    const mileageJump = start - lastMileage;
+    // Warning if start mileage is significantly higher than previous end (more than 5000 km jump)
+    const mileageJump = start - prevEnd;
     if (mileageJump > 5000) {
       return {
         isValid: true,
-        warning: `Large mileage jump detected: ${mileageJump.toLocaleString()} km since last entry. Please verify this is correct.`
+        warning: `⚠️ Large mileage jump: ${mileageJump.toLocaleString()} km since previous entry. Please verify this is correct.`
       };
     }
   }

@@ -44,8 +44,9 @@ const CompanySetupPage = () => {
       // Create company with 2-month trial
       const companyId = await createCompany(user.uid, formData);
 
-      // Update user role to company admin
-      await updateUserRole(user.uid, UserRole.COMPANY_ADMIN);
+      // Update user role to company manager (owner)
+      await updateUserRole(user.uid, UserRole.COMPANY_MANAGER);
+      console.log('✅ User role set to company_manager (Company Owner)');
 
       // Refresh user data to load new company
       await refreshUserData();

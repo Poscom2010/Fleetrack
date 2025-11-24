@@ -336,6 +336,28 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'system_admin';
     }
     
+    // Acknowledged Gaps collection rules
+    // Managers can acknowledge/note mileage gaps to mark them as reviewed
+    match /acknowledgedGaps/{gapId} {
+      // Anyone authenticated can read acknowledged gaps
+      allow read: if isAuthenticated();
+      
+      // Company admins and managers can create acknowledged gaps
+      allow create: if isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_manager' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'system_admin') &&
+        request.resource.data.gapId is string &&
+        request.resource.data.acknowledgedBy is string &&
+        request.resource.data.acknowledgedBy == request.auth.uid;
+      
+      // Only system admins can delete acknowledged gaps
+      allow delete: if isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'system_admin';
+    }
+    
     // Deny all other access by default
     match /{document=**} {
       allow read, write: if false;

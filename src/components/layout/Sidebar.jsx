@@ -117,7 +117,7 @@ const Sidebar = () => {
   const navLinks = getNavLinks();
 
   return (
-    <aside className="hidden lg:flex lg:flex-col lg:w-48 bg-slate-800/40 border-r border-white/10 backdrop-blur-xl">
+    <aside className="hidden lg:flex lg:flex-col lg:fixed lg:left-0 lg:top-[73px] lg:bottom-0 lg:w-48 bg-slate-800/40 border-r border-white/10 backdrop-blur-xl overflow-y-auto z-40">
       {/* Navigation links */}
       <nav className="flex-1 px-4 py-6 space-y-2">
         {navLinks.map((link) => {

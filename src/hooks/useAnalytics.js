@@ -142,8 +142,8 @@ export const useAnalytics = (userId, timeRange = "all") => {
       const [analytics, mileage, alerts, licenseAlerts] = await Promise.all([
         getAnalyticsData(userId, filters, profile),
         getMileageTrends(userId, filters, profile),
-        getServiceAlerts(userId),
-        getLicenseExpiryAlerts(userId),
+        getServiceAlerts(userId, profile),
+        getLicenseExpiryAlerts(userId, profile),
       ]);
 
       // Calculate time-based totals
@@ -189,14 +189,14 @@ export const useAnalytics = (userId, timeRange = "all") => {
       try {
         await acknowledgeServiceAlert(userId, vehicleId, currentMileage);
         // Refresh alerts after acknowledgment
-        const alerts = await getServiceAlerts(userId);
+        const alerts = await getServiceAlerts(userId, userProfile);
         setServiceAlerts(alerts);
       } catch (err) {
         console.error("Error acknowledging alert:", err);
         throw err;
       }
     },
-    [userId]
+    [userId, userProfile]
   );
 
   /**

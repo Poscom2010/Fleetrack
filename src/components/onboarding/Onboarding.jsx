@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 /**
  * Onboarding component - Role-based guided tour for new users
  */
-const Onboarding = ({ user, userProfile, onComplete }) => {
+const Onboarding = ({ user, userProfile, company, onComplete }) => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
@@ -63,15 +63,25 @@ const Onboarding = ({ user, userProfile, onComplete }) => {
     if (role === 'company_admin' || role === 'company_manager') {
       const adminName = userProfile?.fullName || user?.displayName || 'Admin';
       const firstName = adminName.split(' ')[0];
-      const companyName = userProfile?.companyName || 'your company';
+      const companyName = company?.name || 'your company';
       const roleTitle = role === 'company_admin' ? 'Admin' : 'Manager';
+      const isInvited = role === 'company_admin'; // Admins are invited, Managers create the company
       
       return [
         {
           icon: Users,
           title: `Welcome ${firstName}! 👋`,
-          description: `You are ${roleTitle} for ${companyName}. Let's set up your fleet management system.`,
-          points: [
+          description: isInvited 
+            ? `You have been invited to ${companyName}. You're now an ${roleTitle} with full access to manage the fleet!`
+            : `You are ${roleTitle} for ${companyName}. Let's set up your fleet management system.`,
+          points: isInvited ? [
+            `🎉 You're now part of ${companyName}'s team`,
+            `👔 Your manager invited you as an ${roleTitle}`,
+            `🔓 You have full access to all ${companyName} data`,
+            `🚗 Manage ${companyName}'s vehicles, drivers, and operations`,
+            `📊 View ${companyName}'s analytics and track performance`,
+            `🤝 Collaborate with your ${companyName} team effectively`,
+          ] : [
             'Manage your company\'s fleet',
             'Track all vehicle operations',
             'Monitor expenses and revenue',
@@ -81,29 +91,55 @@ const Onboarding = ({ user, userProfile, onComplete }) => {
         },
         {
           icon: Car,
-          title: 'Step 1: Add Your Vehicles 🚗',
-          description: 'Start by adding the vehicles in your fleet.',
-          points: [
-            'Go to "Vehicles" page',
+          title: isInvited ? 'Manage Vehicles 🚗' : 'Step 1: Add Your Vehicles 🚗',
+          description: isInvited 
+            ? 'View and manage the company\'s fleet of vehicles.'
+            : 'Start by adding the vehicles in your fleet.',
+          points: isInvited ? [
+            'Go to "Vehicle Monitoring" page to see existing vehicles',
+            'You can add new vehicles if needed',
+            'Update vehicle details and maintenance info',
+            'Monitor service and license renewal dates',
+            'View real-time alerts for maintenance',
+          ] : [
+            'Go to "Vehicle Monitoring" page',
             'Click "Add Vehicle" button',
             'Enter vehicle details (name, registration, etc.)',
-            'Set service and license dates for alerts',
+            'Set service and license dates for automatic alerts',
           ],
           color: 'emerald',
         },
         {
           icon: UserPlus,
-          title: 'Step 2: Invite Your Drivers 👥',
-          description: '⚠️ IMPORTANT: You must invite drivers to join your company!',
-          points: [
-            'Go to "Team Management" page',
+          title: isInvited ? 'Team Management 👥' : 'Step 2: Invite Your Team 👥',
+          description: isInvited 
+            ? 'Manage the team and invite new members if needed.'
+            : role === 'company_manager' 
+              ? '⚠️ IMPORTANT: You can invite both Admins and Drivers to join your company!'
+              : '⚠️ IMPORTANT: You must invite drivers to join your company!',
+          points: isInvited ? [
+            'Go to "Team Management / Invitations" to see all team members',
+            'View drivers and their activity',
+            'You can invite new team members (admins or drivers)',
+            'Monitor driver performance and stats',
+            'Collaborate with your manager on team decisions',
+          ] : role === 'company_manager' ? [
+            'Go to "Team Management / Invitations" page',
+            'Click "Invite Admin" or "Invite Driver" button',
+            'Admins: Share management responsibilities with you',
+            'Drivers: Capture their own trips and data',
+            'Enter their details (name, email, phone)',
+            'Share the generated invitation link with them',
+            '✅ When they register with that link, their data belongs to your company',
+          ] : [
+            'Go to "Team Management / Invitations" page',
             'Click "Invite Driver" button',
             'Enter their details (name, email, phone)',
             'Share the generated invitation link with them',
             '✅ When they register with that link, their data belongs to your company',
           ],
           color: 'orange',
-          highlight: true,
+          highlight: !isInvited,
         },
         {
           icon: FileText,
@@ -123,23 +159,41 @@ const Onboarding = ({ user, userProfile, onComplete }) => {
           title: 'View Analytics & Reports 📊',
           description: 'Monitor your fleet\'s performance in real-time.',
           points: [
-            'Check "Analytics" for fleet insights',
-            'View "Trip Logbook" for all trips',
-            'Track revenue vs expenses',
-            'Monitor vehicle performance',
-            'Get AI-powered recommendations',
+            'Check "Analytics" for fleet insights and AI recommendations',
+            'View "Trip Logbook" for detailed trip history',
+            'Track revenue vs expenses in real-time',
+            'Monitor vehicle performance and alerts',
+            'Export reports for accounting and analysis',
+            'Get instant help from "Contact Support" page',
           ],
           color: 'purple',
         },
         {
           icon: Check,
           title: 'You\'re Ready to Go! 🚀',
-          description: 'Everything is set up. Here\'s your quick action plan:',
-          points: [
+          description: isInvited 
+            ? 'You\'re all set! Here\'s how to get started:'
+            : 'Everything is set up. Here\'s your quick action plan:',
+          points: isInvited ? [
+            '1️⃣ Explore existing vehicles and drivers',
+            '2️⃣ Review current operations and data',
+            '3️⃣ Start capturing data or add new entries',
+            '4️⃣ Monitor analytics and set up alerts',
+            '5️⃣ Use "Contact Support" if you need help',
+            '💡 Tip: Coordinate with your manager on team responsibilities!',  
+          ] : role === 'company_manager' ? [
+            '1️⃣ Add your vehicles',
+            '2️⃣ Invite your team (admins to help manage, drivers to capture data)',
+            '3️⃣ Start capturing daily trips and expenses',
+            '4️⃣ Monitor analytics and vehicle alerts',
+            '5️⃣ Use "Contact Support" for any questions',
+            '💡 Tip: Invite team members FIRST so their data is under your company!',
+          ] : [
             '1️⃣ Add your vehicles',
             '2️⃣ Invite your drivers',
-            '3️⃣ Start capturing data',
-            '4️⃣ Monitor analytics',
+            '3️⃣ Start capturing daily trips and expenses',
+            '4️⃣ Monitor analytics and vehicle alerts',
+            '5️⃣ Use "Contact Support" for any questions',
             '💡 Tip: Invite drivers FIRST so their data is under your company!',
           ],
           color: 'green',
@@ -150,7 +204,7 @@ const Onboarding = ({ user, userProfile, onComplete }) => {
     // Driver (company_user)
     const driverName = userProfile?.fullName || user?.displayName || 'Driver';
     const firstName = driverName.split(' ')[0];
-    const companyName = userProfile?.companyName || 'your company';
+    const companyName = company?.name || 'your company';
     
     return [
       {
@@ -180,12 +234,13 @@ const Onboarding = ({ user, userProfile, onComplete }) => {
       },
       {
         icon: Car,
-        title: 'Manage Vehicles 🚗',
+        title: 'Vehicle Monitoring 🚗',
         description: 'View and update vehicle information.',
         points: [
-          'See all company vehicles',
+          'Go to "Vehicle Monitoring" to see all company vehicles',
           'Update vehicle details if needed',
-          'Check service and license alerts',
+          'Check real-time service and license alerts',
+          'Monitor vehicle health and maintenance status',
           '⚠️ Note: You cannot delete vehicles',
         ],
         color: 'orange',
@@ -207,10 +262,11 @@ const Onboarding = ({ user, userProfile, onComplete }) => {
         title: 'You\'re All Set! ✨',
         description: 'Start capturing your daily operations.',
         points: [
-          '1️⃣ Check your assigned vehicle',
-          '2️⃣ Start capturing trips',
-          '3️⃣ Record all expenses',
-          '4️⃣ Monitor your performance',
+          '1️⃣ Check your assigned vehicle in "Vehicle Monitoring"',
+          '2️⃣ Start capturing trips in "Capturing"',
+          '3️⃣ Record all expenses for each trip',
+          '4️⃣ Monitor your performance in "Analytics"',
+          '5️⃣ Use "Contact Support" if you need help',
           '💡 Tip: Capture data daily for accurate tracking!',
         ],
         color: 'green',

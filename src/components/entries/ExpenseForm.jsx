@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   validateExpenseAmount,
   validateExpenseDescription,
@@ -23,21 +23,31 @@ const createDefaultFormState = (expense, initialValues = null) => {
       driverId: initialValues?.driverId || "",
       newDriverName: "",
       date: initialValues?.date || new Date().toISOString().split("T")[0],
-      description: "",
-      amount: "",
-      category: "Other",
+      expenseItems: [{ description: "", amount: "", category: "Fuel" }], // Array of expense items
     };
   }
 
-  const expenseDate =
-    expense.date instanceof Date ? expense.date : new Date(expense.date);
+  // Handle Firestore timestamp or Date object
+  let expenseDate;
+  if (expense.date?.toDate) {
+    // Firestore timestamp
+    expenseDate = expense.date.toDate();
+  } else if (expense.date instanceof Date) {
+    // Already a Date object
+    expenseDate = expense.date;
+  } else {
+    // String or other format
+    expenseDate = new Date(expense.date);
+  }
 
   return {
     vehicleId: expense.vehicleId || "",
     date: expenseDate.toISOString().split("T")[0],
-    description: expense.description || "",
-    amount: expense.amount?.toString() || "",
-    category: expense.category || "Other",
+    expenseItems: [{ 
+      description: expense.description || "",
+      amount: expense.amount?.toString() || "",
+      category: expense.category || "Fuel",
+    }],
   };
 };
 
@@ -67,6 +77,12 @@ const ExpenseForm = ({
   const [errors, setErrors] = useState({});
 
   const sortedCategories = useMemo(() => categories, []);
+
+  // Reinitialize form when expense or initialValues change
+  useEffect(() => {
+    setFormData(createDefaultFormState(expense, initialValues));
+    setErrors({});
+  }, [expense, initialValues]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -107,18 +123,13 @@ const ExpenseForm = ({
       newErrors.date = "Date is required";
     }
 
-    const descriptionValidation = validateExpenseDescription(formData.description);
-    if (!descriptionValidation.isValid) {
-      newErrors.description = descriptionValidation.error;
-    }
+    // Validate all expense items
+    const hasValidExpense = formData.expenseItems.some(item => 
+      item.description.trim() && item.amount && parseFloat(item.amount) > 0
+    );
 
-    const amountValidation = validateExpenseAmount(formData.amount);
-    if (!amountValidation.isValid) {
-      newErrors.amount = amountValidation.error;
-    }
-
-    if (!formData.category) {
-      newErrors.category = "Please select a category";
+    if (!hasValidExpense) {
+      newErrors.expenseItems = "Please add at least one valid expense";
     }
 
     setErrors(newErrors);
@@ -129,9 +140,18 @@ const ExpenseForm = ({
     e.preventDefault();
 
     if (validateForm()) {
+      // Submit data includes all expense items
       onSubmit({
-        ...formData,
-        amount: parseFloat(formData.amount),
+        vehicleId: formData.vehicleId,
+        driverId: formData.driverId,
+        newDriverName: formData.newDriverName,
+        date: formData.date,
+        expenseItems: formData.expenseItems.filter(item => 
+          item.description.trim() && item.amount && parseFloat(item.amount) > 0
+        ).map(item => ({
+          ...item,
+          amount: parseFloat(item.amount),
+        })),
       });
     }
   };
@@ -148,7 +168,7 @@ const ExpenseForm = ({
             <div>
               <p className="text-xs text-blue-300 font-semibold">Linked to Last Entry</p>
               <p className="text-xs text-slate-300 mt-0.5">
-                Vehicle and date are automatically set from your last daily entry
+                Vehicle and date are pre-filled from your last trip entry. You can change them if needed.
               </p>
             </div>
           </div>
@@ -274,13 +294,17 @@ const ExpenseForm = ({
             htmlFor="date"
             className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
           >
-            Date *
+            Date * {initialValues && !expense && formData.date && (
+              <span className="text-xs font-normal text-green-400 ml-2">
+                ✓ Pre-filled
+              </span>
+            )}
           </label>
           <input
             type="date"
             id="date"
             name="date"
-            value={formData.date}
+            value={formData.date || new Date().toISOString().split("T")[0]}
             onChange={handleChange}
             max={new Date().toISOString().split("T")[0]}
             className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
@@ -298,100 +322,116 @@ const ExpenseForm = ({
         </div>
       </div>
 
-      <div>
-        <label
-          htmlFor="description"
-          className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
-        >
-          Description *
-        </label>
-        <input
-          type="text"
-          id="description"
-          name="description"
-          value={formData.description}
-          onChange={handleChange}
-          className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
-            errors.description
-              ? "border-rose-400/60 bg-rose-500/10"
-              : "border-white/10 bg-surface-200/60"
-          }`}
-          placeholder="e.g., Oil change, Fuel refill"
-          disabled={isSubmitting}
-        />
-        {errors.description && (
-          <p className="mt-1 text-xs font-medium text-rose-300">
-            {errors.description}
-          </p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
-          <label
-            htmlFor="amount"
-            className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
-          >
-            Amount *
+      {/* Multiple Expense Items */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Expenses *
           </label>
-          <div
-            className={`flex items-center rounded-2xl border px-3 py-2 ${
-              errors.amount
-                ? "border-rose-400/60 bg-rose-500/10"
-                : "border-white/10 bg-surface-200/60"
-            }`}
-          >
-            <span className="mr-2 text-slate-400">$</span>
-            <input
-              type="number"
-              id="amount"
-              name="amount"
-              value={formData.amount}
-              onChange={handleChange}
-              step="0.01"
-              min="0"
-              className="w-full bg-transparent text-white outline-none"
-              placeholder="0.00"
-              disabled={isSubmitting}
-            />
-          </div>
-          {errors.amount && (
-            <p className="mt-1 text-xs font-medium text-rose-300">
-              {errors.amount}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label
-            htmlFor="category"
-            className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
-          >
-            Category *
-          </label>
-          <select
-            id="category"
-            name="category"
-            value={formData.category}
-            onChange={handleChange}
-            className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
-              errors.category
-                ? "border-rose-400/60 bg-rose-500/10"
-                : "border-white/10 bg-surface-200/60"
-            }`}
+          <button
+            type="button"
+            onClick={() => {
+              setFormData(prev => ({
+                ...prev,
+                expenseItems: [...prev.expenseItems, { description: '', amount: '', category: 'Fuel' }]
+              }));
+            }}
+            className="flex items-center gap-1 rounded-lg bg-blue-600/20 px-3 py-1.5 text-xs font-semibold text-blue-300 transition hover:bg-blue-600/30"
             disabled={isSubmitting}
           >
-            {sortedCategories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
-          {errors.category && (
-            <p className="mt-1 text-xs font-medium text-rose-300">
-              {errors.category}
-            </p>
-          )}
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Another Expense
+          </button>
+        </div>
+
+        {formData.expenseItems.map((item, index) => (
+          <div key={index} className="grid grid-cols-12 gap-2 p-3 rounded-xl border border-white/10 bg-surface-200/40">
+            <div className="col-span-12 sm:col-span-4">
+              <input
+                type="text"
+                value={item.description}
+                onChange={(e) => {
+                  const newItems = [...formData.expenseItems];
+                  newItems[index].description = e.target.value;
+                  setFormData(prev => ({ ...prev, expenseItems: newItems }));
+                }}
+                placeholder="e.g., Fuel, Toll, Parking"
+                className="w-full rounded-lg border border-white/10 bg-surface-200/60 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60"
+                disabled={isSubmitting}
+              />
+            </div>
+            <div className="col-span-12 sm:col-span-3">
+              <select
+                value={item.category}
+                onChange={(e) => {
+                  const newItems = [...formData.expenseItems];
+                  newItems[index].category = e.target.value;
+                  setFormData(prev => ({ ...prev, expenseItems: newItems }));
+                }}
+                className="w-full rounded-lg border border-white/10 bg-surface-200/60 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60"
+                disabled={isSubmitting}
+              >
+                {sortedCategories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-span-10 sm:col-span-4">
+              <div className="flex items-center rounded-lg border border-white/10 bg-surface-200/60 px-3 py-2">
+                <span className="mr-2 text-slate-400">$</span>
+                <input
+                  type="number"
+                  value={item.amount}
+                  onChange={(e) => {
+                    const newItems = [...formData.expenseItems];
+                    newItems[index].amount = e.target.value;
+                    setFormData(prev => ({ ...prev, expenseItems: newItems }));
+                  }}
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  className="w-full bg-transparent text-white outline-none text-sm"
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
+            <div className="col-span-2 sm:col-span-1 flex items-center justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  const newItems = formData.expenseItems.filter((_, i) => i !== index);
+                  if (newItems.length === 0) {
+                    newItems.push({ description: '', amount: '', category: 'Fuel' });
+                  }
+                  setFormData(prev => ({ ...prev, expenseItems: newItems }));
+                }}
+                className="rounded-lg bg-red-600/20 p-2 text-red-400 transition hover:bg-red-600/30"
+                disabled={isSubmitting}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        ))}
+        
+        {errors.expenseItems && (
+          <p className="text-xs font-medium text-rose-300">
+            {errors.expenseItems}
+          </p>
+        )}
+
+        <div className="flex justify-end">
+          <p className="text-sm font-semibold text-slate-300">
+            Total: <span className="text-red-400">
+              ${formData.expenseItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0).toFixed(2)}
+            </span>
+          </p>
         </div>
       </div>
 

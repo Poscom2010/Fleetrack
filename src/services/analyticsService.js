@@ -290,16 +290,25 @@ export const getMileageTrends = async (userId, filters = {}, userProfile = null)
 };
 
 /**
- * Get service alerts for vehicles
+ * Get service alerts for vehicles that need maintenance
  * @param {string} userId - The user ID
+ * @param {Object} userProfile - The user profile with role and companyId
  * @returns {Promise<Array>} Array of service alerts
  */
-export const getServiceAlerts = async (userId) => {
+export const getServiceAlerts = async (userId, userProfile = null) => {
   try {
-    const [vehicles, dailyEntries] = await Promise.all([
-      getVehicles(userId),
-      getDailyEntries(userId),
-    ]);
+    // Get vehicles based on user role
+    let vehicles;
+    if (userProfile && (userProfile.role === 'company_admin' || userProfile.role === 'company_manager') && userProfile.companyId) {
+      // Admins and managers see all company vehicles
+      const { getCompanyVehicles } = await import('./vehicleService');
+      vehicles = await getCompanyVehicles(userProfile.companyId);
+    } else {
+      // Regular users see only their vehicles
+      vehicles = await getVehicles(userId);
+    }
+
+    const dailyEntries = await getDailyEntries(userId);
 
     const alerts = [];
 
@@ -364,11 +373,21 @@ export const acknowledgeServiceAlert = async (userId, vehicleId, currentMileage)
 /**
  * Get license expiry alerts for vehicles
  * @param {string} userId - The user ID
+ * @param {Object} userProfile - The user profile with role and companyId
  * @returns {Promise<Array>} Array of license expiry alerts
  */
-export const getLicenseExpiryAlerts = async (userId) => {
+export const getLicenseExpiryAlerts = async (userId, userProfile = null) => {
   try {
-    const vehicles = await getVehicles(userId);
+    // Get vehicles based on user role
+    let vehicles;
+    if (userProfile && (userProfile.role === 'company_admin' || userProfile.role === 'company_manager') && userProfile.companyId) {
+      // Admins and managers see all company vehicles
+      const { getCompanyVehicles } = await import('./vehicleService');
+      vehicles = await getCompanyVehicles(userProfile.companyId);
+    } else {
+      // Regular users see only their vehicles
+      vehicles = await getVehicles(userId);
+    }
     const alerts = [];
     const today = new Date();
     const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);

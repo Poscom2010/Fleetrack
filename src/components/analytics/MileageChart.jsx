@@ -160,51 +160,6 @@ const MileageChart = ({
           </div>
         )}
       </div>
-
-      {/* Cumulative Mileage Stacked Area Chart */}
-      <div className="rounded-2xl border border-purple-400/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 shadow-xl">
-        <div className="mb-3 flex items-center gap-2">
-          <div className="rounded-lg bg-purple-500/20 p-1.5">
-            <span className="text-base">📊</span>
-          </div>
-          <h3 className="text-base font-bold text-white">
-            Cumulative Mileage Across Fleet
-          </h3>
-        </div>
-        {cumulativeData.length > 0 ? (
-          <div className="mt-3 h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={cumulativeData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 12, fill: "#94a3b8" }}
-                  stroke="#475569"
-                  angle={-45}
-                  textAnchor="end"
-                  height={70}
-                />
-                <YAxis tick={{ fontSize: 12, fill: "#94a3b8" }} stroke="#475569" />
-                <Tooltip content={<CumulativeTooltip />} cursor={{ stroke: "#475569", strokeWidth: 1 }} />
-                <Legend wrapperStyle={{ color: "#cbd5e1", fontSize: "13px", fontWeight: "600" }} />
-                <Area
-                  type="monotone"
-                  dataKey="totalMileage"
-                  stroke="#8b5cf6"
-                  strokeWidth={3}
-                  fill="#6d28d9"
-                  fillOpacity={0.3}
-                  name="Total Mileage"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div className="mt-3 rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 py-12 text-center text-xs text-slate-400">
-            No cumulative mileage data available
-          </div>
-        )}
-      </div>
     </>
   );
 };

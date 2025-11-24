@@ -176,8 +176,55 @@ const useAuthProvider = () => {
               }
             }
             
-            // Note: We don't update invitation status here to avoid permission issues
-            // The company admin can see accepted invitations in their dashboard
+            // Update invitation status to 'accepted' in company's pendingInvitations
+            if (invitationData?.companyId && invitationData?.email) {
+              try {
+                console.log('📧 Updating invitation status to accepted...');
+                console.log('📧 Company ID:', invitationData.companyId);
+                console.log('📧 Email:', invitationData.email);
+                const { doc, getDoc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+                const { db } = await import('../services/firebase');
+                
+                const companyRef = doc(db, 'companies', invitationData.companyId);
+                const companyDoc = await getDoc(companyRef);
+                
+                if (companyDoc.exists()) {
+                  const pendingInvitations = companyDoc.data().pendingInvitations || [];
+                  console.log('📋 Found', pendingInvitations.length, 'invitations in company');
+                  
+                  // Find and update the invitation status (case-insensitive email match)
+                  let invitationFound = false;
+                  const updatedInvitations = pendingInvitations.map(inv => {
+                    if (inv.email?.toLowerCase() === invitationData.email.toLowerCase() && inv.status === 'pending') {
+                      console.log('✅ Found matching pending invitation for:', inv.email);
+                      invitationFound = true;
+                      return {
+                        ...inv,
+                        status: 'accepted',
+                        userId: currentUser.uid,
+                        acceptedAt: new Date().toISOString(),
+                      };
+                    }
+                    return inv;
+                  });
+                  
+                  if (invitationFound) {
+                    await updateDoc(companyRef, {
+                      pendingInvitations: updatedInvitations,
+                      updatedAt: serverTimestamp(),
+                    });
+                    console.log('✅ Invitation status updated to accepted');
+                  } else {
+                    console.warn('⚠️ No matching pending invitation found for:', invitationData.email);
+                  }
+                } else {
+                  console.warn('⚠️ Company document not found');
+                }
+              } catch (inviteErr) {
+                console.error('❌ Error updating invitation status:', inviteErr);
+                // Don't throw - this is not critical for user registration
+              }
+            }
           }
           
           setUserProfile(profile);

@@ -5,6 +5,8 @@ import {
   validateMileageComparison,
 } from "../../utils/validators";
 import { getLastRecordedMileage, validateMileage as validateMileageAgainstLast } from "../../services/mileageValidationService";
+import { validateForMileageGap } from "../../services/mileageGapDetectionService";
+import { getLastDriverForVehicle, getLastVehicleForDriver } from "../../services/lastUsedService";
 
 const createDefaultFormState = (entry) => {
   if (!entry) {
@@ -22,11 +24,22 @@ const createDefaultFormState = (entry) => {
     };
   }
 
-  const entryDate = entry.date instanceof Date ? entry.date : new Date(entry.date);
+  // Handle Firestore timestamp or Date object
+  let entryDate;
+  if (entry.date?.toDate) {
+    // Firestore timestamp
+    entryDate = entry.date.toDate();
+  } else if (entry.date instanceof Date) {
+    // Already a Date object
+    entryDate = entry.date;
+  } else {
+    // String or other format
+    entryDate = new Date(entry.date);
+  }
 
   return {
     vehicleId: entry.vehicleId || "",
-    driverId: entry.driverId || "",
+    driverId: entry.driverId || entry.userId || "", // Use userId if driverId not present
     date: entryDate.toISOString().split("T")[0],
     startLocation: entry.startLocation || "",
     endLocation: entry.endLocation || "",
@@ -62,11 +75,13 @@ const DailyEntryForm = ({
   isSubmitting = false,
   onAddNewVehicle,
   pendingVehicleId,
+  companyId,
 }) => {
   const [formData, setFormData] = useState(() => createDefaultFormState(entry));
   const [errors, setErrors] = useState({});
   const [lastMileageInfo, setLastMileageInfo] = useState(null);
   const [mileageWarning, setMileageWarning] = useState("");
+  const [mileageGapWarning, setMileageGapWarning] = useState(null);
 
   // Auto-select newly created vehicle
   useEffect(() => {
@@ -80,18 +95,57 @@ const DailyEntryForm = ({
     }
   }, [pendingVehicleId, vehicles]);
 
-  // Fetch last recorded mileage when vehicle changes
+  // Fetch previous entry's mileage
   useEffect(() => {
     const fetchLastMileage = async () => {
-      if (formData.vehicleId && !entry) { // Only check for new entries
-        const lastMileage = await getLastRecordedMileage(formData.vehicleId);
+      if (formData.vehicleId) {
+        let lastMileage;
+        
+        if (entry?.id) {
+          // EDITING: Get the last entry BEFORE this date (for chronological validation)
+          const entryDate = new Date(formData.date);
+          lastMileage = await getLastRecordedMileage(formData.vehicleId, entryDate, entry.id);
+        } else {
+          // NEW ENTRY: Get the absolute latest mileage (no date filter)
+          lastMileage = await getLastRecordedMileage(formData.vehicleId, null, null);
+        }
+        
         setLastMileageInfo(lastMileage);
         setMileageWarning(""); // Clear any previous warnings
+        
+        if (lastMileage) {
+          console.log(`🚗 ${entry?.id ? 'Previous' : 'Latest'} entry's end mileage: ${lastMileage.lastMileage.toLocaleString()} km (${lastMileage.date.toLocaleDateString()})`);
+        } else {
+          console.log(`🚗 No previous entries found`);
+        }
       }
     };
 
     fetchLastMileage();
-  }, [formData.vehicleId, entry]);
+  }, [formData.vehicleId, formData.date, entry?.id]);
+
+  // Check for mileage gaps when start mileage is entered
+  useEffect(() => {
+    const checkMileageGap = async () => {
+      if (formData.vehicleId && formData.startMileage && formData.date && companyId) {
+        const gapCheck = await validateForMileageGap(
+          formData.vehicleId,
+          formData.startMileage,
+          formData.date,
+          companyId
+        );
+        
+        if (gapCheck.hasGap) {
+          setMileageGapWarning(gapCheck);
+          console.log(`⚠️ Mileage gap detected: ${gapCheck.unaccountedKm} km unaccounted`);
+        } else {
+          setMileageGapWarning(null);
+        }
+      }
+    };
+
+    checkMileageGap();
+  }, [formData.vehicleId, formData.startMileage, formData.date, companyId]);
 
   const distanceTraveled = useMemo(() => {
     const start = parseFloat(formData.startMileage);
@@ -103,7 +157,7 @@ const DailyEntryForm = ({
     return 0;
   }, [formData.endMileage, formData.startMileage]);
 
-  const handleChange = (e) => {
+  const handleChange = async (e) => {
     const { name, value } = e.target;
     
     // Handle "Add New Vehicle" selection
@@ -113,6 +167,47 @@ const DailyEntryForm = ({
         onAddNewVehicle();
       }
       return; // Don't update form data
+    }
+    
+    // Auto-populate driver when vehicle is selected (always update to last driver for this vehicle)
+    if (name === 'vehicleId' && value && value !== 'ADD_NEW_VEHICLE' && isAdminOrManager) {
+      const lastDriver = await getLastDriverForVehicle(value);
+      if (lastDriver) {
+        console.log(`🚗 Auto-populating driver for vehicle: ${lastDriver}`);
+        setFormData((prev) => ({
+          ...prev,
+          vehicleId: value,
+          driverId: lastDriver,
+        }));
+        if (errors[name]) {
+          setErrors((prev) => ({
+            ...prev,
+            [name]: "",
+            driverId: "",
+          }));
+        }
+        return;
+      }
+    }
+
+    // Auto-populate vehicle when driver is selected
+    if (name === 'driverId' && value && value !== 'NEW_DRIVER' && !formData.vehicleId) {
+      const lastVehicle = await getLastVehicleForDriver(value);
+      if (lastVehicle) {
+        setFormData((prev) => ({
+          ...prev,
+          driverId: value,
+          vehicleId: lastVehicle,
+        }));
+        if (errors[name]) {
+          setErrors((prev) => ({
+            ...prev,
+            [name]: "",
+            vehicleId: "",
+          }));
+        }
+        return;
+      }
     }
     
     setFormData((prev) => ({
@@ -314,7 +409,7 @@ const DailyEntryForm = ({
                 ? "border-rose-400/60 bg-rose-500/10"
                 : "border-white/10 bg-surface-200/60"
             }`}
-            disabled={isSubmitting || Boolean(entry)}
+            disabled={isSubmitting}
           >
             <option value="">Select a vehicle</option>
             {!entry && (
@@ -461,20 +556,10 @@ const DailyEntryForm = ({
         <div>
           <label
             htmlFor="startMileage"
-            className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+            className="mb-1 block text-xs font-medium text-slate-300"
           >
             Start Mileage (km) *
           </label>
-          {lastMileageInfo && (
-            <div className="mb-2 bg-blue-500/10 border border-blue-500/30 rounded-lg p-2">
-              <p className="text-xs text-blue-300">
-                📊 Last recorded: <strong>{lastMileageInfo.lastMileage.toLocaleString()} km</strong>
-                {lastMileageInfo.date && (
-                  <span className="text-slate-400"> on {lastMileageInfo.date.toLocaleDateString()}</span>
-                )}
-              </p>
-            </div>
-          )}
           <input
             type="number"
             id="startMileage"
@@ -491,6 +576,11 @@ const DailyEntryForm = ({
             placeholder="e.g., 10000"
             disabled={isSubmitting}
           />
+          {lastMileageInfo && (
+            <p className="mt-1 text-xs text-slate-400">
+              Last mileage: {lastMileageInfo.lastMileage.toLocaleString()} km
+            </p>
+          )}
           {errors.startMileage && (
             <p className="mt-1 text-xs font-medium text-rose-300">
               {errors.startMileage}
@@ -503,6 +593,38 @@ const DailyEntryForm = ({
               </svg>
               {mileageWarning}
             </p>
+          )}
+          {mileageGapWarning && !errors.startMileage && (
+            <div className={`mt-2 rounded-lg border p-3 ${
+              mileageGapWarning.severity === 'high' 
+                ? 'border-red-500/30 bg-red-500/10' 
+                : mileageGapWarning.severity === 'medium'
+                ? 'border-orange-500/30 bg-orange-500/10'
+                : 'border-yellow-500/30 bg-yellow-500/10'
+            }`}>
+              <div className="flex items-start gap-2">
+                <svg className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+                  mileageGapWarning.severity === 'high' 
+                    ? 'text-red-400' 
+                    : mileageGapWarning.severity === 'medium'
+                    ? 'text-orange-400'
+                    : 'text-yellow-400'
+                }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div className="flex-1">
+                  <p className={`text-xs font-semibold ${
+                    mileageGapWarning.severity === 'high' 
+                      ? 'text-red-300' 
+                      : mileageGapWarning.severity === 'medium'
+                      ? 'text-orange-300'
+                      : 'text-yellow-300'
+                  }`}>
+                    Mileage Mismatch: {mileageGapWarning.unaccountedKm.toLocaleString()} km gap detected
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 

@@ -122,3 +122,45 @@ service-account-key.json
 # package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
+
+# Firebase config (if it contains API keys in plain text)
+# src/services/firebase.js
+
+# Development/Debug files
+FIX_*.md
+DEBUG_*.md
+TODO_*.md
+NOTES_*.md
+*_DEBUG.js
+*_TEST.js
+
+# Test data and seeds
+test-data/
+seed-data/
+mock-data/
+
+# Firestore indexes (auto-generated)
+firestore.indexes.json
+
+# Source maps in production
+*.map
+
+# AWS/Cloud credentials
+.aws/
+credentials
+config
+
+# API keys and secrets documentation
+API_KEYS.md
+SECRETS.md
+CREDENTIALS.md
+
+# Local development overrides
+local.config.js
+dev.config.js
+
+# Deployment artifacts
+deploy/
+deployment/
+*.zip
+*.tar.gz

@@ -111,7 +111,7 @@ const ProfileSettingsPage = () => {
                 {formData.fullName || 'User'}
               </h3>
               <p className="text-sm text-slate-400">
-                {userProfile?.role === 'company_admin' ? 'Company Admin' :
+                {userProfile?.role === 'company_admin' ? 'Admin' :
                  userProfile?.role === 'company_manager' ? 'Manager' :
                  userProfile?.role === 'company_user' ? 'Professional Driver' : 'User'}
               </p>

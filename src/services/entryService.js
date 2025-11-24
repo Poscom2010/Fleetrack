@@ -30,13 +30,8 @@ export const createDailyEntry = async (userId, companyId, entryData) => {
     // Use driverId if provided (admin creating for driver), otherwise use userId
     const actualDriverId = driverId || userId;
 
-    // Check for duplicate entry (same vehicle and date)
-    const duplicate = await checkDuplicateDailyEntry(actualDriverId, vehicleId, date);
-    if (duplicate) {
-      throw new Error(
-        "A daily entry already exists for this vehicle on this date"
-      );
-    }
+    // NOTE: Removed duplicate check - vehicles can have multiple trips per day
+    // Each trip is a separate journey (e.g., morning delivery, afternoon pickup)
 
     // Calculate distance traveled
     const distanceTraveled = endMileage - startMileage;
@@ -275,25 +270,8 @@ export const updateDailyEntry = async (entryId, updates) => {
       updates.endLocation = updates.endLocation || "";
     }
 
-    // Check for duplicate if date or vehicle is being changed
-    if (updates.date || updates.vehicleId) {
-      const currentEntry = await getDailyEntry(entryId);
-      const checkDate = updates.date || currentEntry.date;
-      const checkVehicleId = updates.vehicleId || currentEntry.vehicleId;
-
-      const duplicate = await checkDuplicateDailyEntry(
-        currentEntry.userId,
-        checkVehicleId,
-        checkDate,
-        entryId
-      );
-
-      if (duplicate) {
-        throw new Error(
-          "A daily entry already exists for this vehicle on this date"
-        );
-      }
-    }
+    // NOTE: Removed duplicate check - vehicles can have multiple trips per day
+    // Each trip is a separate journey
 
     // Convert date to Timestamp if provided
     if (updates.date) {

@@ -201,7 +201,7 @@ const CompanySetupPage = () => {
               required
             />
             <p className="mt-1 text-xs text-slate-400">
-              This will be displayed on your profile as Company Admin
+              This will be displayed on your profile as Company Manager
             </p>
           </div>
 
