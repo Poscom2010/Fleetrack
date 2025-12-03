@@ -150,7 +150,11 @@ const Navbar = () => {
         { path: "/admin?tab=dashboard", label: "Dashboard" },
         { path: "/admin?tab=companies", label: "Companies" },
         { path: "/admin?tab=users", label: "Users" },
-        { path: "/admin/analytics", label: "Analytics" }
+        { path: "/support-tickets", label: "Support Tickets" },
+        { path: "/admin/business", label: "FleetTrack Business" },
+        { path: "/admin/analytics", label: "Analytics" },
+        { path: "/admin/ai-insights", label: "AI Insights" },
+        { path: "/admin/data-recovery", label: "Data Recovery" }
       ];
     }
     
@@ -577,6 +581,36 @@ const Navbar = () => {
                 </div>
               )}
             </>
+          ) : isSystemAdmin(userProfile) ? (
+            /* System Admin - Baltic Blue Theme Menu */
+            <div className="space-y-1.5">
+              {/* System Admin Header */}
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-xl mb-2 ${isDark ? 'bg-baltic-500/10 border border-baltic-500/30' : 'bg-baltic-50 border border-baltic-200'}`}>
+                <span className="text-lg">🛡️</span>
+                <span className={`text-sm font-bold ${isDark ? 'text-baltic-300' : 'text-baltic-700'}`}>System Admin Panel</span>
+              </div>
+              
+              {navLinks.map((link, index) => {
+                const active = isActive(link.path);
+                // All links use consistent Baltic Blue theme
+                return (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={`block rounded-xl px-4 py-3 text-sm font-medium transition ${
+                      active
+                        ? "bg-gradient-to-r from-baltic-600 to-baltic-700 text-white shadow-lg"
+                        : isDark 
+                          ? 'bg-baltic-500/10 text-baltic-300 hover:bg-baltic-500/20 border border-baltic-500/20' 
+                          : 'bg-baltic-50 text-baltic-700 hover:bg-baltic-100 border border-baltic-200'
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </div>
           ) : (
             /* Non-Hybrid Companies - Standard Menu */
             <div className="space-y-1.5">
@@ -601,11 +635,23 @@ const Navbar = () => {
           )}
             
           {/* Divider */}
-          <div className={`border-t pt-3 mt-1.5 ${isDark ? 'border-white/10' : 'border-baltic-200'}`}>
+          <div className={`border-t pt-3 mt-1.5 space-y-1.5 ${isDark ? 'border-white/10' : 'border-baltic-200'}`}>
             {/* Theme Toggle - Mobile */}
             <div className="px-4 py-2">
               <ThemeToggle />
             </div>
+            
+            {/* Onboarding Guide - Available to all users */}
+            <Link
+              to="/onboarding"
+              onClick={() => setIsMenuOpen(false)}
+              className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium transition ${isDark ? 'bg-yellow-500/10 text-yellow-300 hover:bg-yellow-500/20 hover:text-yellow-200' : 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100 hover:text-yellow-800'}`}
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              Getting Started
+            </Link>
             
             {/* Profile Settings - Available to all users */}
             <Link
@@ -624,7 +670,7 @@ const Navbar = () => {
               <Link
                 to="/company/settings"
                 onClick={() => setIsMenuOpen(false)}
-                className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium transition mt-1.5 ${isDark ? 'bg-white/5 text-slate-200 hover:bg-white/10 hover:text-white' : 'bg-baltic-50 text-baltic-700 hover:bg-baltic-100 hover:text-baltic-900'}`}
+                className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium transition ${isDark ? 'bg-white/5 text-slate-200 hover:bg-white/10 hover:text-white' : 'bg-baltic-50 text-baltic-700 hover:bg-baltic-100 hover:text-baltic-900'}`}
               >
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path

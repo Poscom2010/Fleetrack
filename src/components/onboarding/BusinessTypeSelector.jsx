@@ -27,7 +27,7 @@ const BusinessTypeSelector = ({ onSelect, selectedType }) => {
       title: 'Both (Hybrid Fleet)',
       description: 'Manage both traditional vehicles and commodity trucks in one platform',
       icon: Package,
-      color: 'purple',
+      color: 'baltic',
       features: ['All Traditional Features', 'All Commodity Features', 'Unified Dashboard']
     }
   ];
@@ -46,11 +46,11 @@ const BusinessTypeSelector = ({ onSelect, selectedType }) => {
         icon: 'bg-orange-500/10 text-orange-400',
         text: 'text-orange-400'
       },
-      purple: {
-        border: isSelected ? 'border-purple-500' : 'border-slate-700 hover:border-purple-500/50',
-        bg: isSelected ? 'bg-purple-500/10' : 'bg-slate-900/50 hover:bg-slate-800/50',
-        icon: 'bg-purple-500/10 text-purple-400',
-        text: 'text-purple-400'
+      baltic: {
+        border: isSelected ? 'border-baltic-500' : 'border-slate-700 hover:border-baltic-500/50',
+        bg: isSelected ? 'bg-baltic-500/10' : 'bg-slate-900/50 hover:bg-slate-800/50',
+        icon: 'bg-baltic-500/10 text-baltic-400',
+        text: 'text-baltic-400'
       }
     };
     return colors[color];

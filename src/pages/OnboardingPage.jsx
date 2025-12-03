@@ -1,16 +1,75 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../contexts/ThemeContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import Onboarding from '../components/onboarding/Onboarding';
-import { Lightbulb, Play } from 'lucide-react';
+import { Lightbulb, Play, Car, Fuel, Users, Package, Receipt, Scale, BarChart3, FileText } from 'lucide-react';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../services/firebase';
 
 /**
- * OnboardingPage - Allows users to replay the onboarding tour anytime
+ * OnboardingPage - Fleet-type aware onboarding guide
  */
 const OnboardingPage = () => {
-  usePageTitle('Onboarding Guide');
+  usePageTitle('Getting Started');
   const { user, userProfile, company } = useAuth();
+  const { isDark } = useTheme();
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [fleetType, setFleetType] = useState('traditional');
+
+  // Detect fleet type
+  useEffect(() => {
+    const detectFleetType = async () => {
+      if (!company?.id) return;
+      
+      const companyBusinessType = company?.businessType || userProfile?.businessType;
+      
+      if (companyBusinessType === 'commodity') {
+        setFleetType('commodity');
+        return;
+      }
+      if (companyBusinessType === 'hybrid') {
+        setFleetType('hybrid');
+        return;
+      }
+      if (companyBusinessType === 'traditional') {
+        setFleetType('traditional');
+        return;
+      }
+      
+      // Fallback: detect from vehicles
+      try {
+        const vehiclesRef = collection(db, 'vehicles');
+        const q = query(vehiclesRef, where('companyId', '==', company.id));
+        const snapshot = await getDocs(q);
+        
+        let hasTraditional = false;
+        let hasCommodity = false;
+        
+        snapshot.forEach(doc => {
+          const vehicle = doc.data();
+          const type = vehicle.vehicleType?.toLowerCase() || '';
+          if (['tanker', 'fuel_truck', 'gas_truck', 'commodity'].includes(type)) {
+            hasCommodity = true;
+          } else {
+            hasTraditional = true;
+          }
+        });
+        
+        if (hasTraditional && hasCommodity) {
+          setFleetType('hybrid');
+        } else if (hasCommodity) {
+          setFleetType('commodity');
+        } else {
+          setFleetType('traditional');
+        }
+      } catch (error) {
+        console.error('Error detecting fleet type:', error);
+      }
+    };
+    
+    detectFleetType();
+  }, [company, userProfile]);
 
   const handleStartOnboarding = () => {
     setShowOnboarding(true);
@@ -20,8 +79,55 @@ const OnboardingPage = () => {
     setShowOnboarding(false);
   };
 
+  // Get fleet-specific features
+  const getFeatures = () => {
+    const isAdmin = userProfile?.role === 'company_admin' || userProfile?.role === 'company_manager';
+    
+    if (fleetType === 'commodity' && isAdmin) {
+      return [
+        { icon: Car, title: 'Add Tanker Vehicles', desc: 'Set up your commodity trucks with capacity info', color: 'blue' },
+        { icon: Users, title: 'Invite Team', desc: 'Add drivers and admins to manage operations', color: 'orange' },
+        { icon: Package, title: 'Load Events', desc: 'Track product loaded from depots', color: 'emerald' },
+        { icon: Receipt, title: 'Deliveries', desc: 'Log customer deliveries and invoices', color: 'cyan' },
+        { icon: Scale, title: 'Reconciliation', desc: 'Monitor variances and discrepancies', color: 'orange' },
+        { icon: BarChart3, title: 'Analytics', desc: 'View insights and performance metrics', color: 'blue' },
+      ];
+    }
+    
+    if (fleetType === 'hybrid' && isAdmin) {
+      return [
+        { icon: Car, title: 'Fleet Vehicles', desc: 'Add cars, vans for traditional operations', color: 'blue' },
+        { icon: Fuel, title: 'Tanker Trucks', desc: 'Add commodity vehicles for fuel/gas', color: 'emerald' },
+        { icon: Users, title: 'Team Management', desc: 'Invite drivers for both fleet types', color: 'orange' },
+        { icon: FileText, title: 'Trip Capturing', desc: 'Record trips for traditional fleet', color: 'blue' },
+        { icon: Package, title: 'Load/Offload', desc: 'Track commodity operations', color: 'teal' },
+        { icon: BarChart3, title: 'Unified Analytics', desc: 'View insights across all operations', color: 'emerald' },
+      ];
+    }
+    
+    if (isAdmin) {
+      return [
+        { icon: Car, title: 'Add Vehicles', desc: 'Set up your fleet with vehicle details', color: 'blue' },
+        { icon: Users, title: 'Invite Team', desc: 'Add drivers to capture their own data', color: 'orange' },
+        { icon: FileText, title: 'Capture Trips', desc: 'Record daily mileage and cash-in', color: 'emerald' },
+        { icon: BarChart3, title: 'Analytics', desc: 'Monitor fleet performance and insights', color: 'cyan' },
+      ];
+    }
+    
+    // Driver
+    return [
+      { icon: FileText, title: 'Capture Trips', desc: 'Record your daily operations', color: 'blue' },
+      { icon: Car, title: 'View Vehicles', desc: 'Check your assigned vehicle', color: 'emerald' },
+      { icon: BarChart3, title: 'Performance', desc: 'Track your statistics', color: 'cyan' },
+    ];
+  };
+
+  const features = getFeatures();
+  const fleetLabel = fleetType === 'commodity' ? 'Commodity' : fleetType === 'hybrid' ? 'Hybrid Fleet' : 'Fleet';
+  const fleetColor = fleetType === 'commodity' ? 'emerald' : fleetType === 'hybrid' ? 'baltic' : 'blue';
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Onboarding Modal */}
       {showOnboarding && (
         <Onboarding 
@@ -33,215 +139,128 @@ const OnboardingPage = () => {
       )}
 
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-lg shadow-md p-3">
-        <div className="flex items-start gap-2">
-          <div className="p-1.5 bg-yellow-500/10 border border-yellow-500/30 rounded-md">
-            <Lightbulb className="w-4 h-4 text-yellow-400" />
+      <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white/80 border-gray-200'}`}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className={`p-2 rounded-lg bg-${fleetColor}-500/10 border border-${fleetColor}-500/30 w-fit`}>
+            <Lightbulb className={`w-5 h-5 text-${fleetColor}-400`} />
           </div>
           <div className="flex-1">
-            <h1 className="text-base font-bold text-gray-900 mb-0.5">
-              Onboarding Guide
-            </h1>
-            <p className="text-gray-600 text-xs">
-              Need a refresher? Replay the guided tour to learn how to use FleetTrack effectively.
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                Getting Started
+              </h1>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full border bg-${fleetColor}-500/10 text-${fleetColor}-400 border-${fleetColor}-500/30`}>
+                {fleetLabel}
+              </span>
+            </div>
+            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>
+              Learn how to use FleetTrack for your {fleetLabel.toLowerCase()} operations
             </p>
           </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-lg shadow-md p-3">
-        <div className="max-w-2xl mx-auto text-center">
-          {/* Icon */}
-          <div className="inline-flex p-2 bg-blue-500/10 border border-blue-500/30 rounded-full mb-2">
-            <Play className="w-5 h-5 text-blue-400" />
-          </div>
-
-          {/* Title */}
-          <h2 className="text-sm font-bold text-gray-900 mb-1.5">
-            Ready to Learn?
-          </h2>
-
-          {/* Description */}
-          <p className="text-gray-600 mb-3 text-xs">
-            The onboarding guide will walk you through the key features and workflows 
-            based on your role. It takes just a few minutes and will help you get the 
-            most out of FleetTrack.
-          </p>
-
-          {/* Start Button */}
           <button
             onClick={handleStartOnboarding}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-gray-900 rounded-lg font-semibold text-xs shadow-lg transition transform hover:scale-105"
+            className={`flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-${fleetColor}-600 to-${fleetColor}-700 hover:from-${fleetColor}-700 hover:to-${fleetColor}-800 text-white rounded-lg font-semibold text-sm shadow-lg transition transform hover:scale-105`}
           >
-            <Play className="w-3.5 h-3.5" />
-            Start Onboarding Tour
+            <Play className="w-4 h-4" />
+            <span>Start Tour</span>
           </button>
-
-          {/* Info Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-4">
-            <div className="bg-gray-50/80 backdrop-blur-sm border border-gray-200/60 rounded-md p-2">
-              <div className="text-lg mb-1">🎯</div>
-              <h3 className="text-gray-900 font-semibold mb-0.5 text-xs">Role-Based</h3>
-              <p className="text-gray-600 text-[10px]">
-                Tailored content for your specific role
-              </p>
-            </div>
-
-            <div className="bg-gray-50/80 backdrop-blur-sm border border-gray-200/60 rounded-md p-2">
-              <div className="text-lg mb-1">⚡</div>
-              <h3 className="text-gray-900 font-semibold mb-0.5 text-xs">Quick & Easy</h3>
-              <p className="text-gray-600 text-[10px]">
-                Takes only 2-3 minutes to complete
-              </p>
-            </div>
-
-            <div className="bg-gray-50/80 backdrop-blur-sm border border-gray-200/60 rounded-md p-2">
-              <div className="text-lg mb-1">💡</div>
-              <h3 className="text-gray-900 font-semibold mb-0.5 text-xs">Step-by-Step</h3>
-              <p className="text-gray-600 text-[10px]">
-                Clear instructions for each feature
-              </p>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* What You'll Learn */}
-      <div className="bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-lg shadow-md p-3">
-        <h2 className="text-sm font-bold text-gray-900 mb-2.5">What You'll Learn</h2>
-        
-        {userProfile?.role === 'company_admin' || userProfile?.role === 'company_manager' ? (
-          <div className="space-y-2">
-            <div className="flex items-start gap-2.5">
-              <div className="mt-0.5 p-1 bg-blue-500/10 rounded-full">
-                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-gray-900 font-semibold mb-0.5 text-xs">Vehicle Monitoring Setup</h3>
-                <p className="text-gray-600 text-[10px]">Learn how to add vehicles, set up alerts, and monitor your fleet in real-time.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2.5">
-              <div className="mt-0.5 p-1 bg-orange-500/10 rounded-full">
-                <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-gray-900 font-semibold mb-0.5 text-xs">Inviting Your Team (Critical!)</h3>
-                <p className="text-gray-600 text-[10px]">
-                  {userProfile?.role === 'company_manager' 
-                    ? 'Learn how to invite Admins (to help manage) and Drivers (to capture data) to ensure proper data ownership.'
-                    : 'Understand why and how to properly invite drivers to ensure data ownership.'}
+      {/* Features Grid */}
+      <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white/80 border-gray-200'}`}>
+        <h2 className={`text-sm font-bold mb-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          What You'll Learn
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {features.map((feature, index) => {
+            const Icon = feature.icon;
+            return (
+              <div 
+                key={index} 
+                className={`p-3 rounded-lg border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}
+              >
+                <div className={`p-1.5 rounded-md bg-${feature.color}-500/10 border border-${feature.color}-500/30 w-fit mb-2`}>
+                  <Icon className={`w-4 h-4 text-${feature.color}-400`} />
+                </div>
+                <h3 className={`text-xs font-semibold mb-0.5 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {feature.title}
+                </h3>
+                <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>
+                  {feature.desc}
                 </p>
               </div>
-            </div>
+            );
+          })}
+        </div>
+      </div>
 
-            <div className="flex items-start gap-2.5">
-              <div className="mt-0.5 p-1 bg-emerald-500/10 rounded-full">
-                <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-gray-900 font-semibold mb-0.5 text-xs">Capturing Trips & Expenses</h3>
-                <p className="text-gray-600 text-[10px]">Record daily trips, add multiple expenses per trip, and track your operations.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2.5">
-              <div className="mt-0.5 p-1 bg-purple-500/10 rounded-full">
-                <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-gray-900 font-semibold mb-0.5 text-xs">Analytics & Reports</h3>
-                <p className="text-gray-600 text-[10px]">Access real-time insights, AI-powered recommendations, and export detailed reports.</p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <div className="flex items-start gap-2.5">
-              <div className="mt-0.5 p-1 bg-blue-500/10 rounded-full">
-                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-gray-900 font-semibold mb-0.5 text-xs">Your Role in the Fleet</h3>
-                <p className="text-gray-600 text-[10px]">Understand how you fit into your company's fleet management system.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2.5">
-              <div className="mt-0.5 p-1 bg-emerald-500/10 rounded-full">
-                <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-gray-900 font-semibold mb-0.5 text-xs">Capturing Daily Trips</h3>
-                <p className="text-gray-600 text-[10px]">Learn how to record trips, add multiple expenses, and track your daily operations.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2.5">
-              <div className="mt-0.5 p-1 bg-orange-500/10 rounded-full">
-                <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-gray-900 font-semibold mb-0.5 text-xs">Vehicle Monitoring</h3>
-                <p className="text-gray-600 text-[10px]">View vehicles, check alerts, and update information (note: you cannot delete vehicles).</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2.5">
-              <div className="mt-0.5 p-1 bg-purple-500/10 rounded-full">
-                <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-gray-900 font-semibold mb-0.5 text-xs">Tracking Your Performance</h3>
-                <p className="text-gray-600 text-[10px]">View your trip history and personal statistics.</p>
-              </div>
-            </div>
-          </div>
-        )}
+      {/* Quick Tips */}
+      <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white/80 border-gray-200'}`}>
+        <h2 className={`text-sm font-bold mb-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          Quick Tips
+        </h2>
+        <div className="space-y-2">
+          {fleetType === 'commodity' ? (
+            <>
+              <Tip isDark={isDark} emoji="🛢️" text="Add your tanker vehicles with capacity information first" />
+              <Tip isDark={isDark} emoji="👥" text="Invite drivers so they can log their own trips" />
+              <Tip isDark={isDark} emoji="📦" text="Record load events when product is loaded from depot" />
+              <Tip isDark={isDark} emoji="🧾" text="Log deliveries to generate invoices automatically" />
+              <Tip isDark={isDark} emoji="⚖️" text="Check reconciliation for any tank discrepancies" />
+            </>
+          ) : fleetType === 'hybrid' ? (
+            <>
+              <Tip isDark={isDark} emoji="🚗" text="Add traditional fleet vehicles (cars, vans, bikes)" />
+              <Tip isDark={isDark} emoji="🛢️" text="Add commodity vehicles (tankers) separately" />
+              <Tip isDark={isDark} emoji="📱" text="Use mobile menu to switch between Fleet and Commodity views" />
+              <Tip isDark={isDark} emoji="👥" text="Invite drivers for both fleet types" />
+              <Tip isDark={isDark} emoji="📊" text="Monitor both dashboards for complete insights" />
+            </>
+          ) : (
+            <>
+              <Tip isDark={isDark} emoji="🚗" text="Add your vehicles with registration and service dates" />
+              <Tip isDark={isDark} emoji="👥" text="Invite drivers so their data belongs to your company" />
+              <Tip isDark={isDark} emoji="📝" text="Capture trips daily for accurate tracking" />
+              <Tip isDark={isDark} emoji="📊" text="Check analytics regularly for insights" />
+            </>
+          )}
+        </div>
       </div>
 
       {/* Help Section */}
-      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-        <div className="flex items-start gap-2">
-          <div className="text-lg">💬</div>
+      <div className={`rounded-xl border p-4 bg-${fleetColor}-500/10 border-${fleetColor}-500/30`}>
+        <div className="flex items-start gap-3">
+          <span className="text-xl">💬</span>
           <div className="flex-1">
-            <h3 className="text-gray-900 font-semibold mb-1 text-xs">Need More Help?</h3>
-            <p className="text-blue-200 text-[10px] mb-2">
-              If you have questions after completing the onboarding, visit our Support page 
-              or contact your administrator.
+            <h3 className={`font-semibold mb-1 text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              Need Help?
+            </h3>
+            <p className={`text-xs mb-2 ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
+              Contact support or replay the onboarding tour anytime.
             </p>
-            <a
-              href="/support"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-gray-900 rounded-lg font-medium text-xs transition"
-            >
-              Go to Support
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </a>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={handleStartOnboarding}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 bg-${fleetColor}-600 hover:bg-${fleetColor}-700 text-white rounded-lg font-medium text-xs transition`}
+              >
+                <Play className="w-3 h-3" />
+                Replay Tour
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 };
+
+// Tip component
+const Tip = ({ isDark, emoji, text }) => (
+  <div className="flex items-start gap-2">
+    <span className="text-sm">{emoji}</span>
+    <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>{text}</p>
+  </div>
+);
 
 export default OnboardingPage;

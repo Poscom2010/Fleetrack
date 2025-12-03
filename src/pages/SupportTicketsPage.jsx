@@ -149,195 +149,201 @@ const SupportTicketsPage = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-md">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-baltic-500 to-baltic-600 rounded-xl flex items-center justify-center">
-              <MessageCircle className="w-6 h-6 text-white" />
+    <div className="space-y-3">
+      {/* Compact Header */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-baltic-500 to-baltic-600 rounded-lg flex items-center justify-center">
+              <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Support Tickets</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Manage customer support requests</p>
+              <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Support Tickets</h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Manage support requests</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          {/* Filter Tabs - Compact */}
+          <div className="flex items-center gap-1 sm:ml-auto bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
             <button
               onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-md text-xs font-medium transition ${
                 filter === 'all'
-                  ? 'bg-baltic-500 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  ? 'bg-baltic-500 text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
-              All ({tickets.length})
+              All <span className="hidden sm:inline">({tickets.length})</span>
             </button>
             <button
               onClick={() => setFilter('open')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-md text-xs font-medium transition ${
                 filter === 'open'
-                  ? 'bg-baltic-500 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  ? 'bg-baltic-500 text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
-              Open ({tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length})
+              Open <span className="text-[10px]">({tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length})</span>
             </button>
             <button
               onClick={() => setFilter('closed')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-md text-xs font-medium transition ${
                 filter === 'closed'
-                  ? 'bg-baltic-500 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  ? 'bg-baltic-500 text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
-              Closed ({tickets.filter(t => t.status === 'resolved' || t.status === 'closed').length})
+              Closed <span className="text-[10px]">({tickets.filter(t => t.status === 'resolved' || t.status === 'closed').length})</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Tickets List */}
+      {/* Tickets List - Compact */}
       {filteredTickets.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-12 border border-gray-200 dark:border-gray-700 text-center">
-          <MessageCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No tickets found</h3>
-          <p className="text-gray-600 dark:text-gray-400">
-            {filter === 'all' ? 'No support tickets have been submitted yet.' : `No ${filter} tickets.`}
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 text-center">
+          <MessageCircle className="w-10 h-10 text-gray-400 mx-auto mb-2" />
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">No tickets found</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {filter === 'all' ? 'No support tickets yet.' : `No ${filter} tickets.`}
           </p>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="space-y-2">
           {filteredTickets.map((ticket) => (
             <div
               key={ticket.id}
-              className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg transition"
+              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
+              {/* Ticket Header - Compact */}
+              <div className="p-3 border-b border-gray-100 dark:border-gray-700">
+                <div className="flex items-start gap-2">
+                  <div className="flex-shrink-0 mt-0.5">
                     {getStatusIcon(ticket.status)}
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{ticket.subject}</h3>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
-                      {ticket.priority.toUpperCase()}
-                    </span>
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-                    <span>From: <strong>{ticket.userName}</strong></span>
-                    <span>Email: <strong>{ticket.userEmail}</strong></span>
-                    {ticket.companyName && <span>Company: <strong>{ticket.companyName}</strong></span>}
-                    <span>Created: {ticket.createdAt?.toLocaleString()}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">{ticket.subject}</h3>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getPriorityColor(ticket.priority)}`}>
+                        {ticket.priority.toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                      <span className="font-medium text-gray-700 dark:text-gray-300">{ticket.userName}</span>
+                      <span className="hidden sm:inline">{ticket.userEmail}</span>
+                      {ticket.companyName && <span className="hidden md:inline">{ticket.companyName}</span>}
+                      <span>{ticket.createdAt?.toLocaleDateString()}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleReplyClick(ticket)}
-                    className="px-3 py-1.5 bg-baltic-500 hover:bg-baltic-600 text-white rounded-lg text-sm font-medium transition flex items-center gap-2"
-                  >
-                    <Mail className="w-4 h-4" />
-                    Reply
-                  </button>
-                  <select
-                    value={ticket.status}
-                    onChange={(e) => updateTicketStatus(ticket.id, e.target.value)}
-                    className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-baltic-500"
-                  >
-                    <option value="open">Open</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="resolved">Resolved</option>
-                    <option value="closed">Closed</option>
-                  </select>
+                  {/* Actions - Compact */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => handleReplyClick(ticket)}
+                      className="p-1.5 bg-baltic-500 hover:bg-baltic-600 text-white rounded-lg transition"
+                      title="Reply"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                    </button>
+                    <select
+                      value={ticket.status}
+                      onChange={(e) => updateTicketStatus(ticket.id, e.target.value)}
+                      className="px-1.5 py-1 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-[10px] focus:ring-1 focus:ring-baltic-500"
+                    >
+                      <option value="open">Open</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="resolved">Resolved</option>
+                      <option value="closed">Closed</option>
+                    </select>
+                  </div>
                 </div>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{ticket.message}</p>
+              {/* Message Preview - Collapsible on mobile */}
+              <div className="p-3 bg-gray-50 dark:bg-gray-700/30">
+                <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2 sm:line-clamp-3">{ticket.message}</p>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Reply Modal */}
+      {/* Reply Modal - Compact */}
       {showReplyModal && selectedTicket && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-baltic-500 to-baltic-600 p-6 text-white rounded-t-2xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Mail className="w-6 h-6" />
-                  <div>
-                    <h3 className="text-xl font-bold">Reply to Support Ticket</h3>
-                    <p className="text-sm text-white/80 mt-1">
-                      Ticket #{selectedTicket.id.slice(0, 8)} - {selectedTicket.subject}
-                    </p>
-                  </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header - Compact */}
+            <div className="bg-gradient-to-r from-baltic-500 to-baltic-600 p-3 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <Mail className="w-4 h-4 flex-shrink-0" />
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold truncate">Reply to Ticket</h3>
+                  <p className="text-[10px] text-white/80 truncate">
+                    #{selectedTicket.id.slice(0, 8)} - {selectedTicket.subject}
+                  </p>
                 </div>
-                <button
-                  onClick={() => {
-                    setShowReplyModal(false);
-                    setReplyMessage('');
-                    setSelectedTicket(null);
-                  }}
-                  className="hover:bg-white/20 rounded-full p-2 transition"
-                >
-                  <XCircle className="w-6 h-6" />
-                </button>
               </div>
+              <button
+                onClick={() => {
+                  setShowReplyModal(false);
+                  setReplyMessage('');
+                  setSelectedTicket(null);
+                }}
+                className="hover:bg-white/20 rounded-full p-1 transition flex-shrink-0"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
             </div>
 
-            {/* Body */}
-            <div className="p-6 space-y-4">
-              {/* Ticket Info */}
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="font-medium text-gray-700 dark:text-gray-300">To:</span>
+            {/* Body - Scrollable */}
+            <div className="p-3 space-y-3 overflow-y-auto flex-1">
+              {/* Ticket Info - Compact */}
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2 space-y-1">
+                <div className="flex items-center gap-1 text-xs">
+                  <span className="font-medium text-gray-500 dark:text-gray-400">To:</span>
                   <span className="text-gray-900 dark:text-white font-semibold">{selectedTicket.userName}</span>
-                  <span className="text-gray-600 dark:text-gray-400">({selectedTicket.userEmail})</span>
+                  <span className="text-gray-500 dark:text-gray-400 text-[10px]">({selectedTicket.userEmail})</span>
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  <span className="font-medium">Original Message:</span>
-                  <p className="mt-1 text-gray-700 dark:text-gray-300 italic">{selectedTicket.message}</p>
+                <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                  <span className="font-medium">Original:</span>
+                  <p className="mt-0.5 text-gray-600 dark:text-gray-300 italic line-clamp-2">{selectedTicket.message}</p>
                 </div>
               </div>
 
               {/* Reply Message */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Your Reply
                 </label>
                 <textarea
                   value={replyMessage}
                   onChange={(e) => setReplyMessage(e.target.value)}
-                  rows="10"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-baltic-500 focus:border-transparent resize-none"
+                  rows="6"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-baltic-500 focus:border-transparent resize-none text-sm"
                   placeholder="Type your reply here..."
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  This will open your email client with the message pre-filled. You can edit it before sending.
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                  Opens your email client with this message.
                 </p>
               </div>
+            </div>
 
-              {/* Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  onClick={() => {
-                    setShowReplyModal(false);
-                    setReplyMessage('');
-                    setSelectedTicket(null);
-                  }}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={sendReply}
-                  className="px-4 py-2 bg-gradient-to-r from-baltic-500 to-baltic-600 hover:from-baltic-600 hover:to-baltic-700 text-white rounded-lg font-medium transition flex items-center gap-2"
-                >
-                  <Send className="w-4 h-4" />
-                  Open Email Client
-                </button>
-              </div>
+            {/* Actions - Fixed at bottom */}
+            <div className="flex items-center justify-end gap-2 p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+              <button
+                onClick={() => {
+                  setShowReplyModal(false);
+                  setReplyMessage('');
+                  setSelectedTicket(null);
+                }}
+                className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={sendReply}
+                className="px-3 py-1.5 bg-baltic-500 hover:bg-baltic-600 text-white rounded-lg font-medium transition flex items-center gap-1.5 text-xs"
+              >
+                <Send className="w-3.5 h-3.5" />
+                Send Reply
+              </button>
             </div>
           </div>
         </div>

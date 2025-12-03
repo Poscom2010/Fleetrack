@@ -41,6 +41,7 @@ import ReconciliationWorkspacePage from "./pages/ReconciliationWorkspacePage.jsx
 import CommodityInsightsPage from "./pages/CommodityInsightsPage.jsx";
 import TankDiscrepancyListPage from "./pages/TankDiscrepancyListPage.jsx";
 import DataRecoveryPage from "./pages/DataRecoveryPage.jsx";
+import AIInsightsPage from "./pages/admin/AIInsightsPage.jsx";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import BusinessTypeSelector from "./components/onboarding/BusinessTypeSelector";
 // Full Company Setup Page Component
@@ -1827,6 +1828,16 @@ function App() {
                 <AdminRoute>
                   <AppShell>
                     <DataRecoveryPage />
+                  </AppShell>
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/ai-insights"
+              element={
+                <AdminRoute>
+                  <AppShell>
+                    <AIInsightsPage />
                   </AppShell>
                 </AdminRoute>
               }
