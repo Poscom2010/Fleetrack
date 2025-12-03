@@ -70,46 +70,46 @@ Sent from FleetTrack Support System
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/20 to-gray-50 p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Support Center</h1>
-          <p className="text-slate-400">Get help with FleetTrack - we're here to assist you</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Support Center</h1>
+          <p className="text-gray-600">Get help with FleetTrack - we're here to assist you</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Contact Form */}
-          <div className="lg:col-span-2 bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <h2 className="text-xl font-bold text-white mb-4">Send Support Request</h2>
+          <div className="lg:col-span-2 bg-white/80 backdrop-blur-sm rounded-lg p-6 border border-gray-200/60 shadow-md">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Send Support Request</h2>
             
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* User Info Display */}
-              <div className="bg-slate-900 rounded-lg p-4 border border-slate-700">
-                <p className="text-sm text-slate-400 mb-2">Your Information</p>
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <p className="text-sm text-gray-600 mb-2">Your Information</p>
                 <div className="space-y-1">
-                  <p className="text-white text-sm">
-                    <span className="text-slate-400">Name:</span> {userProfile?.displayName || 'Not set'}
+                  <p className="text-gray-900 text-sm">
+                    <span className="text-gray-600">Name:</span> {userProfile?.displayName || 'Not set'}
                   </p>
-                  <p className="text-white text-sm">
-                    <span className="text-slate-400">Email:</span> {user?.email}
+                  <p className="text-gray-900 text-sm">
+                    <span className="text-gray-600">Email:</span> {user?.email}
                   </p>
-                  <p className="text-white text-sm">
-                    <span className="text-slate-400">Role:</span> {userProfile?.role?.replace('_', ' ') || 'N/A'}
+                  <p className="text-gray-900 text-sm">
+                    <span className="text-gray-600">Role:</span> {userProfile?.role?.replace('_', ' ') || 'N/A'}
                   </p>
                 </div>
               </div>
 
               {/* Priority */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Priority
                 </label>
                 <select
                   name="priority"
                   value={formData.priority}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
                 >
                   <option value="low">Low - General inquiry</option>
                   <option value="normal">Normal - Standard support</option>
@@ -120,7 +120,7 @@ Sent from FleetTrack Support System
 
               {/* Subject */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Subject
                 </label>
                 <input
@@ -129,14 +129,14 @@ Sent from FleetTrack Support System
                   value={formData.subject}
                   onChange={handleChange}
                   placeholder="Brief description of your issue"
-                  className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
                   required
                 />
               </div>
 
               {/* Message */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Message
                 </label>
                 <textarea
@@ -145,7 +145,7 @@ Sent from FleetTrack Support System
                   onChange={handleChange}
                   placeholder="Describe your issue or question in detail..."
                   rows="8"
-                  className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+                  className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
                   required
                 />
               </div>
@@ -159,7 +159,7 @@ Sent from FleetTrack Support System
                 {sending ? 'Opening Email...' : 'Send Support Request'}
               </button>
 
-              <p className="text-sm text-slate-400 text-center">
+              <p className="text-sm text-gray-600 text-center">
                 This will open your default email client with the message pre-filled
               </p>
             </form>
@@ -168,16 +168,16 @@ Sent from FleetTrack Support System
           {/* Support Info Sidebar */}
           <div className="space-y-6">
             {/* Contact Info */}
-            <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-              <h3 className="text-lg font-bold text-white mb-4">Contact Information</h3>
+            <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 border border-gray-200/60 shadow-md">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Contact Information</h3>
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   <svg className="h-5 w-5 text-brand-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                   <div>
-                    <p className="text-sm text-slate-400">Email</p>
-                    <a href={`mailto:${supportEmail}`} className="text-white hover:text-brand-400 transition">
+                    <p className="text-sm text-gray-600">Email</p>
+                    <a href={`mailto:${supportEmail}`} className="text-gray-900 hover:text-brand-400 transition">
                       {supportEmail}
                     </a>
                   </div>
@@ -186,24 +186,24 @@ Sent from FleetTrack Support System
             </div>
 
             {/* Response Time */}
-            <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-              <h3 className="text-lg font-bold text-white mb-4">Response Time</h3>
+            <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 border border-gray-200/60 shadow-md">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Response Time</h3>
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-green-400"></div>
-                  <p className="text-sm text-slate-300">Critical: Within 2 hours</p>
+                  <p className="text-sm text-gray-700">Critical: Within 2 hours</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-yellow-400"></div>
-                  <p className="text-sm text-slate-300">High: Within 4 hours</p>
+                  <p className="text-sm text-gray-700">High: Within 4 hours</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-blue-400"></div>
-                  <p className="text-sm text-slate-300">Normal: Within 24 hours</p>
+                  <p className="text-sm text-gray-700">Normal: Within 24 hours</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-slate-400"></div>
-                  <p className="text-sm text-slate-300">Low: Within 48 hours</p>
+                  <p className="text-sm text-gray-700">Low: Within 48 hours</p>
                 </div>
               </div>
             </div>
@@ -214,9 +214,9 @@ Sent from FleetTrack Support System
                 <svg className="h-5 w-5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                <h3 className="text-lg font-bold text-white">Coming Soon</h3>
+                <h3 className="text-lg font-bold text-gray-900">Coming Soon</h3>
               </div>
-              <p className="text-sm text-slate-300">
+              <p className="text-sm text-gray-700">
                 AI-powered support with instant insights and automated analysis
               </p>
             </div>

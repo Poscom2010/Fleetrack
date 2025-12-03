@@ -1,9 +1,11 @@
 import React from "react";
 import { useAuth } from "../../hooks/useAuth";
+import { useTheme } from "../../contexts/ThemeContext";
 import { updateCompany } from "../../services/companyService";
 
 const CompanySettingsModal = ({ isOpen, onClose }) => {
   const { company, refreshUserData } = useAuth();
+  const { isDark } = useTheme();
   const [users, setUsers] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [savingProfile, setSavingProfile] = React.useState(false);
@@ -217,31 +219,36 @@ const CompanySettingsModal = ({ isOpen, onClose }) => {
   if (!isOpen || !company) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900 overflow-y-auto">
-      <div className="min-h-screen p-8">
-        <div className="max-w-5xl mx-auto space-y-6">
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-slate-300 transition hover:bg-white/20 hover:text-white"
-        >
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm">
+      <div className="min-h-screen p-8 flex items-center justify-center">
+        <div className={`relative max-w-5xl w-full rounded-xl border shadow-2xl ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className={`absolute right-4 top-4 rounded-full p-2 transition z-10 ${
+              isDark 
+                ? 'bg-white/10 text-slate-300 hover:bg-white/20 hover:text-white' 
+                : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-900'
+            }`}
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
 
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-white">Company Settings</h2>
-          <p className="text-slate-400">Manage your company profile and team members</p>
-        </div>
+          <div className="p-8 space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="mb-6">
+              <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-baltic-900'}`}>Company Settings</h2>
+              <p className={isDark ? 'text-slate-400' : 'text-gray-600'}>Manage your company profile and team members</p>
+            </div>
 
-        {/* Company Profile Section */}
-        <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-          <h2 className="text-xl font-bold text-white mb-4">Company Profile</h2>
+            {/* Company Profile Section */}
+            <div className={`rounded-lg p-6 border ${isDark ? 'bg-slate-900/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
+          <h2 className={`text-xl font-bold mb-4 ${isDark ? 'text-white' : 'text-baltic-900'}`}>Company Profile</h2>
           <form onSubmit={handleSaveProfile} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+              <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
                 Company Name
                 <span className="text-xs text-amber-400 flex items-center gap-1">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -259,10 +266,10 @@ const CompanySettingsModal = ({ isOpen, onClose }) => {
                       setProfileForm({ ...profileForm, name: e.target.value });
                     }
                   }}
-                  className={`w-full px-4 py-2 rounded-lg border text-white focus:outline-none ${
+                  className={`w-full px-4 py-2 rounded-lg border focus:outline-none ${
                     isEditingName 
-                      ? 'bg-slate-900 border-amber-500 focus:border-amber-400' 
-                      : 'bg-slate-900/50 border-slate-600 cursor-not-allowed'
+                      ? isDark ? 'bg-slate-900 border-amber-500 focus:border-amber-400 text-white' : 'bg-white border-amber-500 focus:border-amber-400 text-gray-900'
+                      : isDark ? 'bg-slate-900/50 border-slate-600 cursor-not-allowed text-white' : 'bg-gray-100 border-gray-300 cursor-not-allowed text-gray-900'
                   }`}
                   required
                   disabled={!isEditingName}
@@ -298,7 +305,9 @@ const CompanySettingsModal = ({ isOpen, onClose }) => {
                       setIsEditingName(false);
                       setProfileForm({ ...profileForm, name: company.name });
                     }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded transition flex items-center gap-1"
+                    className={`absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 text-white text-xs rounded transition flex items-center gap-1 ${
+                      isDark ? 'bg-slate-600 hover:bg-slate-500' : 'bg-gray-600 hover:bg-gray-700'
+                    }`}
                   >
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
@@ -308,12 +317,12 @@ const CompanySettingsModal = ({ isOpen, onClose }) => {
                 )}
               </div>
               {!isEditingName && (
-                <p className="text-xs text-slate-400 mt-1">
+                <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
                   Click "Edit" to unlock and change company name
                 </p>
               )}
               {isEditingName && (
-                <p className="text-xs text-amber-300 mt-1 flex items-center gap-1">
+                <p className={`text-xs mt-1 flex items-center gap-1 ${isDark ? 'text-amber-300' : 'text-amber-600'}`}>
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
@@ -322,14 +331,14 @@ const CompanySettingsModal = ({ isOpen, onClose }) => {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Company Logo</label>
+              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>Company Logo</label>
 
               {/* Current Logo Preview */}
               {(company.logoUrl || logoFile) && (
                 <div className="mb-3 flex items-center gap-3">
                   <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-brand-gradient shadow-brand">
                     <div className="absolute inset-0 rounded-full bg-brand-gradient opacity-75 blur-xl"></div>
-                    <div className="relative z-10 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-slate-900">
+                    <div className={`relative z-10 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
                       <img
                         src={logoFile ? URL.createObjectURL(logoFile) : company.logoUrl}
                         alt="Company logo preview"
@@ -343,7 +352,7 @@ const CompanySettingsModal = ({ isOpen, onClose }) => {
                       setLogoFile(null);
                       setProfileForm({ ...profileForm, logoUrl: "" });
                     }}
-                    className="text-xs text-red-400 hover:text-red-300 underline"
+                    className={`text-xs underline ${isDark ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700'}`}
                   >
                     Remove Logo
                   </button>
@@ -359,9 +368,9 @@ const CompanySettingsModal = ({ isOpen, onClose }) => {
                     setLogoFile(file);
                   }
                 }}
-                className="block w-full text-xs text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-brand-500 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-600"
+                className={`block w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-brand-500 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-600 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}
               />
-              <p className="mt-1 text-[11px] text-slate-400">
+              <p className={`mt-1 text-[11px] ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
                 Upload a square logo (recommended 256x256px)
               </p>
             </div>
@@ -369,54 +378,54 @@ const CompanySettingsModal = ({ isOpen, onClose }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Address Line 1</label>
+              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>Address Line 1</label>
               <input
                 type="text"
                 value={profileForm.addressLine1}
                 onChange={(e) => setProfileForm({ ...profileForm, addressLine1: e.target.value })}
-                className="w-full bg-slate-900 text-white px-4 py-2 rounded-lg border border-slate-600 focus:border-brand-500 focus:outline-none"
+                className={`w-full px-4 py-2 rounded-lg border focus:border-brand-500 focus:outline-none ${isDark ? 'bg-slate-900 text-white border-slate-600' : 'bg-white text-gray-900 border-gray-300'}`}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Address Line 2</label>
+              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>Address Line 2</label>
               <input
                 type="text"
                 value={profileForm.addressLine2}
                 onChange={(e) => setProfileForm({ ...profileForm, addressLine2: e.target.value })}
-                className="w-full bg-slate-900 text-white px-4 py-2 rounded-lg border border-slate-600 focus:border-brand-500 focus:outline-none"
+                className={`w-full px-4 py-2 rounded-lg border focus:border-brand-500 focus:outline-none ${isDark ? 'bg-slate-900 text-white border-slate-600' : 'bg-white text-gray-900 border-gray-300'}`}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">City / Town</label>
+              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>City / Town</label>
               <input
                 type="text"
                 value={profileForm.city}
                 onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
-                className="w-full bg-slate-900 text-white px-4 py-2 rounded-lg border border-slate-600 focus:border-brand-500 focus:outline-none"
+                className={`w-full px-4 py-2 rounded-lg border focus:border-brand-500 focus:outline-none ${isDark ? 'bg-slate-900 text-white border-slate-600' : 'bg-white text-gray-900 border-gray-300'}`}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Contact Phone</label>
+              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>Contact Phone</label>
               <input
                 type="tel"
                 value={profileForm.contactPhone}
                 onChange={(e) => setProfileForm({ ...profileForm, contactPhone: e.target.value })}
-                className="w-full bg-slate-900 text-white px-4 py-2 rounded-lg border border-slate-600 focus:border-brand-500 focus:outline-none"
+                className={`w-full px-4 py-2 rounded-lg border focus:border-brand-500 focus:outline-none ${isDark ? 'bg-slate-900 text-white border-slate-600' : 'bg-white text-gray-900 border-gray-300'}`}
                 placeholder="+27 82 123 4567"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Contact Email</label>
+            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>Contact Email</label>
             <input
               type="email"
               value={profileForm.contactEmail}
               onChange={(e) => setProfileForm({ ...profileForm, contactEmail: e.target.value })}
-              className="w-full bg-slate-900 text-white px-4 py-2 rounded-lg border border-slate-600 focus:border-brand-500 focus:outline-none"
+              className={`w-full px-4 py-2 rounded-lg border focus:border-brand-500 focus:outline-none ${isDark ? 'bg-slate-900 text-white border-slate-600' : 'bg-white text-gray-900 border-gray-300'}`}
               placeholder="company@example.com"
             />
           </div>
@@ -434,10 +443,10 @@ const CompanySettingsModal = ({ isOpen, onClose }) => {
       </div>
 
       {/* Team Members Section */}
-      <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+      <div className={`rounded-lg p-6 border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200 shadow-sm'}`}>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-white">Team Members</h2>
-          <div className="text-sm text-slate-400 bg-slate-900 px-4 py-2 rounded-lg">
+          <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-baltic-900'}`}>Team Members</h2>
+          <div className={`text-sm px-4 py-2 rounded-lg ${isDark ? 'text-slate-400 bg-slate-900' : 'text-gray-600 bg-gray-100'}`}>
             Contact System Admin to add new users
           </div>
         </div>
@@ -471,11 +480,16 @@ const CompanySettingsModal = ({ isOpen, onClose }) => {
       <div className="flex justify-end pt-4">
         <button
           onClick={onClose}
-          className="px-6 py-3 rounded-lg bg-white/10 text-slate-200 font-semibold hover:bg-white/20 transition"
+          className={`px-6 py-3 rounded-lg font-semibold transition ${
+            isDark 
+              ? 'bg-white/10 text-slate-200 hover:bg-white/20' 
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
         >
           Close
         </button>
-      </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

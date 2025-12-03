@@ -12,15 +12,16 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { formatNumber } from "../../utils/calculations";
+import { useTheme } from "../../contexts/ThemeContext";
 
 const MileageTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-surface-200/80 px-4 py-3 text-sm text-slate-100 shadow-soft">
-        <p className="font-semibold text-white">{label}</p>
+      <div className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs shadow-md">
+        <p className="font-semibold text-gray-800 mb-1">{label}</p>
         {payload.map((entry) => (
-          <p key={entry.dataKey} style={{ color: entry.color }}>
-            {entry.name}: {formatNumber(entry.value)} km
+          <p key={entry.dataKey} className="text-gray-600">
+            <span style={{ color: entry.color }}>●</span> {entry.name}: {formatNumber(entry.value)} km
           </p>
         ))}
       </div>
@@ -32,9 +33,9 @@ const MileageTooltip = ({ active, payload, label }) => {
 const CumulativeTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-surface-200/80 px-4 py-3 text-sm text-slate-100 shadow-soft">
-        <p className="font-semibold text-white">{label}</p>
-        <p>Total mileage: {formatNumber(payload[0].value)} km</p>
+      <div className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs shadow-md">
+        <p className="font-semibold text-gray-800 mb-1">{label}</p>
+        <p className="text-gray-600">Total: {formatNumber(payload[0].value)} km</p>
       </div>
     );
   }
@@ -64,6 +65,7 @@ const MileageChart = ({
   cumulativeMileage = [],
   vehicleMetrics = {},
 }) => {
+  const { isDark } = useTheme();
   // Prepare data for line chart (mileage per vehicle over time)
   // Combine all dates and create a unified dataset
   const allDates = new Set();
@@ -116,29 +118,33 @@ const MileageChart = ({
   return (
     <>
       {/* Mileage Trends Line Chart */}
-      <div className="rounded-2xl border border-indigo-400/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 shadow-xl">
+      <div className={`rounded-lg border p-4 ${
+        isDark 
+          ? 'border-slate-700 bg-slate-800' 
+          : 'border-gray-200 bg-white'
+      }`}>
         <div className="mb-3 flex items-center gap-2">
-          <div className="rounded-lg bg-indigo-500/20 p-1.5">
+          <div className={`rounded-lg p-1.5 ${isDark ? 'bg-indigo-500/20' : 'bg-indigo-100'}`}>
             <span className="text-base">📍</span>
           </div>
-          <h3 className="text-base font-bold text-white">Mileage Trends per Vehicle</h3>
+          <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-baltic-900'}`}>Mileage Trends per Vehicle</h3>
         </div>
         {mileageTrendData.length > 0 && vehicleNames.length > 0 ? (
           <div className="mt-3 h-56">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={mileageTrendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} />
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#1e293b" : "#e2e8f0"} opacity={0.3} />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 12, fill: "#94a3b8" }}
-                  stroke="#475569"
+                  tick={{ fontSize: 12, fill: isDark ? "#94a3b8" : "#64748b" }}
+                  stroke={isDark ? "#475569" : "#cbd5e1"}
                   angle={-45}
                   textAnchor="end"
                   height={70}
                 />
-                <YAxis tick={{ fontSize: 12, fill: "#94a3b8" }} stroke="#475569" />
-                <Tooltip content={<MileageTooltip />} cursor={{ stroke: "#475569", strokeWidth: 1 }} />
-                <Legend wrapperStyle={{ color: "#cbd5e1", fontSize: "13px", fontWeight: "600" }} />
+                <YAxis tick={{ fontSize: 12, fill: isDark ? "#94a3b8" : "#64748b" }} stroke={isDark ? "#475569" : "#cbd5e1"} />
+                <Tooltip content={<MileageTooltip />} cursor={{ stroke: isDark ? "#475569" : "#94a3b8", strokeWidth: 1 }} />
+                <Legend wrapperStyle={{ color: isDark ? "#cbd5e1" : "#334155", fontSize: "13px", fontWeight: "600" }} />
                 {vehicleNames.map((vehicle) => (
                   <Line
                     key={vehicle.name}
@@ -146,7 +152,7 @@ const MileageChart = ({
                     dataKey={vehicle.name}
                     stroke={vehicle.color}
                     strokeWidth={3}
-                    dot={{ r: 4, fill: vehicle.color, strokeWidth: 2, stroke: "#0f172a" }}
+                    dot={{ r: 4, fill: vehicle.color, strokeWidth: 2, stroke: isDark ? "#0f172a" : "#ffffff" }}
                     activeDot={{ r: 6, fill: vehicle.color, stroke: "#fff", strokeWidth: 2 }}
                     name={vehicle.name}
                   />
@@ -155,7 +161,9 @@ const MileageChart = ({
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="mt-3 rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 py-12 text-center text-xs text-slate-400">
+          <div className={`mt-3 rounded-2xl border border-dashed py-12 text-center text-xs ${
+            isDark ? 'border-slate-700 bg-slate-900/50 text-slate-400' : 'border-gray-300 bg-gray-50 text-gray-500'
+          }`}>
             No mileage data available
           </div>
         )}

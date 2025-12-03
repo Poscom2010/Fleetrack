@@ -229,27 +229,27 @@ const SystemAnalyticsPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-baltic-50 via-blue-50 to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-slate-400">Loading analytics...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading analytics...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-baltic-50 via-blue-50 to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
       <div className="max-w-7xl mx-auto space-y-3">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-white mb-1.5">System Analytics</h1>
-            <p className="text-slate-400 text-sm">Customer insights and growth opportunities</p>
+            <h1 className="text-xl font-bold text-baltic-900 dark:text-white mb-1.5">System Analytics</h1>
+            <p className="text-gray-600 dark:text-gray-400 text-sm">Customer insights and growth opportunities</p>
           </div>
           <button
             onClick={fetchSystemAnalytics}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-1.5 text-xs"
+            className="px-3 py-1.5 bg-baltic-500 hover:bg-baltic-600 text-white rounded-lg transition flex items-center gap-1.5 text-xs"
           >
             <Activity className="w-3 h-3" />
             Refresh Data
@@ -258,7 +258,7 @@ const SystemAnalyticsPage = () => {
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-2.5">
+          <div className="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg p-2.5 shadow-md">
             <div className="flex items-center justify-between mb-1.5">
               <Building2 className="w-5 h-5 text-blue-400" />
               <span className="text-[10px] text-green-400 flex items-center gap-0.5">
@@ -266,56 +266,56 @@ const SystemAnalyticsPage = () => {
                 {analytics.growthRate}%
               </span>
             </div>
-            <div className="text-lg font-bold text-white mb-0.5">{analytics.totalCompanies}</div>
-            <div className="text-[10px] text-slate-400">Total Companies</div>
-            <div className="text-[9px] text-slate-500 mt-1">{analytics.activeCompanies} active</div>
+            <div className="text-lg font-bold text-baltic-900 dark:text-white mb-0.5">{analytics.totalCompanies}</div>
+            <div className="text-[10px] text-gray-600 dark:text-gray-400">Total Companies</div>
+            <div className="text-[9px] text-gray-500 dark:text-gray-500 mt-1">{analytics.activeCompanies} active</div>
           </div>
 
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-2.5">
+          <div className="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg p-2.5 shadow-md">
             <div className="flex items-center justify-between mb-1.5">
               <Car className="w-5 h-5 text-green-400" />
             </div>
-            <div className="text-lg font-bold text-white mb-0.5">{analytics.totalVehicles}</div>
-            <div className="text-[10px] text-slate-400">Total Vehicles</div>
-            <div className="text-[9px] text-slate-500 mt-1">
+            <div className="text-lg font-bold text-baltic-900 dark:text-white mb-0.5">{analytics.totalVehicles}</div>
+            <div className="text-[10px] text-gray-600 dark:text-gray-400">Total Vehicles</div>
+            <div className="text-[9px] text-gray-500 dark:text-gray-500 mt-1">
               Avg {(analytics.totalVehicles / analytics.totalCompanies || 0).toFixed(1)} per company
             </div>
           </div>
 
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-2.5">
+          <div className="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg p-2.5 shadow-md">
             <div className="flex items-center justify-between mb-1.5">
               <Users className="w-5 h-5 text-purple-400" />
             </div>
-            <div className="text-lg font-bold text-white mb-0.5">{analytics.totalUsers}</div>
-            <div className="text-[10px] text-slate-400">Total Users</div>
-            <div className="text-[9px] text-slate-500 mt-1">
+            <div className="text-lg font-bold text-baltic-900 dark:text-white mb-0.5">{analytics.totalUsers}</div>
+            <div className="text-[10px] text-gray-600 dark:text-gray-400">Total Users</div>
+            <div className="text-[9px] text-gray-500 dark:text-gray-500 mt-1">
               Avg {(analytics.totalUsers / analytics.totalCompanies || 0).toFixed(1)} per company
             </div>
           </div>
 
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-2.5">
+          <div className="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg p-2.5 shadow-md">
             <div className="flex items-center justify-between mb-1.5">
               <DollarSign className="w-5 h-5 text-amber-400" />
             </div>
-            <div className="text-lg font-bold text-white mb-0.5">
+            <div className="text-lg font-bold text-baltic-900 dark:text-white mb-0.5">
               {analytics.subscriptionStatus.trial || 0}
             </div>
-            <div className="text-[10px] text-slate-400">Trial Companies</div>
-            <div className="text-[9px] text-slate-500 mt-1">
+            <div className="text-[10px] text-gray-600 dark:text-gray-400">Trial Companies</div>
+            <div className="text-[9px] text-gray-500 dark:text-gray-500 mt-1">
               {((analytics.subscriptionStatus.trial / analytics.totalCompanies || 0) * 100).toFixed(0)}% conversion opportunity
             </div>
           </div>
         </div>
 
         {/* AI-Powered Insights */}
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-lg p-3">
+        <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-800 dark:to-gray-900 border-2 border-purple-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
           <div className="flex items-center gap-2 mb-3">
             <div className="p-1.5 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white">AI-Powered Insights</h2>
-              <p className="text-[10px] text-slate-400">Actionable recommendations to grow your business</p>
+              <h2 className="text-sm font-bold text-baltic-900 dark:text-white">AI-Powered Insights</h2>
+              <p className="text-[10px] text-gray-600 dark:text-gray-400">Actionable recommendations to grow your business</p>
             </div>
           </div>
 
@@ -326,7 +326,7 @@ const SystemAnalyticsPage = () => {
                 className={`border rounded-lg p-2.5 ${getColorClasses(insight.color)}`}
               >
                 <div className="flex items-start gap-2.5">
-                  <div className="p-1.5 bg-slate-900/50 rounded-lg flex-shrink-0">
+                  <div className="p-1.5 bg-white/50 dark:bg-gray-900/50 rounded-lg flex-shrink-0">
                     <insight.icon className="w-4 h-4" />
                   </div>
                   <div className="flex-1">
@@ -345,10 +345,10 @@ const SystemAnalyticsPage = () => {
 
         {/* Geographic Distribution */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-3">
+          <div className={`bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg p-3 ${getColorClasses('blue')}`}>
             <div className="flex items-center gap-2 mb-3">
               <Globe className="w-4 h-4 text-blue-400" />
-              <h2 className="text-sm font-bold text-white">Companies by Country</h2>
+              <h2 className="text-sm font-bold text-baltic-900 dark:text-white">Companies by Country</h2>
             </div>
             <div className="space-y-2">
               {Object.entries(analytics.companiesByCountry)
@@ -357,7 +357,7 @@ const SystemAnalyticsPage = () => {
                   <div key={country} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <MapPin className="w-3 h-3 text-slate-400" />
-                      <span className="text-slate-300 text-xs">{country}</span>
+                      <span className="text-baltic-900 dark:text-gray-300 text-xs">{country}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-24 bg-slate-700 rounded-full h-1.5">
@@ -366,17 +366,17 @@ const SystemAnalyticsPage = () => {
                           style={{ width: `${(count / analytics.totalCompanies) * 100}%` }}
                         ></div>
                       </div>
-                      <span className="text-white font-semibold w-6 text-right text-xs">{count}</span>
+                      <span className="text-baltic-900 dark:text-white font-semibold w-6 text-right text-xs">{count}</span>
                     </div>
                   </div>
                 ))}
             </div>
           </div>
 
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-3">
+          <div className={`bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg p-3 ${getColorClasses('green')}`}>
             <div className="flex items-center gap-2 mb-3">
               <BarChart3 className="w-4 h-4 text-green-400" />
-              <h2 className="text-sm font-bold text-white">Fleet Size Distribution</h2>
+              <h2 className="text-sm font-bold text-baltic-900 dark:text-white">Fleet Size Distribution</h2>
             </div>
             <div className="space-y-2">
               {Object.entries(analytics.companiesBySize)
@@ -394,7 +394,7 @@ const SystemAnalyticsPage = () => {
                           style={{ width: `${(count / analytics.totalCompanies) * 100}%` }}
                         ></div>
                       </div>
-                      <span className="text-white font-semibold w-6 text-right text-xs">{count}</span>
+                      <span className="text-baltic-900 dark:text-white font-semibold w-6 text-right text-xs">{count}</span>
                     </div>
                   </div>
                 ))}
@@ -403,7 +403,7 @@ const SystemAnalyticsPage = () => {
         </div>
 
         {/* Subscription Status */}
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-3">
+        <div className={`bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg p-3 ${getColorClasses('purple')}`}>
           <div className="flex items-center gap-2 mb-3">
             <PieChart className="w-4 h-4 text-purple-400" />
             <h2 className="text-sm font-bold text-white">Subscription Status</h2>
@@ -411,9 +411,9 @@ const SystemAnalyticsPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
             {Object.entries(analytics.subscriptionStatus).map(([status, count]) => (
               <div key={status} className="bg-slate-900/50 rounded-lg p-2.5 border border-slate-700">
-                <div className="text-lg font-bold text-white mb-0.5">{count}</div>
+                <div className="text-lg font-bold text-baltic-900 dark:text-white mb-0.5">{count}</div>
                 <div className="text-[10px] text-slate-400 capitalize">{status}</div>
-                <div className="text-[9px] text-slate-500 mt-1">
+                <div className="text-[9px] text-gray-500 dark:text-gray-500 mt-1">
                   {((count / analytics.totalCompanies) * 100).toFixed(1)}% of total
                 </div>
               </div>

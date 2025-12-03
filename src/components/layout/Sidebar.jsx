@@ -1,13 +1,96 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import { useTheme } from "../../contexts/ThemeContext";
 import { isSystemAdmin, isCompanyAdmin, isCompanyManager, canViewAnalytics } from "../../services/userService";
+import { getCompanyVehicles } from "../../services/vehicleService";
 
 /**
  * Sidebar component with main navigation links
  */
 const Sidebar = () => {
-  const { userProfile } = useAuth();
+  const { userProfile, company } = useAuth();
+  const { isDark } = useTheme();
   const location = useLocation();
+  const [expandedSections, setExpandedSections] = useState({ fleetOps: true, commodity: true });
+  const [hasTraditionalVehicles, setHasTraditionalVehicles] = useState(false);
+  const [hasCommodityVehicles, setHasCommodityVehicles] = useState(false);
+
+  // Detect vehicle types in company OR use business type preference
+  useEffect(() => {
+    const detectVehicleTypes = async () => {
+      if (!company?.id) return;
+      
+      // Get business type from company or userProfile
+      const businessType = company?.businessType || userProfile?.businessType;
+      console.log('📋 Sidebar: Business type:', businessType);
+      
+      try {
+        const vehicles = await getCompanyVehicles(company.id);
+        console.log('🚗 Sidebar: Detected vehicles:', vehicles.map(v => ({ name: v.name, type: v.vehicleType || 'taxi' })));
+        
+        // Check actual vehicles first
+        const detectedTraditional = vehicles.some(v => ['taxi', 'courier', 'parcel', 'generalTruck'].includes(v.vehicleType || 'taxi'));
+        const detectedCommodity = vehicles.some(v => ['fuelTruck', 'lpGasTruck'].includes(v.vehicleType));
+        
+        // If no vehicles yet OR hybrid business type, use business type preference
+        if (vehicles.length === 0 || businessType === 'hybrid') {
+          console.log('📋 Sidebar: Using business type preference:', businessType);
+          
+          if (businessType === 'traditional') {
+            setHasTraditionalVehicles(true);
+            setHasCommodityVehicles(false);
+          } else if (businessType === 'commodity') {
+            setHasTraditionalVehicles(false);
+            setHasCommodityVehicles(true);
+          } else if (businessType === 'hybrid') {
+            // For hybrid, always show both sections
+            setHasTraditionalVehicles(true);
+            setHasCommodityVehicles(true);
+          } else {
+            // Default: show based on detected vehicles or traditional
+            setHasTraditionalVehicles(detectedTraditional || vehicles.length === 0);
+            setHasCommodityVehicles(detectedCommodity);
+          }
+        } else {
+          // Use actual vehicle detection for non-hybrid
+          console.log('🚗 Sidebar: Has traditional vehicles:', detectedTraditional);
+          console.log('⛽ Sidebar: Has commodity vehicles:', detectedCommodity);
+          setHasTraditionalVehicles(detectedTraditional);
+          setHasCommodityVehicles(detectedCommodity);
+        }
+      } catch (error) {
+        console.error('Error detecting vehicle types:', error);
+        // Fallback to business type preference or default to traditional
+        if (businessType === 'commodity') {
+          setHasTraditionalVehicles(false);
+          setHasCommodityVehicles(true);
+        } else if (businessType === 'hybrid') {
+          setHasTraditionalVehicles(true);
+          setHasCommodityVehicles(true);
+        } else {
+          setHasTraditionalVehicles(true);
+          setHasCommodityVehicles(false);
+        }
+      }
+    };
+    detectVehicleTypes();
+    
+    // Listen for vehicle changes via custom event
+    const handleVehicleChange = () => {
+      console.log('🔄 Sidebar: Vehicle change detected, refreshing...');
+      detectVehicleTypes();
+    };
+    window.addEventListener('vehicleChanged', handleVehicleChange);
+    
+    return () => {
+      window.removeEventListener('vehicleChanged', handleVehicleChange);
+    };
+  }, [company, company?.businessType, userProfile?.businessType]);
+
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
 
   const isActive = (path) => {
     // For System Admin, check query parameters
@@ -22,43 +105,88 @@ const Sidebar = () => {
     return location.pathname === path;
   };
 
-  // Navigation links based on user role
-  const getNavLinks = () => {
+  // Get navigation structure based on user role and fleet type
+  const getNavStructure = () => {
     if (isSystemAdmin(userProfile)) {
-      return [
-        { path: "/admin?tab=dashboard", label: "Dashboard", icon: "home" },
-        { path: "/admin?tab=companies", label: "Companies", icon: "building" },
-        { path: "/admin?tab=users", label: "Users", icon: "users" },
-        { path: "/admin/business", label: "FleetTrack Business", icon: "trending" },
-        { path: "/admin/analytics", label: "Analytics", icon: "chart" }
+      return {
+        main: [
+          { path: "/admin?tab=dashboard", label: "Dashboard", icon: "home" },
+          { path: "/admin?tab=companies", label: "Companies", icon: "building" },
+          { path: "/admin?tab=users", label: "Users", icon: "users" },
+          { path: "/support-tickets", label: "Support Tickets", icon: "message-circle" },
+          { path: "/admin/business", label: "FleetTrack Business", icon: "trending" },
+          { path: "/admin/analytics", label: "Analytics", icon: "chart" },
+          { path: "/admin/data-recovery", label: "Data Recovery", icon: "database" }
+        ],
+        sections: []
+      };
+    }
+
+    const sections = [];
+
+    // Traditional Fleet Operations (if has traditional vehicles OR no vehicles at all)
+    // Always show Fleet Operations section so users can add their first vehicle
+    if (hasTraditionalVehicles || (!hasTraditionalVehicles && !hasCommodityVehicles)) {
+      const fleetItems = [
+        { path: "/fleet/dashboard", label: "Dashboard", icon: "chart" },
+        { path: "/vehicles", label: "Vehicles", icon: "truck" },
+        { path: "/entries", label: "Trip Capturing", icon: "document" },
+        { path: "/logbook", label: "Trip Logbook", icon: "book" }
       ];
-    }
-    
-    // Base links for all company users
-    const links = [
-      { path: "/dashboard", label: "Dashboard", icon: "home" },
-      { path: "/vehicles", label: "Vehicle Monitoring", icon: "truck" },
-      { path: "/entries", label: "Capturing", icon: "document" },
-      { path: "/logbook", label: "Trip Logbook", icon: "book" },
-    ];
-    
-    // Add analytics for admins and managers only
-    if (canViewAnalytics(userProfile)) {
-      links.push({ path: "/analytics", label: "Analytics", icon: "chart" });
+      
+      sections.push({
+        id: 'fleetOps',
+        label: 'Fleet Operations',
+        icon: 'truck',
+        items: fleetItems
+      });
     }
 
-    // Add Team Management/Invitations link for admins and managers
-    if (isCompanyAdmin(userProfile) || isCompanyManager(userProfile)) {
-      links.push({ path: "/team", label: "Team Management / Invitations", icon: "users" });
+    // Commodity Tracking (if has commodity vehicles and user is admin/manager)
+    if (hasCommodityVehicles && (isCompanyAdmin(userProfile) || isCompanyManager(userProfile))) {
+      const commodityItems = [];
+      
+      // Only add dashboard link if this is a hybrid fleet (has both types)
+      if (hasTraditionalVehicles) {
+        commodityItems.push({ path: "/commodity/dashboard", label: "Dashboard", icon: "chart" });
+      }
+      
+      // For commodity-only companies, show Vehicles here (not in Fleet Operations)
+      if (!hasTraditionalVehicles) {
+        commodityItems.push({ path: "/vehicles", label: "Vehicles", icon: "truck" });
+      }
+      
+      commodityItems.push(
+        { path: "/commodity/loads", label: "Load Events", icon: "upload" },
+        { path: "/commodity/offloads", label: "Deliveries", icon: "download" },
+        { path: "/commodity/logbook", label: "Trip Log", icon: "book" },
+        { path: "/commodity/reconciliation", label: "Reconciliation", icon: "alert-triangle" },
+        { path: "/commodity/analytics", label: "Insights", icon: "sparkles" }
+      );
+      
+      sections.push({
+        id: 'commodity',
+        label: 'Commodity Tracking',
+        icon: 'fuel',
+        items: commodityItems
+      });
     }
 
-    // Add Onboarding for all users
-    links.push({ path: "/onboarding", label: "Onboarding Guide", icon: "lightbulb" });
-    
-    // Add Contact Support for all users
-    links.push({ path: "/support", label: "Contact Support", icon: "headset" });
-    
-    return links;
+    return {
+      main: [
+        { path: "/dashboard", label: "Dashboard", icon: "home" },
+      ],
+      sections,
+      secondary: [
+        // Only show traditional analytics if company has NO commodity vehicles
+        // (Commodity companies use /commodity/analytics which is better)
+        ...(canViewAnalytics(userProfile) && !hasCommodityVehicles ? [{ path: "/analytics", label: "Analytics", icon: "chart" }] : []),
+        ...((isCompanyAdmin(userProfile) || isCompanyManager(userProfile)) ? [{ path: "/team", label: "Team", icon: "users" }] : []),
+      ],
+      help: [
+        { path: "/onboarding", label: "Onboarding", icon: "lightbulb" },
+      ]
+    };
   };
 
   const getIcon = (iconName) => {
@@ -107,6 +235,18 @@ const Sidebar = () => {
         return (
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
         );
+      case 'fuel':
+        return (
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        );
+      case 'upload':
+        return (
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        );
+      case 'download':
+        return (
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+        );
       default:
         return (
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -114,31 +254,108 @@ const Sidebar = () => {
     }
   };
 
-  const navLinks = getNavLinks();
+  const navStructure = getNavStructure();
+
+  const renderLink = (link) => {
+    const active = isActive(link.path);
+    return (
+      <Link
+        key={link.path}
+        to={link.path}
+        className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-200 ${
+          active
+            ? isDark 
+              ? "bg-brand-gradient text-white shadow-brand"
+              : "bg-gradient-to-r from-baltic-500 to-baltic-600 text-white shadow-lg"
+            : isDark
+              ? "text-slate-300 hover:bg-white/10 hover:text-white"
+              : "text-baltic-700 hover:bg-baltic-100 hover:text-baltic-900"
+        }`}
+      >
+        <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {getIcon(link.icon)}
+        </svg>
+        <span className="truncate">{link.label}</span>
+      </Link>
+    );
+  };
+
+  const renderSection = (section) => {
+    const isExpanded = expandedSections[section.id];
+    const hasActiveItem = section.items.some(item => isActive(item.path));
+
+    return (
+      <div key={section.id} className="space-y-1">
+        <button
+          onClick={() => toggleSection(section.id)}
+          className={`w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all duration-200 ${
+            hasActiveItem
+              ? isDark ? "bg-white/10 text-white" : "bg-baltic-100 text-baltic-900"
+              : isDark ? "text-slate-400 hover:bg-white/5 hover:text-slate-300" : "text-baltic-600 hover:bg-baltic-50 hover:text-baltic-800"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {getIcon(section.icon)}
+            </svg>
+            <span className="truncate">{section.label}</span>
+          </div>
+          <svg
+            className={`h-4 w-4 flex-shrink-0 transition-transform duration-200 ${
+              isExpanded ? "rotate-180" : ""
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {isExpanded && (
+          <div className={`ml-2 pl-4 border-l-2 space-y-1 ${isDark ? 'border-white/10' : 'border-baltic-200'}`}>
+            {section.items.map(item => renderLink(item))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <aside className="hidden lg:flex lg:flex-col lg:fixed lg:left-0 lg:top-[73px] lg:bottom-0 lg:w-48 bg-slate-800/40 border-r border-white/10 backdrop-blur-xl overflow-y-auto z-40">
-      {/* Navigation links */}
-      <nav className="flex-1 px-4 py-6 space-y-2">
-        {navLinks.map((link) => {
-          const active = isActive(link.path);
-          return (
-            <Link
-              key={link.path}
-              to={link.path}
-              className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                active
-                  ? "bg-brand-gradient text-white shadow-brand"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {getIcon(link.icon)}
-              </svg>
-              <span>{link.label}</span>
-            </Link>
-          );
-        })}
+    <aside className={`hidden lg:flex lg:flex-col lg:fixed lg:left-0 lg:top-[52px] lg:bottom-0 lg:w-52 backdrop-blur-xl overflow-y-auto z-40 transition-colors duration-300 ${
+      isDark 
+        ? 'bg-slate-800/40 border-r border-white/10' 
+        : 'bg-white/60 border-r border-baltic-200'
+    }`}>
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-4 space-y-4">
+        {/* Main Links */}
+        <div className="space-y-1">
+          {navStructure.main.map(link => renderLink(link))}
+        </div>
+
+        {/* Sections (Collapsible) */}
+        {navStructure.sections && navStructure.sections.length > 0 && (
+          <div className="space-y-2">
+            {navStructure.sections.map(section => renderSection(section))}
+          </div>
+        )}
+
+        {/* Secondary Links */}
+        {navStructure.secondary && navStructure.secondary.length > 0 && (
+          <div className={`pt-4 border-t space-y-1 ${isDark ? 'border-white/10' : 'border-baltic-200'}`}>
+            {navStructure.secondary.map(link => renderLink(link))}
+          </div>
+        )}
+
+        {/* Help Links */}
+        {navStructure.help && navStructure.help.length > 0 && (
+          <div className={`pt-4 border-t space-y-1 ${isDark ? 'border-white/10' : 'border-baltic-200'}`}>
+            <div className={`px-3 py-1 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-baltic-500'}`}>
+              Help
+            </div>
+            {navStructure.help.map(link => renderLink(link))}
+          </div>
+        )}
       </nav>
     </aside>
   );

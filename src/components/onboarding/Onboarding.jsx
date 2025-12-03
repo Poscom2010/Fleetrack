@@ -4,6 +4,7 @@ import { X, ChevronRight, ChevronLeft, Check, Users, Car, FileText, BarChart3, U
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import toast from 'react-hot-toast';
+import BusinessTypeSelector from './BusinessTypeSelector';
 
 /**
  * Onboarding component - Role-based guided tour for new users
@@ -12,6 +13,21 @@ const Onboarding = ({ user, userProfile, company, onComplete }) => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
+  const [businessType, setBusinessType] = useState(userProfile?.businessType || null);
+  const [showBusinessTypeSelector, setShowBusinessTypeSelector] = useState(
+    !userProfile?.businessType && userProfile?.role === 'company_manager' && !userProfile?.companyId
+  );
+
+  // Debug logging
+  useEffect(() => {
+    console.log('🎯 Onboarding Debug Info:');
+    console.log('  User:', user?.displayName || user?.email);
+    console.log('  Role:', userProfile?.role);
+    console.log('  Company:', company?.name || 'No company');
+    console.log('  Company ID:', userProfile?.companyId || 'No companyId');
+    console.log('  Business Type:', userProfile?.businessType || 'Not set');
+    console.log('  Show Business Selector:', showBusinessTypeSelector);
+  }, [user, userProfile, company, showBusinessTypeSelector]);
 
   // Determine onboarding content based on role
   const getOnboardingSteps = () => {
@@ -65,7 +81,8 @@ const Onboarding = ({ user, userProfile, company, onComplete }) => {
       const firstName = adminName.split(' ')[0];
       const companyName = company?.name || 'your company';
       const roleTitle = role === 'company_admin' ? 'Admin' : 'Manager';
-      const isInvited = role === 'company_admin'; // Admins are invited, Managers create the company
+      // Check if user was invited (has companyId set during registration)
+      const isInvited = userProfile?.companyId && role === 'company_admin';
       
       return [
         {
@@ -336,6 +353,24 @@ const Onboarding = ({ user, userProfile, company, onComplete }) => {
     }
   };
 
+  const handleBusinessTypeSelect = async (type) => {
+    setBusinessType(type);
+    
+    try {
+      // Save business type to user profile
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, {
+        businessType: type,
+      });
+      
+      toast.success('Business type saved!');
+      setShowBusinessTypeSelector(false);
+    } catch (error) {
+      console.error('Error saving business type:', error);
+      toast.error('Failed to save business type');
+    }
+  };
+
   const handleComplete = async () => {
     try {
       // Close modal immediately for better UX
@@ -351,6 +386,7 @@ const Onboarding = ({ user, userProfile, company, onComplete }) => {
       await updateDoc(userRef, {
         onboardingCompleted: true,
         onboardingCompletedAt: new Date(),
+        businessType: businessType || 'traditional', // Default to traditional if not set
       });
       
       toast.success('Welcome aboard! Let\'s get started! 🚀');
@@ -386,6 +422,20 @@ const Onboarding = ({ user, userProfile, company, onComplete }) => {
   };
 
   if (!isVisible) return null;
+
+  // Show business type selector first for new managers
+  if (showBusinessTypeSelector) {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-4 overflow-y-auto">
+        <div className="relative w-full max-w-4xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-8">
+          <BusinessTypeSelector 
+            onSelect={handleBusinessTypeSelect}
+            selectedType={businessType}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[60] flex items-start justify-center bg-slate-950/90 backdrop-blur-sm p-2 pt-20 pb-4 overflow-y-auto">

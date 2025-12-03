@@ -10,6 +10,7 @@ import { useAuth } from "./hooks/useAuth";
 import { AuthProvider } from "./hooks/useAuth";
 import { usePageTitle } from "./hooks/usePageTitle";
 import { updateCompany } from "./services/companyService";
+import { getCurrencySymbol } from "./utils/calculations";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminRoute from "./components/auth/AdminRoute";
 import CompanyRoute from "./components/auth/CompanyRoute";
@@ -20,21 +21,36 @@ import VehiclesPage from "./pages/VehiclesPage";
 import EntriesPage from "./pages/EntriesPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import SupportPage from "./pages/SupportPage";
+import SupportTicketsPage from "./pages/SupportTicketsPage";
 import SystemAdminDashboard from "./pages/SystemAdminDashboard";
 import SystemAnalyticsPage from "./pages/SystemAnalyticsPage";
 import FleetTrackBusinessPage from "./pages/FleetTrackBusinessPage";
 import AnalyticsDashboard from "./components/analytics/AnalyticsDashboard";
+import UnifiedDashboard from "./components/analytics/UnifiedDashboard";
 import TripLogbookPage from "./pages/TripLogbookPage";
+import FleetDashboardPage from "./pages/FleetDashboardPage";
 import ProfileSettingsPage from "./pages/ProfileSettingsPage";
 import TeamPage from "./pages/TeamPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import SuccessModal from "./components/common/SuccessModal";
+import CommodityDashboardPage from "./pages/CommodityDashboardPage.jsx";
+import LoadEventsPage from "./pages/LoadEventsPage.jsx";
+import OffloadEventsPage from "./pages/OffloadEventsPage.jsx";
+import CommodityLogbookPage from "./pages/CommodityLogbookPage.jsx";
+import ReconciliationWorkspacePage from "./pages/ReconciliationWorkspacePage.jsx";
+import CommodityInsightsPage from "./pages/CommodityInsightsPage.jsx";
+import TankDiscrepancyListPage from "./pages/TankDiscrepancyListPage.jsx";
+import DataRecoveryPage from "./pages/DataRecoveryPage.jsx";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import BusinessTypeSelector from "./components/onboarding/BusinessTypeSelector";
 // Full Company Setup Page Component
 const CompanySetupPage = () => {
   const { user, userProfile } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = React.useState(false);
   const [logoFile, setLogoFile] = React.useState(null);
+  const [businessType, setBusinessType] = React.useState(null);
+  const [showBusinessTypeSelector, setShowBusinessTypeSelector] = React.useState(true);
   const [formData, setFormData] = React.useState({
     name: "",
     fullName: user?.displayName || "", // Admin's full name
@@ -92,6 +108,7 @@ const CompanySetupPage = () => {
         ownerId: user.uid,
         logoUrl: logoUrlToSave,
         country: formData.country || 'Unknown',
+        businessType: businessType || 'traditional', // Save business type to company
         address: {
           line1: formData.addressLine1 || null,
           line2: formData.addressLine2 || null,
@@ -115,11 +132,12 @@ const CompanySetupPage = () => {
         updatedAt: serverTimestamp(),
       });
       
-      // Update user profile - creator becomes company admin
+      // Update user profile - creator remains company manager (not admin)
       const userRef = doc(db, 'users', user.uid);
       await setDoc(userRef, {
         companyId: companyRef.id,
-        role: 'company_admin',
+        // Keep existing role (company_manager) - don't change to admin
+        businessType: businessType || 'traditional', // Save business type
         fullName: formData.fullName || user.displayName,
         updatedAt: serverTimestamp(),
       }, { merge: true });
@@ -177,6 +195,23 @@ const CompanySetupPage = () => {
       setLoading(false);
     }
   };
+
+  // Show business type selector first
+  if (showBusinessTypeSelector) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <div className="max-w-4xl w-full bg-slate-800 rounded-2xl p-8 border border-slate-700">
+          <BusinessTypeSelector 
+            onSelect={(type) => {
+              setBusinessType(type);
+              setShowBusinessTypeSelector(false);
+            }}
+            selectedType={businessType}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
@@ -465,7 +500,7 @@ const CompanySetupPage = () => {
 
 // Driver Dashboard - Simplified view for company users (drivers)
 const DriverDashboard = () => {
-  const { user } = useAuth();
+  const { user, company } = useAuth();
   const [stats, setStats] = React.useState({
     daily: { trips: 0, distance: 0, avgExpenses: 0 },
     monthly: { trips: 0, distance: 0, avgExpenses: 0 },
@@ -679,7 +714,7 @@ const DriverDashboard = () => {
           </div>
           <div className="bg-slate-900 rounded-lg p-3">
             <p className="text-xs text-slate-400 mb-0.5">Avg Expenses</p>
-            <p className="text-xl font-bold text-orange-400">R {stats.daily.avgExpenses.toFixed(2)}</p>
+            <p className="text-xl font-bold text-orange-400">{getCurrencySymbol(company?.currency)} {stats.daily.avgExpenses.toFixed(2)}</p>
           </div>
         </div>
       </div>
@@ -698,7 +733,7 @@ const DriverDashboard = () => {
           </div>
           <div className="bg-slate-900 rounded-lg p-3">
             <p className="text-xs text-slate-400 mb-0.5">Avg Expenses</p>
-            <p className="text-xl font-bold text-orange-400">R {stats.monthly.avgExpenses.toFixed(2)}</p>
+            <p className="text-xl font-bold text-orange-400">{getCurrencySymbol(company?.currency)} {stats.monthly.avgExpenses.toFixed(2)}</p>
           </div>
         </div>
       </div>
@@ -717,7 +752,7 @@ const DriverDashboard = () => {
           </div>
           <div className="bg-slate-900 rounded-lg p-3">
             <p className="text-xs text-slate-400 mb-0.5">Avg Expenses</p>
-            <p className="text-xl font-bold text-orange-400">R {stats.yearly.avgExpenses.toFixed(2)}</p>
+            <p className="text-xl font-bold text-orange-400">{getCurrencySymbol(company?.currency)} {stats.yearly.avgExpenses.toFixed(2)}</p>
           </div>
         </div>
       </div>
@@ -779,10 +814,10 @@ const DriverDashboard = () => {
                     <td className="py-3 px-2 text-right text-slate-300">{trip.startKm.toLocaleString()}</td>
                     <td className="py-3 px-2 text-right text-slate-300">{trip.endKm.toLocaleString()}</td>
                     <td className="py-3 px-2 text-right text-blue-400 font-semibold">{trip.distance.toLocaleString()} km</td>
-                    <td className="py-3 px-2 text-right text-green-400 font-semibold">R {trip.cashIn.toFixed(2)}</td>
-                    <td className="py-3 px-2 text-right text-red-400 font-semibold">R {trip.expenses.toFixed(2)}</td>
+                    <td className="py-3 px-2 text-right text-green-400 font-semibold">{getCurrencySymbol(company?.currency)} {trip.cashIn.toFixed(2)}</td>
+                    <td className="py-3 px-2 text-right text-red-400 font-semibold">{getCurrencySymbol(company?.currency)} {trip.expenses.toFixed(2)}</td>
                     <td className={`py-3 px-2 text-right font-bold ${(trip.cashIn - trip.expenses) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      R {(trip.cashIn - trip.expenses).toFixed(2)}
+                      {getCurrencySymbol(company?.currency)} {(trip.cashIn - trip.expenses).toFixed(2)}
                     </td>
                   </tr>
                 ))}
@@ -794,17 +829,17 @@ const DriverDashboard = () => {
                     {tripLogs.reduce((sum, trip) => sum + trip.distance, 0).toLocaleString()} km
                   </td>
                   <td className="py-3 px-2 text-right text-green-400 font-bold">
-                    R {tripLogs.reduce((sum, trip) => sum + trip.cashIn, 0).toFixed(2)}
+                    {getCurrencySymbol(company?.currency)} {tripLogs.reduce((sum, trip) => sum + trip.cashIn, 0).toFixed(2)}
                   </td>
                   <td className="py-3 px-2 text-right text-red-400 font-bold">
-                    R {tripLogs.reduce((sum, trip) => sum + trip.expenses, 0).toFixed(2)}
+                    {getCurrencySymbol(company?.currency)} {tripLogs.reduce((sum, trip) => sum + trip.expenses, 0).toFixed(2)}
                   </td>
                   <td className={`py-3 px-2 text-right font-bold ${
                     (tripLogs.reduce((sum, trip) => sum + trip.cashIn, 0) - tripLogs.reduce((sum, trip) => sum + trip.expenses, 0)) >= 0 
                       ? 'text-green-400' 
                       : 'text-red-400'
                   }`}>
-                    R {(tripLogs.reduce((sum, trip) => sum + trip.cashIn, 0) - tripLogs.reduce((sum, trip) => sum + trip.expenses, 0)).toFixed(2)}
+                    {getCurrencySymbol(company?.currency)} {(tripLogs.reduce((sum, trip) => sum + trip.cashIn, 0) - tripLogs.reduce((sum, trip) => sum + trip.expenses, 0)).toFixed(2)}
                   </td>
                 </tr>
               </tfoot>
@@ -816,7 +851,7 @@ const DriverDashboard = () => {
   );
 };
 
-// Company Settings Page for Company Admins
+// Company Settings Page for Company Admins and Managers
 const CompanySettingsPage = () => {
   const navigate = useNavigate();
   const { user, company, userProfile, refreshUserData } = useAuth();
@@ -1536,12 +1571,177 @@ const CompanySettingsPage = () => {
   );
 };
 
-// Simple Dashboard Page for company admins/managers
+// Context-Aware Dashboard - Shows content based on vehicle types OR business type preference
 const DashboardPage = () => {
   usePageTitle('Dashboard');
+  const { company, userProfile } = useAuth();
+  const navigate = useNavigate();
+  const [vehicleTypes, setVehicleTypes] = React.useState({ traditional: true, commodity: false });
+  const [loading, setLoading] = React.useState(true);
+  const [combinedAlerts, setCombinedAlerts] = React.useState({ vehicle: 0, discrepancy: 0 });
+
+  React.useEffect(() => {
+    const detectVehicleTypes = async () => {
+      if (!company?.id) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const { getCompanyVehicles } = await import('./services/vehicleService');
+        const vehicles = await getCompanyVehicles(company.id);
+        const hasTraditional = vehicles.some(v => 
+          ['taxi', 'courier', 'parcel', 'generalTruck'].includes(v.vehicleType || 'taxi')
+        );
+        const hasCommodity = vehicles.some(v => 
+          ['fuelTruck', 'lpGasTruck'].includes(v.vehicleType)
+        );
+        
+        // Get business type from company or userProfile
+        const businessType = company?.businessType || userProfile?.businessType;
+        
+        // If no vehicles yet OR hybrid business type, use business type preference
+        if (vehicles.length === 0 || businessType === 'hybrid') {
+          console.log('📊 Dashboard: Using business type preference:', businessType);
+          
+          if (businessType === 'traditional') {
+            setVehicleTypes({ traditional: true, commodity: false });
+          } else if (businessType === 'commodity') {
+            setVehicleTypes({ traditional: false, commodity: true });
+          } else if (businessType === 'hybrid') {
+            // For hybrid, always show both
+            setVehicleTypes({ traditional: true, commodity: true });
+          } else {
+            // Default: show based on detected vehicles or traditional
+            setVehicleTypes({ traditional: hasTraditional || vehicles.length === 0, commodity: hasCommodity });
+          }
+        } else {
+          // Use actual vehicle detection for non-hybrid
+          setVehicleTypes({ traditional: hasTraditional || !hasCommodity, commodity: hasCommodity });
+        }
+      } catch (error) {
+        console.error('Error detecting vehicle types:', error);
+        // Get business type from company or userProfile
+        const businessType = company?.businessType || userProfile?.businessType;
+        // Fallback to business type preference or default
+        if (businessType === 'commodity') {
+          setVehicleTypes({ traditional: false, commodity: true });
+        } else if (businessType === 'hybrid') {
+          setVehicleTypes({ traditional: true, commodity: true });
+        } else {
+          setVehicleTypes({ traditional: true, commodity: false });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    detectVehicleTypes();
+  }, [company?.id, company?.businessType, userProfile?.businessType]);
+
+  // Load combined alerts for hybrid dashboard
+  React.useEffect(() => {
+    const loadCombinedAlerts = async () => {
+      if (!company?.id || !(vehicleTypes.traditional && vehicleTypes.commodity)) return;
+      
+      try {
+        // Load vehicle alerts (service, license, mileage gaps)
+        const { getMileageGapStats } = await import('./services/mileageGapDetectionService');
+        const mileageStats = await getMileageGapStats(company.id);
+        
+        // Load tank discrepancy alerts
+        const { getUnacknowledgedAlerts } = await import('./services/tankDiscrepancyAlertService');
+        const discrepancyAlerts = await getUnacknowledgedAlerts(company.id);
+        
+        setCombinedAlerts({
+          vehicle: mileageStats?.totalGaps || 0,
+          discrepancy: discrepancyAlerts?.length || 0
+        });
+      } catch (error) {
+        console.error('Error loading combined alerts:', error);
+      }
+    };
+    
+    loadCombinedAlerts();
+  }, [company?.id, vehicleTypes]);
+
+  const isHybrid = vehicleTypes.traditional && vehicleTypes.commodity;
+  const totalCombinedAlerts = combinedAlerts.vehicle + combinedAlerts.discrepancy;
+
+  // Redirect non-hybrid companies to their specific dashboard
+  React.useEffect(() => {
+    if (!loading && !isHybrid) {
+      if (vehicleTypes.commodity && !vehicleTypes.traditional) {
+        navigate('/commodity/dashboard', { replace: true });
+      } else if (vehicleTypes.traditional && !vehicleTypes.commodity) {
+        navigate('/fleet/dashboard', { replace: true });
+      }
+    }
+  }, [loading, isHybrid, vehicleTypes, navigate]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-baltic-500"></div>
+      </div>
+    );
+  }
+
+  // Only show unified dashboard for hybrid companies
+  if (!isHybrid) {
+    return null; // Will redirect
+  }
+
   return (
-    <div className="min-h-screen bg-slate-950">
-      <AnalyticsDashboard />
+    <div className="space-y-6">
+      {/* Unified Alerts Banner for Hybrid Dashboard */}
+      {isHybrid && totalCombinedAlerts > 0 && (
+        <div className="rounded-lg border-l-4 border-l-orange-400 bg-gradient-to-r from-orange-50 via-amber-50 to-yellow-50 p-2 shadow-sm">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="rounded-full bg-gradient-to-br from-orange-500 to-red-500 p-1.5 shadow-md">
+                <span className="text-sm">🚨</span>
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-xs font-bold text-gray-900">
+                  {totalCombinedAlerts} {totalCombinedAlerts === 1 ? 'Alert' : 'Alerts'} Require Attention
+                </h3>
+                <div className="flex flex-wrap gap-1.5 mt-0.5">
+                  {combinedAlerts.vehicle > 0 && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded text-[10px] font-medium">
+                      🚗 {combinedAlerts.vehicle} Vehicle
+                    </span>
+                  )}
+                  {combinedAlerts.discrepancy > 0 && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-100 text-red-800 rounded text-[10px] font-medium">
+                      ⛽ {combinedAlerts.discrepancy} Discrepancy
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-1.5 flex-shrink-0">
+              {combinedAlerts.vehicle > 0 && (
+                <button 
+                  onClick={() => navigate('/vehicles')}
+                  className="flex items-center gap-1 bg-amber-500 hover:bg-amber-600 px-2 py-1 rounded transition-colors"
+                >
+                  <span className="text-white font-semibold text-[10px]">Vehicles</span>
+                </button>
+              )}
+              {combinedAlerts.discrepancy > 0 && (
+                <button 
+                  onClick={() => navigate('/commodity/discrepancies')}
+                  className="flex items-center gap-1 bg-red-500 hover:bg-red-600 px-2 py-1 rounded transition-colors"
+                >
+                  <span className="text-white font-semibold text-[10px]">Discrepancies</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unified Dashboard for Hybrid Companies */}
+      <UnifiedDashboard />
     </div>
   );
 };
@@ -1555,7 +1755,7 @@ const SmartDashboard = () => {
     return <DriverDashboard />;
   }
   
-  // Admins and managers get full dashboard
+  // Admins and managers get context-aware dashboard
   return <DashboardPage />;
 };
 
@@ -1572,8 +1772,9 @@ import AppShell from "./components/layout/AppShell";
 function App() {
   return (
     <ErrorBoundary>
-      <Router>
-        <AuthProvider>
+      <ThemeProvider>
+        <Router>
+          <AuthProvider>
           <Toast />
           <Routes>
             {/* Public Routes */}
@@ -1616,6 +1817,16 @@ function App() {
                 <AdminRoute>
                   <AppShell>
                     <FleetTrackBusinessPage />
+                  </AppShell>
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/data-recovery"
+              element={
+                <AdminRoute>
+                  <AppShell>
+                    <DataRecoveryPage />
                   </AppShell>
                 </AdminRoute>
               }
@@ -1696,6 +1907,98 @@ function App() {
                 </CompanyOnlyRoute>
               }
             />
+            <Route
+              path="/fleet/dashboard"
+              element={
+                <CompanyOnlyRoute>
+                  <AppShell>
+                    <FleetDashboardPage />
+                  </AppShell>
+                </CompanyOnlyRoute>
+              }
+            />
+
+            {/* Commodity Tracking Routes */}
+            <Route
+              path="/commodity/dashboard"
+              element={
+                <CompanyOnlyRoute>
+                  <AppShell>
+                    <CommodityDashboardPage />
+                  </AppShell>
+                </CompanyOnlyRoute>
+              }
+            />
+            <Route
+              path="/commodity/loads"
+              element={
+                <CompanyOnlyRoute>
+                  <AppShell>
+                    <LoadEventsPage />
+                  </AppShell>
+                </CompanyOnlyRoute>
+              }
+            />
+            <Route
+              path="/commodity/offloads"
+              element={
+                <CompanyOnlyRoute>
+                  <AppShell>
+                    <OffloadEventsPage />
+                  </AppShell>
+                </CompanyOnlyRoute>
+              }
+            />
+            <Route
+              path="/commodity/offloads/new"
+              element={
+                <CompanyOnlyRoute>
+                  <AppShell>
+                    <OffloadEventsPage />
+                  </AppShell>
+                </CompanyOnlyRoute>
+              }
+            />
+            <Route
+              path="/commodity/logbook"
+              element={
+                <CompanyOnlyRoute>
+                  <AppShell>
+                    <CommodityLogbookPage />
+                  </AppShell>
+                </CompanyOnlyRoute>
+              }
+            />
+            <Route
+              path="/commodity/reconciliation"
+              element={
+                <CompanyOnlyRoute>
+                  <AppShell>
+                    <ReconciliationWorkspacePage />
+                  </AppShell>
+                </CompanyOnlyRoute>
+              }
+            />
+            <Route
+              path="/commodity/analytics"
+              element={
+                <CompanyOnlyRoute>
+                  <AppShell>
+                    <CommodityInsightsPage />
+                  </AppShell>
+                </CompanyOnlyRoute>
+              }
+            />
+            <Route
+              path="/commodity/discrepancies"
+              element={
+                <CompanyOnlyRoute>
+                  <AppShell>
+                    <TankDiscrepancyListPage />
+                  </AppShell>
+                </CompanyOnlyRoute>
+              }
+            />
 
             {/* Onboarding Page - Available to all authenticated users */}
             <Route
@@ -1721,6 +2024,18 @@ function App() {
               }
             />
 
+            {/* Support Tickets - System Admin only for managing all support tickets */}
+            <Route
+              path="/support-tickets"
+              element={
+                <AdminRoute>
+                  <AppShell>
+                    <SupportTicketsPage />
+                  </AppShell>
+                </AdminRoute>
+              }
+            />
+
             {/* Profile Settings - Available to all authenticated users */}
             <Route
               path="/profile"
@@ -1739,8 +2054,9 @@ function App() {
             {/* Catch all - redirect to smart redirect */}
             <Route path="*" element={<SmartRedirect />} />
           </Routes>
-        </AuthProvider>
-      </Router>
+          </AuthProvider>
+        </Router>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

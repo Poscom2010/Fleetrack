@@ -1,9 +1,25 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  darkMode: 'class', // Enable class-based dark mode
   theme: {
     extend: {
       colors: {
+        // Baltic Blue - Bright Theme Primary
+        baltic: {
+          50: '#ebf3f9',
+          100: '#d8e7f3',
+          200: '#b0cfe8',
+          300: '#89b7dc',
+          400: '#629fd0',
+          500: '#3b86c4',
+          600: '#2f6c9d',
+          700: '#235176',
+          800: '#17364f',
+          900: '#0c1b27',
+          950: '#08131b',
+        },
+        // Existing brand colors (Dark theme)
         brand: {
           50: "#eef2ff",
           100: "#e0e7ff",
@@ -29,6 +45,27 @@ export default {
           200: "#111b2f",
           300: "#15213c",
           400: "#1f2937",
+        },
+        // Semantic colors for commodity tracking
+        primary: {
+          DEFAULT: '#3b86c4',
+          dark: '#2f6c9d',
+        },
+        success: {
+          DEFAULT: '#10B981',
+          dark: '#059669',
+        },
+        warning: {
+          DEFAULT: '#F59E0B',
+          dark: '#D97706',
+        },
+        danger: {
+          DEFAULT: '#EF4444',
+          dark: '#DC2626',
+        },
+        info: {
+          DEFAULT: '#3b86c4',
+          dark: '#2f6c9d',
         },
       },
       fontFamily: {

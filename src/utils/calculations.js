@@ -253,6 +253,39 @@ export const findLowPerformer = (vehicleData, metric = "profit") => {
 };
 
 /**
+ * Get currency symbol from currency code
+ * @param {string} currencyCode - Currency code (e.g., 'USD', 'ZAR', 'EUR')
+ * @returns {string} Currency symbol
+ */
+export const getCurrencySymbol = (currencyCode = 'USD') => {
+  const symbols = {
+    USD: '$',
+    EUR: '€',
+    GBP: '£',
+    ZAR: 'R',
+    BWP: 'P',
+    NAD: 'N$',
+    MZN: 'MT',
+    ZMW: 'K',
+    KES: 'KSh',
+    TZS: 'TSh',
+    UGX: 'USh',
+    NGN: '₦',
+    GHS: 'GH₵',
+    XOF: 'CFA',
+    XAF: 'FCFA',
+    INR: '₹',
+    CNY: '¥',
+    JPY: '¥',
+    AUD: 'A$',
+    CAD: 'C$',
+    CHF: 'CHF',
+    BRL: 'R$',
+  };
+  return symbols[currencyCode?.toUpperCase()] || currencyCode || '$';
+};
+
+/**
  * Format currency value
  * @param {number} value - Numeric value
  * @param {string} currency - Currency code (default: 'USD')
@@ -260,10 +293,32 @@ export const findLowPerformer = (vehicleData, metric = "profit") => {
  */
 export const formatCurrency = (value, currency = "USD") => {
   const num = Number(value) || 0;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency,
-  }).format(num);
+  const currencyCode = currency?.toUpperCase() || 'USD';
+  
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currencyCode,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(num);
+  } catch (e) {
+    // Fallback for unsupported currencies
+    const symbol = getCurrencySymbol(currencyCode);
+    return `${symbol}${num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  }
+};
+
+/**
+ * Format currency value with just symbol and number (no Intl formatting)
+ * @param {number} value - Numeric value
+ * @param {string} currency - Currency code (default: 'USD')
+ * @returns {string} Formatted currency string
+ */
+export const formatCurrencySimple = (value, currency = "USD") => {
+  const num = Number(value) || 0;
+  const symbol = getCurrencySymbol(currency);
+  return `${symbol} ${num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 };
 
 /**

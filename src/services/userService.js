@@ -197,12 +197,12 @@ export const isAdmin = (user) => {
 };
 
 /**
- * Check if user can manage company settings (system admin or company admin)
+ * Check if user can manage company settings (system admin, company admin, or company manager)
  * @param {Object} user - User object
  * @returns {boolean} True if user can manage company settings
  */
 export const canManageCompanySettings = (user) => {
-  return isSystemAdmin(user) || isCompanyAdmin(user);
+  return isSystemAdmin(user) || isCompanyAdmin(user) || isCompanyManager(user);
 };
 
 /**

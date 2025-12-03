@@ -47,10 +47,14 @@ export const useVehicles = (userId, companyId = null, userRole = null) => {
       (querySnapshot) => {
         const vehiclesData = [];
         querySnapshot.forEach((doc) => {
-          vehiclesData.push({
-            id: doc.id,
-            ...doc.data(),
-          });
+          const data = doc.data();
+          // Filter out deleted vehicles (deleted !== true handles undefined/null/false)
+          if (data.deleted !== true) {
+            vehiclesData.push({
+              id: doc.id,
+              ...data,
+            });
+          }
         });
         vehiclesData.sort((a, b) => {
           const aTime = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt?.getTime ? a.createdAt.getTime() : 0);
@@ -113,13 +117,13 @@ export const useVehicles = (userId, companyId = null, userRole = null) => {
   };
 
   /**
-   * Delete a vehicle
+   * Delete a vehicle (soft delete)
    * @param {string} vehicleId - The vehicle's ID
    * @returns {Promise<void>}
    */
   const removeVehicle = async (vehicleId) => {
     try {
-      await deleteVehicle(vehicleId);
+      await deleteVehicle(vehicleId, userId);
     } catch (err) {
       console.error("Error deleting vehicle:", err);
       throw err;

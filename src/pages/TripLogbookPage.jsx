@@ -4,9 +4,10 @@ import { useAuth } from '../hooks/useAuth';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
-import { Search, Filter, Download, Edit2, Trash2 } from 'lucide-react';
+import { Search, Filter, Download, Edit2, Trash2, ChevronDown } from 'lucide-react';
 import { fetchDriverNames } from '../utils/driverUtils';
 import { deleteDailyEntry, deleteExpense } from '../services/entryService';
+import { getCurrencySymbol } from '../utils/calculations';
 import toast from 'react-hot-toast';
 import Modal from '../components/common/Modal';
 import DailyEntryForm from '../components/entries/DailyEntryForm';
@@ -40,7 +41,11 @@ const TripLogbookPage = () => {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [drivers, setDrivers] = useState([]);
-  const { vehicles: vehiclesList, loading: vehiclesLoading } = useVehicles(user?.uid, company?.id, userProfile?.role);
+  const [showAllTrips, setShowAllTrips] = useState(false);
+  const { vehicles: allVehicles, loading: vehiclesLoading } = useVehicles(user?.uid, company?.id, userProfile?.role);
+  
+  // Filter out commodity vehicles - they use Load/Offload Events instead
+  const vehiclesList = allVehicles.filter(v => !['fuelTruck', 'lpGasTruck'].includes(v.vehicleType));
 
   useEffect(() => {
     loadTrips();
@@ -233,6 +238,11 @@ const TripLogbookPage = () => {
     return true;
   });
 
+  // Limit displayed trips to 2 unless "Show All" is clicked
+  const TRIPS_LIMIT = 2;
+  const displayedTrips = showAllTrips ? filteredTrips : filteredTrips.slice(0, TRIPS_LIMIT);
+  const hasMoreTrips = filteredTrips.length > TRIPS_LIMIT;
+
   // Calculate totals from FILTERED trips (recalculates when filters change)
   useEffect(() => {
     if (trips.length === 0) return; // Don't calculate if no trips loaded yet
@@ -288,6 +298,7 @@ const TripLogbookPage = () => {
       ? ['Date', 'Driver', 'Route', 'Vehicle', 'Distance', 'Cash In', 'Expenses']
       : ['Date', 'Route', 'Vehicle', 'Distance', 'Cash In', 'Expenses'];
     
+    const currencySymbol = getCurrencySymbol(company?.currency);
     const rows = filteredTrips.map(trip => {
       const baseRow = [
         trip.date?.toLocaleDateString() || '',
@@ -295,8 +306,8 @@ const TripLogbookPage = () => {
         `${trip.startLocation} → ${trip.endLocation}`,
         vehicles[trip.vehicleId] || 'N/A',
         `${trip.distanceTraveled || 0} km`,
-        `R${(trip.cashIn || 0).toFixed(2)}`,
-        `R${((trip.fuelExpense || 0) + (trip.repairsExpense || 0) + (trip.otherExpenses || 0)).toFixed(2)}`
+        `${currencySymbol}${(trip.cashIn || 0).toFixed(2)}`,
+        `${currencySymbol}${((trip.fuelExpense || 0) + (trip.repairsExpense || 0) + (trip.otherExpenses || 0)).toFixed(2)}`
       ];
       return baseRow;
     });
@@ -318,36 +329,36 @@ const TripLogbookPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-baltic-50 via-blue-50 to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-          <p className="text-slate-400">Loading trip logbook...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading trip logbook...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-baltic-50 via-blue-50 to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-4">
-          <h1 className="text-xl sm:text-2xl font-bold text-white mb-1">Trip Logbook</h1>
-          <p className="text-slate-400 text-xs sm:text-sm">Electronic logbook for all your trips and expenses.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-baltic-900 dark:text-white mb-1">Trip Logbook</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Electronic logbook for all your trips and expenses.</p>
         </div>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
           {/* Total Cash In */}
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-3 sm:p-4">
-            <p className="text-slate-400 text-xs font-medium mb-1">Total Cash In</p>
-            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-400">${totalCashIn.toFixed(2)}</p>
+          <div className="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-3 sm:p-4 shadow-md">
+            <p className="text-gray-600 dark:text-gray-400 text-xs font-medium mb-1">Total Cash In</p>
+            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600 dark:text-green-400">${totalCashIn.toFixed(2)}</p>
           </div>
 
           {/* Total Expenses */}
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-3 sm:p-4">
-            <p className="text-slate-400 text-xs font-medium mb-1">Total Expenses</p>
-            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-red-400">${totalExpenses.toFixed(2)}</p>
+          <div className="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-3 sm:p-4 shadow-md">
+            <p className="text-gray-600 dark:text-gray-400 text-xs font-medium mb-1">Total Expenses</p>
+            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-red-600 dark:text-red-400">${totalExpenses.toFixed(2)}</p>
           </div>
         </div>
 
@@ -355,23 +366,23 @@ const TripLogbookPage = () => {
         <div className="flex flex-col md:flex-row gap-3 mb-4">
           {/* Search */}
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               placeholder="Search by route, vehicle, or date..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-900/50 border border-slate-800 rounded-lg pl-10 pr-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+              className="w-full bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg pl-10 pr-3 py-2 text-sm text-baltic-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-baltic-500 transition"
             />
           </div>
 
           {/* Filter Button */}
           <button 
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2 bg-slate-900/50 border rounded-lg transition text-sm relative ${
+            className={`flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border-2 rounded-lg transition text-sm relative ${
               hasActiveFilters 
-                ? 'border-blue-500 text-blue-400 hover:text-blue-300' 
-                : 'border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+                ? 'border-baltic-500 text-baltic-600 dark:text-baltic-400 hover:text-baltic-700 dark:hover:text-baltic-300' 
+                : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-400 hover:text-baltic-900 dark:hover:text-white hover:border-baltic-400 dark:hover:border-gray-500'
             }`}
           >
             <Filter className="w-4 h-4" />
@@ -385,7 +396,7 @@ const TripLogbookPage = () => {
           {!isDriver && (
             <button
               onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-900/50 border border-slate-800 rounded-lg text-slate-400 hover:text-white hover:border-slate-700 transition text-sm"
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-400 hover:text-baltic-900 dark:hover:text-white hover:border-baltic-400 dark:hover:border-gray-500 transition text-sm"
             >
               <Download className="w-4 h-4" />
               <span>Export</span>
@@ -395,9 +406,9 @@ const TripLogbookPage = () => {
 
         {/* Filter Panel */}
         {showFilters && (
-          <div className="mb-4 bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+          <div className="mb-4 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-md">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-white">Filters</h3>
+              <h3 className="text-sm font-semibold text-baltic-900 dark:text-white">Filters</h3>
               {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
@@ -411,33 +422,33 @@ const TripLogbookPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
               {/* Start Date */}
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Start Date</label>
+                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Start Date</label>
                 <input
                   type="date"
                   value={filters.startDate}
                   onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                  className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition"
+                  className="w-full bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-baltic-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-baltic-500 transition"
                 />
               </div>
 
               {/* End Date */}
               <div>
-                <label className="block text-xs text-slate-400 mb-1">End Date</label>
+                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">End Date</label>
                 <input
                   type="date"
                   value={filters.endDate}
                   onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                  className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition"
+                  className="w-full bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-baltic-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-baltic-500 transition"
                 />
               </div>
 
               {/* Vehicle Filter */}
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Vehicle</label>
+                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Vehicle</label>
                 <select
                   value={filters.vehicleId}
                   onChange={(e) => handleFilterChange('vehicleId', e.target.value)}
-                  className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition"
+                  className="w-full bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-baltic-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-baltic-500 transition"
                 >
                   <option value="">All Vehicles</option>
                   {Object.entries(vehicles).map(([id, name]) => (
@@ -449,11 +460,11 @@ const TripLogbookPage = () => {
               {/* Driver Filter (Admin/Manager only) */}
               {isAdminOrManager && (
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">Driver</label>
+                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Driver</label>
                   <select
                     value={filters.driverId}
                     onChange={(e) => handleFilterChange('driverId', e.target.value)}
-                    className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition"
+                    className="w-full bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-baltic-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-baltic-500 transition"
                   >
                     <option value="">All Drivers</option>
                     {Object.entries(users).map(([id, name]) => (
@@ -468,12 +479,12 @@ const TripLogbookPage = () => {
 
         {/* Mobile Card View */}
         <div className="lg:hidden space-y-3">
-          {filteredTrips.length === 0 ? (
-            <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-8 text-center">
-              <p className="text-slate-500 text-sm">No trips found. Start adding your trips to see them here.</p>
+          {displayedTrips.length === 0 ? (
+            <div className="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-8 text-center shadow-md">
+              <p className="text-gray-600 dark:text-gray-400 text-sm">No trips found. Start adding your trips to see them here.</p>
             </div>
           ) : (
-            filteredTrips.map((trip) => {
+            displayedTrips.map((trip) => {
               const inlineExpenses = (trip.fuelExpense || 0) + (trip.repairsExpense || 0) + (trip.otherExpenses || 0);
               const dateKey = trip.date?.toDateString();
               const vehicleId = trip.vehicleId;
@@ -484,10 +495,10 @@ const TripLogbookPage = () => {
               const driverName = users[trip.userId] || 'Unknown Driver';
               
               return (
-                <div key={trip.id} className="bg-slate-900/30 border border-slate-800 rounded-xl p-3">
+                <div key={trip.id} className="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-3 shadow-md">
                   {/* Date */}
-                  <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-700/50">
-                    <span className="text-slate-400 text-xs font-medium">
+                  <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+                    <span className="text-gray-600 dark:text-gray-400 text-xs font-medium">
                       📅 {trip.date?.toLocaleDateString('en-US', { 
                         year: 'numeric', 
                         month: 'short', 
@@ -499,15 +510,15 @@ const TripLogbookPage = () => {
                   {/* Driver (Admin/Manager only) */}
                   {isAdminOrManager && (
                     <div className="mb-2">
-                      <span className="text-slate-500 text-xs">Driver:</span>
-                      <p className="text-white font-medium text-sm">{driverName}</p>
+                      <span className="text-gray-500 dark:text-slate-500 text-xs">Driver:</span>
+                      <p className="text-baltic-900 dark:text-white font-medium text-sm">{driverName}</p>
                     </div>
                   )}
                   
                   {/* Route */}
                   <div className="mb-2">
-                    <span className="text-slate-500 text-xs">Route:</span>
-                    <p className="text-white font-medium text-sm">
+                    <span className="text-gray-500 dark:text-slate-500 text-xs">Route:</span>
+                    <p className="text-baltic-900 dark:text-white font-medium text-sm">
                       {trip.startLocation} → {trip.endLocation}
                     </p>
                   </div>
@@ -515,54 +526,54 @@ const TripLogbookPage = () => {
                   {/* Vehicle & Distance */}
                   <div className="grid grid-cols-2 gap-3 mb-2 text-xs">
                     <div>
-                      <span className="text-slate-500">Vehicle:</span>
-                      <p className="text-slate-300 font-medium">{vehicles[trip.vehicleId] || 'N/A'}</p>
+                      <span className="text-gray-500 dark:text-slate-500">Vehicle:</span>
+                      <p className="text-gray-700 dark:text-slate-300 font-medium">{vehicles[trip.vehicleId] || 'N/A'}</p>
                     </div>
                     <div>
-                      <span className="text-slate-500">Distance:</span>
-                      <p className="text-slate-300 font-medium">{trip.distanceTraveled ? `${trip.distanceTraveled.toFixed(1)} km` : 'N/A'}</p>
+                      <span className="text-gray-500 dark:text-slate-500">Distance:</span>
+                      <p className="text-gray-700 dark:text-slate-300 font-medium">{trip.distanceTraveled ? `${trip.distanceTraveled.toFixed(1)} km` : 'N/A'}</p>
                     </div>
                   </div>
                   
                   {/* Cash In & Expenses */}
-                  <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-700/50">
+                  <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-200 dark:border-slate-700/50">
                     <div>
-                      <span className="text-slate-500 text-xs">Cash In:</span>
-                      <p className="text-blue-400 font-bold text-sm">${(trip.cashIn || 0).toFixed(2)}</p>
+                      <span className="text-gray-500 dark:text-slate-500 text-xs">Cash In:</span>
+                      <p className="text-blue-600 dark:text-blue-400 font-bold text-sm">${(trip.cashIn || 0).toFixed(2)}</p>
                     </div>
                     <div>
-                      <span className="text-slate-500 text-xs">Expenses:</span>
-                      <p className="text-red-400 font-bold text-sm">${totalTripExpenses.toFixed(2)}</p>
+                      <span className="text-gray-500 dark:text-slate-500 text-xs">Expenses:</span>
+                      <p className="text-red-600 dark:text-red-400 font-bold text-sm">${totalTripExpenses.toFixed(2)}</p>
                     </div>
                   </div>
                   
                   {/* Expense Breakdown */}
                   {(inlineExpenses > 0 || tripExpensesList.length > 0) && (
-                    <div className="mt-2 pt-2 border-t border-slate-700/50">
-                      <span className="text-slate-500 text-xs font-medium">Expense Breakdown:</span>
+                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-slate-700/50">
+                      <span className="text-gray-500 dark:text-slate-500 text-xs font-medium">Expense Breakdown:</span>
                       <div className="mt-1 space-y-1">
                         {trip.fuelExpense > 0 && (
                           <div className="flex justify-between text-xs">
-                            <span className="text-slate-400">• Fuel</span>
-                            <span className="text-slate-300">${trip.fuelExpense.toFixed(2)}</span>
+                            <span className="text-gray-500 dark:text-slate-400">• Fuel</span>
+                            <span className="text-gray-700 dark:text-slate-300">${trip.fuelExpense.toFixed(2)}</span>
                           </div>
                         )}
                         {trip.repairsExpense > 0 && (
                           <div className="flex justify-between text-xs">
-                            <span className="text-slate-400">• Repairs</span>
-                            <span className="text-slate-300">${trip.repairsExpense.toFixed(2)}</span>
+                            <span className="text-gray-500 dark:text-slate-400">• Repairs</span>
+                            <span className="text-gray-700 dark:text-slate-300">${trip.repairsExpense.toFixed(2)}</span>
                           </div>
                         )}
                         {trip.otherExpenses > 0 && (
                           <div className="flex justify-between text-xs">
-                            <span className="text-slate-400">• Other</span>
-                            <span className="text-slate-300">${trip.otherExpenses.toFixed(2)}</span>
+                            <span className="text-gray-500 dark:text-slate-400">• Other</span>
+                            <span className="text-gray-700 dark:text-slate-300">${trip.otherExpenses.toFixed(2)}</span>
                           </div>
                         )}
                         {tripExpensesList.map((expense) => (
                           <div key={expense.id} className="flex justify-between text-xs">
-                            <span className="text-slate-400">• {expense.description}</span>
-                            <span className="text-slate-300">${expense.amount.toFixed(2)}</span>
+                            <span className="text-gray-500 dark:text-slate-400">• {expense.description}</span>
+                            <span className="text-gray-700 dark:text-slate-300">${expense.amount.toFixed(2)}</span>
                           </div>
                         ))}
                       </div>
@@ -575,31 +586,31 @@ const TripLogbookPage = () => {
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden lg:block bg-slate-900/30 border border-slate-800 rounded-xl overflow-hidden">
+        <div className="hidden lg:block bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-800">
-                  <th className="text-left px-4 py-3 text-slate-400 font-medium text-xs">Date</th>
+                <tr className="border-b-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                  <th className="text-left px-4 py-3 text-baltic-900 dark:text-gray-300 font-semibold text-xs uppercase">Date</th>
                   {isAdminOrManager && (
-                    <th className="text-left px-4 py-3 text-slate-400 font-medium text-xs">Driver</th>
+                    <th className="text-left px-4 py-3 text-baltic-900 dark:text-gray-300 font-semibold text-xs uppercase">Driver</th>
                   )}
-                  <th className="text-left px-4 py-3 text-slate-400 font-medium text-xs">Route</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-medium text-xs">Vehicle</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-medium text-xs">Distance</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-medium text-xs">Cash In</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-medium text-xs">Expenses</th>
+                  <th className="text-left px-4 py-3 text-baltic-900 dark:text-gray-300 font-semibold text-xs uppercase">Route</th>
+                  <th className="text-left px-4 py-3 text-baltic-900 dark:text-gray-300 font-semibold text-xs uppercase">Vehicle</th>
+                  <th className="text-left px-4 py-3 text-baltic-900 dark:text-gray-300 font-semibold text-xs uppercase">Distance</th>
+                  <th className="text-left px-4 py-3 text-baltic-900 dark:text-gray-300 font-semibold text-xs uppercase">Cash In</th>
+                  <th className="text-left px-4 py-3 text-baltic-900 dark:text-gray-300 font-semibold text-xs uppercase">Expenses</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredTrips.length === 0 ? (
+                {displayedTrips.length === 0 ? (
                   <tr>
-                    <td colSpan={isAdminOrManager ? "7" : "6"} className="px-4 py-8 text-center text-slate-500 text-sm">
+                    <td colSpan={isAdminOrManager ? "7" : "6"} className="px-4 py-8 text-center text-gray-500 dark:text-slate-500 text-sm">
                       No trips found. Start adding your trips to see them here.
                     </td>
                   </tr>
                 ) : (
-                  filteredTrips.map((trip) => {
+                  displayedTrips.map((trip) => {
                     const inlineExpenses = (trip.fuelExpense || 0) + (trip.repairsExpense || 0) + (trip.otherExpenses || 0);
                     const dateKey = trip.date?.toDateString();
                     const vehicleId = trip.vehicleId;
@@ -610,8 +621,8 @@ const TripLogbookPage = () => {
                     const driverName = users[trip.userId] || 'Unknown Driver';
                     
                     return (
-                      <tr key={trip.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition">
-                        <td className="px-4 py-3 text-slate-300 text-sm">
+                      <tr key={trip.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                        <td className="px-4 py-3 text-gray-700 dark:text-slate-300 text-sm">
                           {trip.date?.toLocaleDateString('en-US', { 
                             year: 'numeric', 
                             month: '2-digit', 
@@ -619,27 +630,27 @@ const TripLogbookPage = () => {
                           })}
                         </td>
                         {isAdminOrManager && (
-                          <td className="px-4 py-3 text-slate-300 text-sm font-medium">
+                          <td className="px-4 py-3 text-gray-700 dark:text-slate-300 text-sm font-medium">
                             {driverName}
                           </td>
                         )}
-                        <td className="px-4 py-3 text-white font-medium text-sm">
+                        <td className="px-4 py-3 text-baltic-900 dark:text-white font-medium text-sm">
                           {trip.startLocation} → {trip.endLocation}
                         </td>
-                        <td className="px-4 py-3 text-slate-300 text-sm">
+                        <td className="px-4 py-3 text-gray-700 dark:text-slate-300 text-sm">
                           {vehicles[trip.vehicleId] || 'N/A'}
                         </td>
-                        <td className="px-4 py-3 text-slate-300 text-sm">
+                        <td className="px-4 py-3 text-gray-700 dark:text-slate-300 text-sm">
                           {trip.distanceTraveled ? `${trip.distanceTraveled.toFixed(1)} km` : 'N/A'}
                         </td>
-                        <td className="px-4 py-3 text-blue-400 font-semibold text-sm">
+                        <td className="px-4 py-3 text-blue-600 dark:text-blue-400 font-semibold text-sm">
                           ${(trip.cashIn || 0).toFixed(2)}
                         </td>
-                        <td className="px-4 py-3 text-red-400 font-semibold text-sm">
+                        <td className="px-4 py-3 text-red-600 dark:text-red-400 font-semibold text-sm">
                           <div className="flex flex-col">
                             <span>${totalTripExpenses.toFixed(2)}</span>
                             {(inlineExpenses > 0 || tripExpensesList.length > 0) && (
-                              <div className="mt-1 text-xs text-slate-400 font-normal space-y-0.5">
+                              <div className="mt-1 text-xs text-gray-500 dark:text-slate-400 font-normal space-y-0.5">
                                 {trip.fuelExpense > 0 && <div>Fuel: ${trip.fuelExpense.toFixed(2)}</div>}
                                 {trip.repairsExpense > 0 && <div>Repairs: ${trip.repairsExpense.toFixed(2)}</div>}
                                 {trip.otherExpenses > 0 && <div>Other: ${trip.otherExpenses.toFixed(2)}</div>}
@@ -659,10 +670,32 @@ const TripLogbookPage = () => {
           </div>
         </div>
 
+        {/* Show All / Show Less Button */}
+        {!loading && hasMoreTrips && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => setShowAllTrips(!showAllTrips)}
+              className="px-6 py-2.5 bg-baltic-100 hover:bg-baltic-200 text-baltic-700 font-medium rounded-lg transition-colors inline-flex items-center gap-2"
+            >
+              {showAllTrips ? (
+                <>
+                  <ChevronDown className="w-4 h-4 rotate-180" />
+                  Show Less
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4" />
+                  Show All ({filteredTrips.length - TRIPS_LIMIT} more)
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
         {/* Trip Count */}
-        {filteredTrips.length > 0 && (
-          <div className="mt-3 text-center text-slate-500 text-xs">
-            Showing {filteredTrips.length} {filteredTrips.length === 1 ? 'trip' : 'trips'}
+        {!loading && filteredTrips.length > 0 && (
+          <div className="mt-2 text-center text-gray-500 dark:text-slate-500 text-xs">
+            Showing {displayedTrips.length} of {filteredTrips.length} {filteredTrips.length === 1 ? 'trip' : 'trips'}
           </div>
         )}
       </div>

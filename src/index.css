@@ -1,10 +1,10 @@
+/* CACHE BUSTER v2.0 - Updated 2025-11-25 22:38 */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    color-scheme: dark;
     --surface-100: #0f172a;
     --surface-200: #111b2f;
     --surface-300: #15213c;
@@ -12,13 +12,26 @@
     --accent-500: #0ea5e9;
   }
 
+  /* ===== BRIGHT MODE (DEFAULT) ===== */
   html {
-    @apply bg-surface-100 text-slate-100 antialiased;
+    background-color: white !important;
+    color: #111827 !important;
     font-family: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
   }
 
   body {
     min-height: 100vh;
+    background-color: white !important;
+    color: #111827 !important;
+  }
+
+  /* Dark mode */
+  html.dark {
+    color-scheme: dark;
+    @apply bg-surface-100 text-slate-100;
+  }
+
+  html.dark body {
     background: radial-gradient(
         circle at 10% 20%,
         rgba(99, 102, 241, 0.25) 0%,
@@ -40,11 +53,19 @@
   }
 
   ::selection {
+    @apply bg-baltic-200 text-gray-900;
+  }
+
+  html.dark ::selection {
     background: rgba(99, 102, 241, 0.35);
     color: #f8fafc;
   }
 
   a {
+    @apply text-baltic-600;
+  }
+
+  html.dark a {
     @apply text-accent-400;
   }
 }

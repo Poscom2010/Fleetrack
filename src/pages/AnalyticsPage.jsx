@@ -257,27 +257,27 @@ const AnalyticsPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-          <p className="mt-4 text-slate-400">Loading analytics...</p>
+          <p className="mt-4 text-gray-600">Loading analytics...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50 p-4">
       <div className="max-w-7xl mx-auto space-y-4">
         {/* Header */}
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white mb-1">Fleet Analytics & Insights</h1>
-            <p className="text-xs sm:text-sm text-slate-400">AI-powered analysis of your fleet performance</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Fleet Analytics & Insights</h1>
+            <p className="text-xs sm:text-sm text-gray-600">AI-powered analysis of your fleet performance</p>
           </div>
           <button
             onClick={() => setShowAiInsightsModal(true)}
-            className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:shadow-xl hover:from-purple-700 hover:to-pink-700 flex items-center justify-center gap-2"
+            className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-gray-900 shadow-lg transition hover:shadow-xl hover:from-purple-700 hover:to-pink-700 flex items-center justify-center gap-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -289,27 +289,27 @@ const AnalyticsPage = () => {
         {/* Fleet Summary Cards */}
         {fleetSummary && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-slate-800 rounded-xl p-3 sm:p-4 border border-slate-700">
-              <p className="text-xs text-slate-400 mb-1">Total Distance</p>
-              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">{fleetSummary.totalDistance.toFixed(0)}</p>
-              <p className="text-xs text-slate-500 mt-1">kilometers</p>
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-gray-200/60 shadow-md">
+              <p className="text-xs text-gray-600 mb-1">Total Distance</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{fleetSummary.totalDistance.toFixed(0)}</p>
+              <p className="text-xs text-gray-500 mt-1">kilometers</p>
             </div>
-            <div className="bg-slate-800 rounded-xl p-3 sm:p-4 border border-slate-700">
-              <p className="text-xs text-slate-400 mb-1">Total Revenue</p>
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-gray-200/60 shadow-md">
+              <p className="text-xs text-gray-600 mb-1">Total Revenue</p>
               <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-400">{currencySymbol}{fleetSummary.totalRevenue.toFixed(0)}</p>
-              <p className="text-xs text-slate-500 mt-1">{fleetSummary.totalTrips} trips</p>
+              <p className="text-xs text-gray-500 mt-1">{fleetSummary.totalTrips} trips</p>
             </div>
-            <div className="bg-slate-800 rounded-xl p-3 sm:p-4 border border-slate-700">
-              <p className="text-xs text-slate-400 mb-1">Total Expenses</p>
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-gray-200/60 shadow-md">
+              <p className="text-xs text-gray-600 mb-1">Total Expenses</p>
               <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-400">{currencySymbol}{fleetSummary.totalExpenses.toFixed(0)}</p>
-              <p className="text-xs text-slate-500 mt-1">operating costs</p>
+              <p className="text-xs text-gray-500 mt-1">operating costs</p>
             </div>
-            <div className="bg-slate-800 rounded-xl p-3 sm:p-4 border border-slate-700">
-              <p className="text-xs text-slate-400 mb-1">Net Profit</p>
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-gray-200/60 shadow-md">
+              <p className="text-xs text-gray-600 mb-1">Net Profit</p>
               <p className={`text-xl sm:text-2xl lg:text-3xl font-bold ${fleetSummary.totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {currencySymbol}{fleetSummary.totalProfit.toFixed(0)}
               </p>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 {fleetSummary.totalRevenue > 0 ? ((fleetSummary.totalProfit / fleetSummary.totalRevenue) * 100).toFixed(1) : 0}% margin
               </p>
             </div>
@@ -317,8 +317,8 @@ const AnalyticsPage = () => {
         )}
 
         {/* AI Insights */}
-        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-200/60 shadow-md">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
@@ -326,7 +326,7 @@ const AnalyticsPage = () => {
           </h2>
           
           {insights.length === 0 ? (
-            <p className="text-slate-400 text-center py-8">No insights available yet. Add more trip data to generate insights.</p>
+            <p className="text-gray-600 text-center py-8">No insights available yet. Add more trip data to generate insights.</p>
           ) : (
             <div className="space-y-3">
               {insights.map((insight, index) => (
@@ -350,52 +350,52 @@ const AnalyticsPage = () => {
         </div>
 
         {/* Vehicle Performance Table */}
-        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-          <h2 className="text-base sm:text-lg font-semibold text-white mb-4">Vehicle Performance Breakdown</h2>
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-200/60 shadow-md">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Vehicle Performance Breakdown</h2>
           
           {vehicleMetrics.length === 0 ? (
-            <p className="text-slate-400 text-center py-8">No vehicle data available</p>
+            <p className="text-gray-600 text-center py-8">No vehicle data available</p>
           ) : (
             <>
               {/* Mobile Card View */}
               <div className="lg:hidden space-y-3">
                 {vehicleMetrics.map((metric) => (
-                  <div key={metric.vehicle.id} className="bg-slate-900 rounded-lg p-3 border border-slate-700">
+                  <div key={metric.vehicle.id} className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-gray-200/60 shadow-md">
                     <div className="mb-2">
-                      <p className="font-medium text-white text-sm">{metric.vehicle.name}</p>
-                      <p className="text-xs text-slate-400">{metric.vehicle.registrationNumber}</p>
+                      <p className="font-medium text-gray-900 text-sm">{metric.vehicle.name}</p>
+                      <p className="text-xs text-gray-600">{metric.vehicle.registrationNumber}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs mb-2">
                       <div>
-                        <span className="text-slate-500">Trips:</span>
-                        <p className="text-slate-200 font-semibold">{metric.tripCount}</p>
+                        <span className="text-gray-500">Trips:</span>
+                        <p className="text-gray-900 font-semibold">{metric.tripCount}</p>
                       </div>
                       <div>
-                        <span className="text-slate-500">Distance:</span>
-                        <p className="text-slate-200 font-semibold">{metric.totalDistance.toFixed(0)} km</p>
+                        <span className="text-gray-500">Distance:</span>
+                        <p className="text-gray-900 font-semibold">{metric.totalDistance.toFixed(0)} km</p>
                       </div>
                       <div>
-                        <span className="text-slate-500">Revenue:</span>
+                        <span className="text-gray-500">Revenue:</span>
                         <p className="text-green-400 font-semibold">{currencySymbol}{metric.totalRevenue.toFixed(0)}</p>
                       </div>
                       <div>
-                        <span className="text-slate-500">Expenses:</span>
+                        <span className="text-gray-500">Expenses:</span>
                         <p className="text-orange-400 font-semibold">{currencySymbol}{metric.totalExpenses.toFixed(0)}</p>
                       </div>
                       <div>
-                        <span className="text-slate-500">Profit:</span>
+                        <span className="text-gray-500">Profit:</span>
                         <p className={`font-semibold ${metric.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                           {currencySymbol}{metric.profit.toFixed(0)}
                         </p>
                       </div>
                       <div>
-                        <span className="text-slate-500">Margin:</span>
+                        <span className="text-gray-500">Margin:</span>
                         <p className={`font-semibold ${metric.profitMargin >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                           {metric.profitMargin.toFixed(1)}%
                         </p>
                       </div>
                     </div>
-                    <div className="text-xs text-slate-400">
+                    <div className="text-xs text-gray-600">
                       Cost/km: <span className="text-orange-400 font-semibold">{currencySymbol}{metric.costPerKm.toFixed(2)}</span>
                     </div>
                   </div>
@@ -404,9 +404,9 @@ const AnalyticsPage = () => {
               
               {/* Desktop Table View */}
               <div className="hidden lg:block overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-700 text-sm">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
                 <thead>
-                  <tr className="text-xs text-slate-400 uppercase">
+                  <tr className="text-xs text-gray-600 uppercase">
                     <th className="px-4 py-3 text-left">Vehicle</th>
                     <th className="px-4 py-3 text-right">Trips</th>
                     <th className="px-4 py-3 text-right">Distance</th>
@@ -417,17 +417,17 @@ const AnalyticsPage = () => {
                     <th className="px-4 py-3 text-right">Cost/km</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800">
+                <tbody className="divide-y divide-gray-200">
                   {vehicleMetrics.map((metric) => (
-                    <tr key={metric.vehicle.id} className="hover:bg-slate-700/50">
+                    <tr key={metric.vehicle.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
                         <div>
-                          <p className="font-medium text-white">{metric.vehicle.name}</p>
-                          <p className="text-xs text-slate-400">{metric.vehicle.registrationNumber}</p>
+                          <p className="font-medium text-gray-900">{metric.vehicle.name}</p>
+                          <p className="text-xs text-gray-600">{metric.vehicle.registrationNumber}</p>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-200">{metric.tripCount}</td>
-                      <td className="px-4 py-3 text-right text-slate-200">{metric.totalDistance.toFixed(0)} km</td>
+                      <td className="px-4 py-3 text-right text-gray-900">{metric.tripCount}</td>
+                      <td className="px-4 py-3 text-right text-gray-900">{metric.totalDistance.toFixed(0)} km</td>
                       <td className="px-4 py-3 text-right text-green-400">{currencySymbol}{metric.totalRevenue.toFixed(2)}</td>
                       <td className="px-4 py-3 text-right text-orange-400">{currencySymbol}{metric.totalExpenses.toFixed(2)}</td>
                       <td className={`px-4 py-3 text-right font-semibold ${metric.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -436,7 +436,7 @@ const AnalyticsPage = () => {
                       <td className={`px-4 py-3 text-right ${metric.profitMargin >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {metric.profitMargin.toFixed(1)}%
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-200">{currencySymbol}{metric.costPerKm.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right text-gray-900">{currencySymbol}{metric.costPerKm.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -462,7 +462,7 @@ const AnalyticsPage = () => {
                 </svg>
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-white mb-2">Full AI Insights Coming Soon! 🚀</h3>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Full AI Insights Coming Soon! 🚀</h3>
                 <p className="text-slate-300 text-sm max-w-md mx-auto">
                   Advanced AI-powered insights and recommendations for your fleet will be available soon. Get ready for next-level intelligent analytics that help you maximize efficiency and profitability!
                 </p>
@@ -470,15 +470,15 @@ const AnalyticsPage = () => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4">
                 <div className="bg-slate-800/50 rounded-lg p-3 border border-purple-500/20">
                   <p className="text-xs text-purple-400 font-semibold mb-1">🔮 Predictive Analytics</p>
-                  <p className="text-xs text-slate-400">Forecast maintenance needs & costs</p>
+                  <p className="text-xs text-gray-600">Forecast maintenance needs & costs</p>
                 </div>
                 <div className="bg-slate-800/50 rounded-lg p-3 border border-pink-500/20">
                   <p className="text-xs text-pink-400 font-semibold mb-1">💡 Smart Recommendations</p>
-                  <p className="text-xs text-slate-400">AI-driven optimization tips</p>
+                  <p className="text-xs text-gray-600">AI-driven optimization tips</p>
                 </div>
                 <div className="bg-slate-800/50 rounded-lg p-3 border border-blue-500/20">
                   <p className="text-xs text-blue-400 font-semibold mb-1">📊 Deep Insights</p>
-                  <p className="text-xs text-slate-400">Advanced pattern detection</p>
+                  <p className="text-xs text-gray-600">Advanced pattern detection</p>
                 </div>
               </div>
             </div>
@@ -486,7 +486,7 @@ const AnalyticsPage = () => {
           <div className="flex justify-end pt-4 border-t border-slate-700">
             <button
               onClick={() => setShowAiInsightsModal(false)}
-              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition"
+              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-gray-900 rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition"
             >
               Got it!
             </button>

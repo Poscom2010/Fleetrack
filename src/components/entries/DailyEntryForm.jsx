@@ -312,13 +312,13 @@ const DailyEntryForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 text-sm text-slate-200">
+    <form onSubmit={handleSubmit} className="space-y-4 text-sm">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {isAdminOrManager && (
           <div>
             <label
               htmlFor="driverId"
-              className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+              className="mb-1 block text-sm font-medium text-baltic-900 dark:text-gray-100"
             >
               Driver *
             </label>
@@ -327,11 +327,12 @@ const DailyEntryForm = ({
               name="driverId"
               value={formData.driverId}
               onChange={handleChange}
-              className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
-                errors.driverId
-                  ? "border-rose-400/60 bg-rose-500/10"
-                  : "border-white/10 bg-surface-200/60"
-              }`}
+              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors
+                focus:ring-2 focus:ring-baltic-500 focus:border-transparent
+                ${errors.driverId
+                  ? "border-danger bg-danger/10"
+                  : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                } text-baltic-900 dark:text-gray-100`}
               disabled={isSubmitting}
             >
               <option value="">Select a driver</option>
@@ -352,7 +353,7 @@ const DailyEntryForm = ({
               </optgroup>
             </select>
             {errors.driverId && (
-              <p className="mt-1 text-xs font-medium text-rose-300">
+              <p className="mt-1 text-xs font-medium text-danger">
                 {errors.driverId}
               </p>
             )}
@@ -364,7 +365,7 @@ const DailyEntryForm = ({
           <div>
             <label
               htmlFor="newDriverName"
-              className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+              className="mb-1 block text-sm font-medium text-baltic-900 dark:text-gray-100"
             >
               New Driver Name *
             </label>
@@ -375,19 +376,20 @@ const DailyEntryForm = ({
               value={formData.newDriverName}
               onChange={handleChange}
               placeholder="Enter driver's full name"
-              className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
-                errors.newDriverName
-                  ? "border-rose-400/60 bg-rose-500/10"
-                  : "border-white/10 bg-surface-200/60"
-              }`}
+              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors
+                focus:ring-2 focus:ring-baltic-500 focus:border-transparent
+                ${errors.newDriverName
+                  ? "border-danger bg-danger/10"
+                  : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                } text-baltic-900 dark:text-gray-100`}
               disabled={isSubmitting}
             />
             {errors.newDriverName && (
-              <p className="mt-1 text-xs font-medium text-rose-300">
+              <p className="mt-1 text-xs font-medium text-danger">
                 {errors.newDriverName}
               </p>
             )}
-            <p className="mt-1 text-xs text-blue-300">
+            <p className="mt-1 text-xs text-baltic-600 dark:text-baltic-400">
               💡 A driver profile will be created automatically for this driver
             </p>
           </div>
@@ -395,7 +397,7 @@ const DailyEntryForm = ({
         <div>
           <label
             htmlFor="vehicleId"
-            className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+            className="mb-1 block text-sm font-medium text-baltic-900 dark:text-gray-100"
           >
             Vehicle *
           </label>
@@ -404,16 +406,17 @@ const DailyEntryForm = ({
             name="vehicleId"
             value={formData.vehicleId}
             onChange={handleChange}
-            className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
-              errors.vehicleId
-                ? "border-rose-400/60 bg-rose-500/10"
-                : "border-white/10 bg-surface-200/60"
-            }`}
+            className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors
+              focus:ring-2 focus:ring-baltic-500 focus:border-transparent
+              ${errors.vehicleId
+                ? "border-danger bg-danger/10"
+                : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+              } text-baltic-900 dark:text-gray-100`}
             disabled={isSubmitting}
           >
             <option value="">Select a vehicle</option>
             {!entry && (
-              <option value="ADD_NEW_VEHICLE" className="text-green-400 font-semibold">
+              <option value="ADD_NEW_VEHICLE" className="text-baltic-600 dark:text-baltic-400 font-semibold">
                 ➕ Add New Vehicle
               </option>
             )}
@@ -424,7 +427,7 @@ const DailyEntryForm = ({
             ))}
           </select>
           {errors.vehicleId && (
-            <p className="mt-1 text-xs font-medium text-rose-300">
+            <p className="mt-1 text-xs font-medium text-danger">
               {errors.vehicleId}
             </p>
           )}
@@ -433,7 +436,7 @@ const DailyEntryForm = ({
         <div>
           <label
             htmlFor="date"
-            className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+            className="mb-1 block text-sm font-medium text-baltic-900 dark:text-gray-100"
           >
             Date *
           </label>
@@ -444,15 +447,16 @@ const DailyEntryForm = ({
             value={formData.date}
             onChange={handleChange}
             max={new Date().toISOString().split("T")[0]}
-            className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
-              errors.date
-                ? "border-rose-400/60 bg-rose-500/10"
-                : "border-white/10 bg-surface-200/60"
-            }`}
+            className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors
+              focus:ring-2 focus:ring-baltic-500 focus:border-transparent
+              ${errors.date
+                ? "border-danger bg-danger/10"
+                : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+              } text-baltic-900 dark:text-gray-100`}
             disabled={isSubmitting}
           />
           {errors.date && (
-            <p className="mt-1 text-xs font-medium text-rose-300">
+            <p className="mt-1 text-xs font-medium text-danger">
               {errors.date}
             </p>
           )}
@@ -463,7 +467,7 @@ const DailyEntryForm = ({
         <div>
           <label
             htmlFor="startLocation"
-            className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+            className="mb-1 block text-sm font-medium text-baltic-900 dark:text-gray-100"
           >
             From (Start Location) *
           </label>
@@ -473,16 +477,17 @@ const DailyEntryForm = ({
             name="startLocation"
             value={formData.startLocation}
             onChange={handleChange}
-            className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
-              errors.startLocation
-                ? "border-rose-400/60 bg-rose-500/10"
-                : "border-white/10 bg-surface-200/60"
-            }`}
+            className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors
+              focus:ring-2 focus:ring-baltic-500 focus:border-transparent
+              ${errors.startLocation
+                ? "border-danger bg-danger/10"
+                : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+              } text-baltic-900 dark:text-gray-100`}
             placeholder="e.g., Johannesburg"
             disabled={isSubmitting}
           />
           {errors.startLocation && (
-            <p className="mt-1 text-xs font-medium text-rose-300">
+            <p className="mt-1 text-xs font-medium text-danger">
               {errors.startLocation}
             </p>
           )}
@@ -491,7 +496,7 @@ const DailyEntryForm = ({
         <div>
           <label
             htmlFor="endLocation"
-            className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+            className="mb-1 block text-sm font-medium text-baltic-900 dark:text-gray-100"
           >
             To (End Location) *
           </label>
@@ -501,16 +506,17 @@ const DailyEntryForm = ({
             name="endLocation"
             value={formData.endLocation}
             onChange={handleChange}
-            className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
-              errors.endLocation
-                ? "border-rose-400/60 bg-rose-500/10"
-                : "border-white/10 bg-surface-200/60"
-            }`}
+            className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors
+              focus:ring-2 focus:ring-baltic-500 focus:border-transparent
+              ${errors.endLocation
+                ? "border-danger bg-danger/10"
+                : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+              } text-baltic-900 dark:text-gray-100`}
             placeholder="e.g., Pretoria"
             disabled={isSubmitting}
           />
           {errors.endLocation && (
-            <p className="mt-1 text-xs font-medium text-rose-300">
+            <p className="mt-1 text-xs font-medium text-danger">
               {errors.endLocation}
             </p>
           )}
@@ -521,18 +527,18 @@ const DailyEntryForm = ({
         <div>
           <label
             htmlFor="cashIn"
-            className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+            className="mb-1 block text-sm font-medium text-baltic-900 dark:text-gray-100"
           >
             Cash-In *
           </label>
           <div
-            className={`flex items-center rounded-2xl border px-3 py-2 ${
+            className={`flex items-center rounded-lg border px-3 py-2 ${
               errors.cashIn
-                ? "border-rose-400/60 bg-rose-500/10"
-                : "border-white/10 bg-surface-200/60"
+                ? "border-danger bg-danger/10"
+                : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
             }`}
           >
-            <span className="mr-2 text-slate-400">$</span>
+            <span className="mr-2 text-gray-500 dark:text-gray-400">$</span>
             <input
               type="number"
               id="cashIn"
@@ -541,13 +547,13 @@ const DailyEntryForm = ({
               onChange={handleChange}
               step="0.01"
               min="0"
-              className="w-full bg-transparent text-white outline-none"
+              className="w-full bg-transparent text-baltic-900 dark:text-gray-100 outline-none"
               placeholder="0.00"
               disabled={isSubmitting}
             />
           </div>
           {errors.cashIn && (
-            <p className="mt-1 text-xs font-medium text-rose-300">
+            <p className="mt-1 text-xs font-medium text-danger">
               {errors.cashIn}
             </p>
           )}
@@ -556,7 +562,7 @@ const DailyEntryForm = ({
         <div>
           <label
             htmlFor="startMileage"
-            className="mb-1 block text-xs font-medium text-slate-300"
+            className="mb-1 block text-sm font-medium text-baltic-900 dark:text-gray-100"
           >
             Start Mileage (km) *
           </label>
@@ -568,26 +574,27 @@ const DailyEntryForm = ({
             onChange={handleChange}
             step="0.1"
             min="0"
-            className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
-              errors.startMileage
-                ? "border-rose-400/60 bg-rose-500/10"
-                : "border-white/10 bg-surface-200/60"
-            }`}
+            className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors
+              focus:ring-2 focus:ring-baltic-500 focus:border-transparent
+              ${errors.startMileage
+                ? "border-danger bg-danger/10"
+                : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+              } text-baltic-900 dark:text-gray-100`}
             placeholder="e.g., 10000"
             disabled={isSubmitting}
           />
           {lastMileageInfo && (
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               Last mileage: {lastMileageInfo.lastMileage.toLocaleString()} km
             </p>
           )}
           {errors.startMileage && (
-            <p className="mt-1 text-xs font-medium text-rose-300">
+            <p className="mt-1 text-xs font-medium text-danger">
               {errors.startMileage}
             </p>
           )}
           {mileageWarning && !errors.startMileage && (
-            <p className="mt-1 text-xs font-medium text-amber-300 flex items-start gap-1">
+            <p className="mt-1 text-xs font-medium text-warning flex items-start gap-1">
               <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
@@ -597,28 +604,28 @@ const DailyEntryForm = ({
           {mileageGapWarning && !errors.startMileage && (
             <div className={`mt-2 rounded-lg border p-3 ${
               mileageGapWarning.severity === 'high' 
-                ? 'border-red-500/30 bg-red-500/10' 
+                ? 'border-danger/30 bg-danger/10' 
                 : mileageGapWarning.severity === 'medium'
-                ? 'border-orange-500/30 bg-orange-500/10'
+                ? 'border-warning/30 bg-warning/10'
                 : 'border-yellow-500/30 bg-yellow-500/10'
             }`}>
               <div className="flex items-start gap-2">
                 <svg className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
                   mileageGapWarning.severity === 'high' 
-                    ? 'text-red-400' 
+                    ? 'text-danger' 
                     : mileageGapWarning.severity === 'medium'
-                    ? 'text-orange-400'
-                    : 'text-yellow-400'
+                    ? 'text-warning'
+                    : 'text-yellow-500'
                 }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <div className="flex-1">
                   <p className={`text-xs font-semibold ${
                     mileageGapWarning.severity === 'high' 
-                      ? 'text-red-300' 
+                      ? 'text-danger' 
                       : mileageGapWarning.severity === 'medium'
-                      ? 'text-orange-300'
-                      : 'text-yellow-300'
+                      ? 'text-warning'
+                      : 'text-yellow-600 dark:text-yellow-400'
                   }`}>
                     Mileage Mismatch: {mileageGapWarning.unaccountedKm.toLocaleString()} km gap detected
                   </p>
@@ -631,7 +638,7 @@ const DailyEntryForm = ({
         <div>
           <label
             htmlFor="endMileage"
-            className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+            className="mb-1 block text-sm font-medium text-baltic-900 dark:text-gray-100"
           >
             End Mileage (km) *
           </label>
@@ -643,16 +650,17 @@ const DailyEntryForm = ({
             onChange={handleChange}
             step="0.1"
             min="0"
-            className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
-              errors.endMileage
-                ? "border-rose-400/60 bg-rose-500/10"
-                : "border-white/10 bg-surface-200/60"
-            }`}
+            className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors
+              focus:ring-2 focus:ring-baltic-500 focus:border-transparent
+              ${errors.endMileage
+                ? "border-danger bg-danger/10"
+                : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+              } text-baltic-900 dark:text-gray-100`}
             placeholder="e.g., 10150"
             disabled={isSubmitting}
           />
           {errors.endMileage && (
-            <p className="mt-1 text-xs font-medium text-rose-300">
+            <p className="mt-1 text-xs font-medium text-danger">
               {errors.endMileage}
             </p>
           )}
@@ -660,7 +668,7 @@ const DailyEntryForm = ({
       </div>
 
       {distanceTraveled > 0 && (
-        <div className="rounded-3xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-sm text-emerald-100">
+        <div className="rounded-lg border border-success/30 bg-success/10 p-4 text-sm text-success">
           Distance traveled: {distanceTraveled.toFixed(1)} km
         </div>
       )}
@@ -668,7 +676,7 @@ const DailyEntryForm = ({
       <div>
         <label
           htmlFor="notes"
-          className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+          className="mb-1 block text-sm font-medium text-baltic-900 dark:text-gray-100"
         >
           Notes
         </label>
@@ -678,7 +686,7 @@ const DailyEntryForm = ({
           value={formData.notes}
           onChange={handleChange}
           rows="3"
-          className="w-full rounded-2xl border border-white/10 bg-surface-200/60 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60"
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-baltic-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-baltic-500 focus:border-transparent transition-colors"
           placeholder="Any additional notes..."
           disabled={isSubmitting}
         />
@@ -688,7 +696,7 @@ const DailyEntryForm = ({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex-1 rounded-2xl bg-brand-gradient px-5 py-2.5 text-sm font-semibold text-white shadow-brand transition hover:shadow-brand/70 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex-1 rounded-lg bg-baltic-500 hover:bg-baltic-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? "Saving..." : entry ? "Update Entry" : "Add Entry"}
         </button>
@@ -696,7 +704,7 @@ const DailyEntryForm = ({
           type="button"
           onClick={onCancel}
           disabled={isSubmitting}
-          className="flex-1 rounded-2xl border border-white/20 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-5 py-2.5 text-sm font-semibold text-baltic-900 dark:text-gray-100 transition hover:bg-gray-50 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           Cancel
         </button>

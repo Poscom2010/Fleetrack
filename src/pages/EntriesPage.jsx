@@ -27,7 +27,10 @@ const EntriesPage = () => {
   const navigate = useNavigate();
   const { user, company, userProfile } = useAuth();
   const isAdminOrManager = userProfile?.role === 'company_admin' || userProfile?.role === 'company_manager';
-  const { vehicles, loading: vehiclesLoading } = useVehicles(user?.uid, company?.id, userProfile?.role);
+  const { vehicles: allVehicles, loading: vehiclesLoading } = useVehicles(user?.uid, company?.id, userProfile?.role);
+  
+  // Filter out commodity vehicles - they use Load/Offload Events instead
+  const vehicles = allVehicles.filter(v => !['fuelTruck', 'lpGasTruck'].includes(v.vehicleType));
 
   const [drivers, setDrivers] = useState([]);
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
@@ -474,84 +477,76 @@ const EntriesPage = () => {
     <div className="flex flex-col gap-6">
       {/* Simple Header */}
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-white mb-2">
+        <h1 className="text-3xl font-bold text-baltic-900 dark:text-white mb-2">
           Capture Data
         </h1>
-        <p className="text-slate-400 text-sm">
+        <p className="text-gray-600 dark:text-gray-400 text-sm">
           Record daily trips and expenses quickly
         </p>
       </div>
 
       {/* No Vehicles Warning */}
       {vehicles.length === 0 && !vehiclesLoading && (
-        <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4 text-center">
-          <p className="text-amber-100 text-sm font-medium mb-2">⚠️ No Vehicles Available</p>
-          <p className="text-amber-200/80 text-xs">
+        <div className="rounded-xl border border-amber-400 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10 p-4 text-center">
+          <p className="text-amber-800 dark:text-amber-100 text-sm font-medium mb-2">⚠️ No Vehicles Available</p>
+          <p className="text-amber-700 dark:text-amber-200/80 text-xs">
             Add at least one vehicle before capturing data.
           </p>
         </div>
       )}
 
       {/* Action Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto w-full">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto w-full">
         {/* Daily Entry Card */}
         <button
           onClick={handleAddEntry}
           disabled={vehiclesLoading || vehicles.length === 0}
-          className="group relative rounded-2xl border border-white/10 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 p-8 text-left transition-all hover:border-blue-500/30 hover:from-blue-500/20 hover:to-indigo-500/20 hover:shadow-lg hover:shadow-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-white/10 disabled:hover:from-blue-500/10 disabled:hover:to-indigo-500/10 disabled:hover:shadow-none"
+          className="relative overflow-hidden px-8 py-6 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-xl transition-all duration-300 transform hover:scale-105 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-4 group disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
         >
-          <div className="flex items-start gap-4">
-            <div className="rounded-xl bg-blue-500/20 p-3 group-hover:bg-blue-500/30 transition-colors">
-              <FileText className="w-6 h-6 text-blue-400" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-white mb-1">
-                Daily Entry
-              </h3>
-              <p className="text-slate-400 text-sm">
-                Record trip details, mileage, and cash-in
-              </p>
-            </div>
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+          <div className="relative rounded-lg bg-white/20 p-3">
+            <FileText className="w-8 h-8" />
           </div>
+          <div className="relative text-left flex-1">
+            <h3 className="text-xl font-bold mb-1">Daily Entry</h3>
+            <p className="text-blue-100 text-sm">Record trip details, mileage, and cash-in</p>
+          </div>
+          <span className="relative text-2xl">+</span>
         </button>
 
         {/* Expense Card */}
         <button
           onClick={handleAddExpense}
           disabled={vehiclesLoading || vehicles.length === 0}
-          className="group relative rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/10 to-green-500/10 p-8 text-left transition-all hover:border-emerald-500/30 hover:from-emerald-500/20 hover:to-green-500/20 hover:shadow-lg hover:shadow-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-white/10 disabled:hover:from-emerald-500/10 disabled:hover:to-green-500/10 disabled:hover:shadow-none"
+          className="relative overflow-hidden px-8 py-6 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-bold rounded-xl shadow-xl transition-all duration-300 transform hover:scale-105 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 flex items-center gap-4 group disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
         >
-          <div className="flex items-start gap-4">
-            <div className="rounded-xl bg-emerald-500/20 p-3 group-hover:bg-emerald-500/30 transition-colors">
-              <DollarSign className="w-6 h-6 text-emerald-400" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-white mb-1">
-                Expense
-              </h3>
-              <p className="text-slate-400 text-sm">
-                Track fuel, maintenance, and other costs
-              </p>
-            </div>
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+          <div className="relative rounded-lg bg-white/20 p-3">
+            <DollarSign className="w-8 h-8" />
           </div>
+          <div className="relative text-left flex-1">
+            <h3 className="text-xl font-bold mb-1">Expense</h3>
+            <p className="text-emerald-100 text-sm">Track fuel, maintenance, and other costs</p>
+          </div>
+          <span className="relative text-2xl">+</span>
         </button>
       </div>
 
       {/* Quick Info */}
       <div className="max-w-4xl mx-auto w-full">
-        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
+        <div className="rounded-xl border border-blue-200 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/5 p-4">
           <div className="flex items-start gap-3">
-            <div className="rounded-lg bg-blue-500/10 p-2">
-              <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="rounded-lg bg-blue-100 dark:bg-blue-500/10 p-2">
+              <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div className="flex-1">
-              <p className="text-blue-200 text-sm font-medium mb-1">
+              <p className="text-blue-800 dark:text-blue-200 text-sm font-medium mb-1">
                 💡 Quick Tip
               </p>
-              <p className="text-blue-300/80 text-xs">
-                After capturing data, view all your records in the <button onClick={handleViewLogbook} className="underline hover:text-blue-200 font-medium">Trip Logbook</button> page.
+              <p className="text-blue-700 dark:text-blue-300/80 text-xs">
+                After capturing data, view all your records in the <button onClick={handleViewLogbook} className="underline hover:text-blue-600 dark:hover:text-blue-200 font-medium">Trip Logbook</button> page.
               </p>
             </div>
           </div>
@@ -562,7 +557,7 @@ const EntriesPage = () => {
       {(Object.keys(recentEntries).length > 0 || Object.keys(recentExpenses).length > 0) && (
         <div ref={recentCapturesRef} className="max-w-4xl mx-auto w-full">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-white">📋 Recent Captures</h2>
+            <h2 className="text-lg font-bold text-baltic-900 dark:text-white">📋 Recent Captures</h2>
             <button
               onClick={handleViewLogbook}
               className="text-xs text-blue-400 hover:text-blue-300 transition underline"
@@ -572,14 +567,14 @@ const EntriesPage = () => {
           </div>
 
           {/* Vehicle Selector */}
-          <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-4 mb-3">
-            <label className="block text-sm font-medium text-slate-300 mb-2">
+          <div className="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-3 shadow-md">
+            <label className="block text-sm font-medium text-baltic-900 dark:text-gray-300 mb-2">
               Select Vehicle to Edit Data
             </label>
             <select
               value={selectedVehicleForEdit}
               onChange={(e) => setSelectedVehicleForEdit(e.target.value)}
-              className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 transition"
+              className="w-full bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2.5 text-baltic-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-baltic-500 transition"
             >
               <option value="">Choose a vehicle...</option>
               {vehicles
@@ -602,15 +597,15 @@ const EntriesPage = () => {
             const vehicleExpenses = recentExpenses[selectedVehicleForEdit] || [];
             
             return (
-              <div className="bg-slate-900/30 border border-slate-800 rounded-xl overflow-hidden">
+              <div className="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-md">
                 <div className="p-4 space-y-3">
                   {/* Daily Entries */}
                   {vehicleEntries.length > 0 && (
                         <div>
-                          <h4 className="text-xs font-semibold text-slate-400 mb-2">Daily Entries</h4>
+                          <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Daily Entries</h4>
                           <div className="space-y-2">
                             {vehicleEntries.map(entry => (
-                              <div key={entry.id} className="bg-slate-800/50 rounded-lg p-3 flex items-start justify-between gap-3">
+                              <div key={entry.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 flex items-start justify-between gap-3 border border-gray-200 dark:border-gray-600">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
                                     <span className="text-sm font-bold text-blue-400">
@@ -623,12 +618,12 @@ const EntriesPage = () => {
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-xs text-white font-medium truncate">
+                                    <span className="text-xs text-baltic-900 dark:text-white font-medium truncate">
                                       {entry.startLocation} → {entry.endLocation}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-3 text-xs">
-                                    <span className="text-slate-400">{entry.distanceTraveled?.toFixed(1)} km</span>
+                                    <span className="text-gray-600 dark:text-gray-400">{entry.distanceTraveled?.toFixed(1)} km</span>
                                     <span className="text-blue-400 font-semibold">{formatCurrency(entry.cashIn || 0, company?.currency || 'USD')}</span>
                                   </div>
                                 </div>
@@ -642,7 +637,7 @@ const EntriesPage = () => {
                                   </button>
                                   <button
                                     onClick={() => handleDeleteEntry(entry)}
-                                    className="p-1.5 hover:bg-slate-700 rounded-lg transition text-red-400 hover:text-red-300"
+                                    className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                                     title="Delete entry"
                                   >
                                     <Trash2 className="w-4 h-4" />
@@ -657,10 +652,10 @@ const EntriesPage = () => {
                       {/* Expenses */}
                       {vehicleExpenses.length > 0 && (
                         <div>
-                          <h4 className="text-xs font-semibold text-slate-400 mb-2">Expenses</h4>
+                          <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Expenses</h4>
                           <div className="space-y-2">
                             {vehicleExpenses.map(expense => (
-                              <div key={expense.id} className="bg-slate-800/50 rounded-lg p-3 flex items-start justify-between gap-3">
+                              <div key={expense.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 flex items-start justify-between gap-3 border border-gray-200 dark:border-gray-600">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
                                     <span className="text-sm font-bold text-red-400">
@@ -673,12 +668,12 @@ const EntriesPage = () => {
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-xs text-white font-medium truncate">
+                                    <span className="text-xs text-baltic-900 dark:text-white font-medium truncate">
                                       {expense.description}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-3 text-xs">
-                                    <span className="text-slate-400">{expense.category}</span>
+                                    <span className="text-gray-600 dark:text-gray-400">{expense.category}</span>
                                     <span className="text-red-400 font-semibold">{formatCurrency(expense.amount || 0, company?.currency || 'USD')}</span>
                                   </div>
                                 </div>
@@ -692,7 +687,7 @@ const EntriesPage = () => {
                                   </button>
                                   <button
                                     onClick={() => handleDeleteExpense(expense)}
-                                    className="p-1.5 hover:bg-slate-700 rounded-lg transition text-red-400 hover:text-red-300"
+                                    className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                                     title="Delete expense"
                                   >
                                     <Trash2 className="w-4 h-4" />
@@ -707,10 +702,10 @@ const EntriesPage = () => {
                       {/* Expenses */}
                       {vehicleExpenses.length > 0 && (
                         <div>
-                          <h4 className="text-xs font-semibold text-slate-400 mb-2">Expenses</h4>
+                          <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Expenses</h4>
                           <div className="space-y-2">
                             {vehicleExpenses.map(expense => (
-                              <div key={expense.id} className="bg-slate-800/50 rounded-lg p-3 flex items-start justify-between gap-3">
+                              <div key={expense.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 flex items-start justify-between gap-3 border border-gray-200 dark:border-gray-600">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
                                     <span className="text-sm font-bold text-red-400">
@@ -723,12 +718,12 @@ const EntriesPage = () => {
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-xs text-white font-medium truncate">
+                                    <span className="text-xs text-baltic-900 dark:text-white font-medium truncate">
                                       {expense.description}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-3 text-xs">
-                                    <span className="text-slate-400">{expense.category}</span>
+                                    <span className="text-gray-600 dark:text-gray-400">{expense.category}</span>
                                     <span className="text-red-400 font-semibold">{formatCurrency(expense.amount || 0, company?.currency || 'USD')}</span>
                                   </div>
                                 </div>
@@ -742,7 +737,7 @@ const EntriesPage = () => {
                                   </button>
                                   <button
                                     onClick={() => handleDeleteExpense(expense)}
-                                    className="p-1.5 hover:bg-slate-700 rounded-lg transition text-red-400 hover:text-red-300"
+                                    className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                                     title="Delete expense"
                                   >
                                     <Trash2 className="w-4 h-4" />
@@ -801,22 +796,22 @@ const EntriesPage = () => {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-red-500/30 max-w-md w-full p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-2xl shadow-2xl border border-red-200 dark:border-red-500/30 max-w-md w-full p-6">
             {/* Warning Icon */}
             <div className="flex justify-center mb-4">
-              <div className="rounded-full bg-red-500/20 p-3">
-                <Trash2 className="w-12 h-12 text-red-400" />
+              <div className="rounded-full bg-red-100 dark:bg-red-500/20 p-3">
+                <Trash2 className="w-12 h-12 text-red-500 dark:text-red-400" />
               </div>
             </div>
 
             {/* Title */}
-            <h3 className="text-xl font-bold text-white text-center mb-2">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-2">
               Delete {deleteConfirm.type === 'entry' ? 'Entry' : 'Expense'}?
             </h3>
 
             {/* Description */}
-            <p className="text-slate-300 text-sm text-center mb-6">
+            <p className="text-gray-600 dark:text-slate-300 text-sm text-center mb-6">
               This action cannot be undone. The {deleteConfirm.type} will be permanently removed.
             </p>
 
@@ -825,7 +820,7 @@ const EntriesPage = () => {
               <button
                 onClick={() => setDeleteConfirm(null)}
                 disabled={isSubmitting}
-                className="flex-1 rounded-xl border border-slate-600 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:bg-slate-800 disabled:opacity-50"
+                className="flex-1 rounded-xl border-2 border-gray-300 dark:border-gray-600 px-6 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 transition hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -843,35 +838,35 @@ const EntriesPage = () => {
 
       {/* Success Modal */}
       {showSuccessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-green-500/30 max-w-md w-full p-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-2xl shadow-2xl border border-green-200 dark:border-green-500/30 max-w-md w-full p-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
             {/* Success Icon */}
             <div className="flex justify-center mb-4">
-              <div className="rounded-full bg-green-500/20 p-3">
-                <CheckCircle2 className="w-12 h-12 text-green-400" />
+              <div className="rounded-full bg-green-100 dark:bg-green-500/20 p-3">
+                <CheckCircle2 className="w-12 h-12 text-green-500 dark:text-green-400" />
               </div>
             </div>
 
             {/* Title */}
-            <h3 className="text-xl font-bold text-white text-center mb-2">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-2">
               {successMessage}
             </h3>
 
             {/* Description */}
             {lastAddedEntry && (
               <>
-                <p className="text-slate-300 text-sm text-center mb-2">
+                <p className="text-gray-600 dark:text-slate-300 text-sm text-center mb-2">
                   {successMessage.includes('Expense') ? 'Expense saved!' : 'Trip saved successfully!'}
                 </p>
-                <p className="text-slate-400 text-sm text-center mb-6 font-semibold">
+                <p className="text-gray-500 dark:text-slate-400 text-sm text-center mb-6 font-semibold">
                   📝 Would you like to add {successMessage.includes('Expense') ? 'more expenses' : 'expenses'} for this trip?<br/>
-                  <span className="text-xs text-slate-500">(Fuel, Toll, Parking, etc.)</span>
+                  <span className="text-xs text-gray-400 dark:text-slate-500">(Fuel, Toll, Parking, etc.)</span>
                 </p>
               </>
             )}
             
             {!lastAddedEntry && (
-              <p className="text-slate-300 text-sm text-center mb-6">
+              <p className="text-gray-600 dark:text-slate-300 text-sm text-center mb-6">
                 Your data has been saved successfully!
               </p>
             )}
@@ -890,7 +885,7 @@ const EntriesPage = () => {
               
               <button
                 onClick={handleViewLogbook}
-                className="w-full rounded-xl border border-blue-500/30 bg-blue-500/10 px-6 py-3 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/20 flex items-center justify-center gap-2"
+                className="w-full rounded-xl border border-blue-300 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 px-6 py-3 text-sm font-semibold text-blue-600 dark:text-blue-300 transition hover:bg-blue-100 dark:hover:bg-blue-500/20 flex items-center justify-center gap-2"
               >
                 <FileText className="w-4 h-4" />
                 View Trip Logbook
@@ -898,7 +893,7 @@ const EntriesPage = () => {
 
               <button
                 onClick={handleCloseSuccess}
-                className="w-full rounded-xl border border-slate-600 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:bg-slate-800"
+                className="w-full rounded-xl border-2 border-gray-300 dark:border-gray-600 px-6 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 transition hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 {lastAddedEntry ? 'No, Skip for Now' : 'Close'}
               </button>

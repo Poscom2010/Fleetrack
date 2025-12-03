@@ -125,7 +125,7 @@ const useAuthProvider = () => {
             }
             
             // Create profile with invitation data if available
-            // First-time users without invitation become company admins
+            // First-time users without invitation become company managers (not admins)
             const profileData = {
               email: currentUser.email,
               displayName: invitationData?.fullName || currentUser.displayName,
@@ -133,8 +133,9 @@ const useAuthProvider = () => {
               fullName: invitationData?.fullName || currentUser.displayName,
               phoneNumber: invitationData?.phoneNumber || null,
               location: invitationData?.location || null,
-              role: invitationData?.role || 'company_admin', // Default to company_admin for new users
+              role: invitationData?.role || 'company_manager', // Default to company_manager for new users (not invited)
               companyId: invitationData?.companyId || null,
+              businessType: null, // Will be set during onboarding
             };
             
             console.log('📝 Creating user profile with data:', profileData);

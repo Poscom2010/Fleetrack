@@ -51,6 +51,18 @@ export const getAnalyticsData = async (userId, filters = {}, userProfile = null)
       ]);
     }
 
+    // If no vehicles exist, filter out entries/expenses for deleted vehicles
+    const vehicleIds = new Set(vehicles.map(v => v.id));
+    if (vehicles.length === 0) {
+      // No vehicles = show zero data
+      dailyEntries = [];
+      expenses = [];
+    } else {
+      // Filter entries to only include those for existing vehicles
+      dailyEntries = dailyEntries.filter(entry => vehicleIds.has(entry.vehicleId));
+      expenses = expenses.filter(expense => !expense.vehicleId || vehicleIds.has(expense.vehicleId));
+    }
+
     // Calculate totals
     const totalCashIn = calculateTotal(dailyEntries.map((e) => e.cashIn));
     const totalExpenses = calculateTotal(expenses.map((e) => e.amount));
@@ -194,12 +206,26 @@ export const getMileageTrends = async (userId, filters = {}, userProfile = null)
     
     const companyId = userProfile?.companyId;
 
-    // Fetch daily entries - use company-wide function for admins/managers
-    let dailyEntries;
+    // Fetch vehicles and daily entries
+    let vehicles, dailyEntries;
     if (isAdminOrManager && companyId) {
-      dailyEntries = await getCompanyDailyEntries(companyId, filters);
+      [vehicles, dailyEntries] = await Promise.all([
+        getCompanyVehicles(companyId),
+        getCompanyDailyEntries(companyId, filters)
+      ]);
     } else {
-      dailyEntries = await getDailyEntries(userId, filters);
+      [vehicles, dailyEntries] = await Promise.all([
+        getVehicles(userId),
+        getDailyEntries(userId, filters)
+      ]);
+    }
+
+    // Filter entries to only include those for existing vehicles
+    const vehicleIds = new Set(vehicles.map(v => v.id));
+    if (vehicles.length === 0) {
+      dailyEntries = [];
+    } else {
+      dailyEntries = dailyEntries.filter(entry => vehicleIds.has(entry.vehicleId));
     }
 
     // Group entries by vehicle and date
@@ -394,8 +420,11 @@ export const getLicenseExpiryAlerts = async (userId, userProfile = null) => {
     const sixtyDaysFromNow = new Date(today.getTime() + 60 * 24 * 60 * 60 * 1000);
 
     vehicles.forEach((vehicle) => {
-      if (vehicle.licenseExpiryDate) {
-        const expiryDate = new Date(vehicle.licenseExpiryDate);
+      // Support disc expiry with backward compatibility for old field names
+      const expiryDateValue = vehicle.discExpiryDate || vehicle.roadworthinessExpiryDate || vehicle.licenseExpiryDate;
+      
+      if (expiryDateValue) {
+        const expiryDate = new Date(expiryDateValue);
         const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
 
         // Alert if expired or expiring within 60 days
@@ -413,7 +442,8 @@ export const getLicenseExpiryAlerts = async (userId, userProfile = null) => {
             vehicleId: vehicle.id,
             vehicleName: vehicle.name,
             registrationNumber: vehicle.registrationNumber,
-            licenseExpiryDate: vehicle.licenseExpiryDate,
+            roadworthinessExpiryDate: expiryDateValue, // Use new field name
+            licenseExpiryDate: expiryDateValue, // Keep for backward compatibility in UI
             daysUntilExpiry,
             severity,
             expired: daysUntilExpiry < 0,

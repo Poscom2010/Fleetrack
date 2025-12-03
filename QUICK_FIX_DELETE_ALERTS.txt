@@ -1,0 +1,77 @@
+===========================================
+QUICK FIX: Delete Stale Tank Alerts
+===========================================
+
+OPTION 1: Firebase Console (EASIEST - DO THIS)
+-----------------------------------------------
+1. Go to: https://console.firebase.google.com
+2. Select your FleetTrack project
+3. Click "Firestore Database" in left menu
+4. Find collection: "tankDiscrepancyAlerts"
+5. Look for documents with: acknowledged: false
+6. Click the 3 dots on each document
+7. Select "Delete document"
+8. Refresh your FleetTrack dashboard
+9. ✅ Alerts should be gone!
+
+OPTION 2: Browser Console Script
+---------------------------------
+1. Open FleetTrack in your browser
+2. Press F12 to open Developer Tools
+3. Go to "Console" tab
+4. Copy and paste this entire script:
+
+// START COPY HERE
+import { collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
+import { db } from './services/firebase';
+
+const deleteAllTankAlerts = async () => {
+  const companyId = 'YOUR_COMPANY_ID_HERE'; // Replace with your company ID
+  const alertsRef = collection(db, 'tankDiscrepancyAlerts');
+  const q = query(
+    alertsRef,
+    where('companyId', '==', companyId),
+    where('acknowledged', '==', false)
+  );
+  
+  const snapshot = await getDocs(q);
+  console.log(`Found ${snapshot.docs.length} alerts to delete`);
+  
+  for (const doc of snapshot.docs) {
+    await deleteDoc(doc.ref);
+    console.log(`Deleted: ${doc.id}`);
+  }
+  
+  console.log('✅ Done! Refresh page.');
+  setTimeout(() => window.location.reload(), 1000);
+};
+
+deleteAllTankAlerts();
+// END COPY HERE
+
+5. Press Enter
+6. Wait for "✅ Done!" message
+7. Page will auto-refresh
+
+WHY THIS HAPPENED
+-----------------
+The alerts were created BEFORE the auto-acknowledgment system was implemented.
+They are "orphaned" alerts that won't clear automatically.
+
+PERMANENT FIX APPLIED
+----------------------
+✅ Added 7-day expiry - alerts older than 7 days won't show
+✅ 5-second auto-refresh - clears resolved alerts quickly
+✅ Window focus listener - refreshes when you return to tab
+
+AFTER DELETION
+--------------
+Once you delete the stale alerts:
+- Dashboard will be clean
+- New alerts will auto-clear when resolved
+- No more stuck alerts
+
+===========================================
+RECOMMENDED: Use Option 1 (Firebase Console)
+It's the safest and easiest method!
+===========================================

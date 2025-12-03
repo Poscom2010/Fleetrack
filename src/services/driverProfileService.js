@@ -61,18 +61,22 @@ export const createDriverProfile = async (companyId, profileData) => {
  */
 export const getDriverProfiles = async (companyId) => {
   try {
+    console.log('🔍 driverProfileService: Fetching profiles for company:', companyId);
     const q = query(
       collection(db, 'driverProfiles'),
       where('companyId', '==', companyId)
     );
     
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
+    const profiles = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
+    console.log('✅ driverProfileService: Found', profiles.length, 'driver profiles');
+    console.log('📋 Driver profiles:', profiles);
+    return profiles;
   } catch (error) {
-    console.error('Error getting driver profiles:', error);
+    console.error('❌ Error getting driver profiles:', error);
     throw error;
   }
 };

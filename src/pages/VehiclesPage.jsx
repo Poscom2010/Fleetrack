@@ -1,33 +1,51 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../contexts/ThemeContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "../services/firebase";
-import { Plus, Car, Edit2, Trash2, AlertCircle, CheckCircle, Gauge } from "lucide-react";
+import { Plus, Car, Truck, Edit2, Trash2, AlertCircle, CheckCircle, Gauge, Fuel, Flame } from "lucide-react";
 import toast from "react-hot-toast";
 import { getLastRecordedMileage } from '../services/mileageValidationService';
 import VehicleAlertsSection from '../components/vehicles/VehicleAlertsSection';
+import VehicleForm from '../components/vehicles/VehicleForm';
 
 const VehiclesPage = () => {
   usePageTitle('Vehicle Monitoring');
   const { user, company, userProfile } = useAuth();
+  const { isDark } = useTheme();
   const [vehicles, setVehicles] = useState([]);
   const [vehicleMileages, setVehicleMileages] = useState({});
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    registrationNumber: '',
-    make: '',
-    model: '',
-    nextServiceMileage: '',
-    licenseExpiryDate: '',
-  });
 
   useEffect(() => {
     loadVehicles();
   }, [user, company]);
+
+  // Refetch vehicle data when page regains focus (after trip/offload/return capture)
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('🔄 VehiclesPage: Refreshing vehicle data after focus');
+      loadVehicles();
+    };
+    
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('🔄 VehiclesPage: Page became visible, refreshing data');
+        loadVehicles();
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   const loadVehicles = async () => {
     if (!user) return;
@@ -56,19 +74,30 @@ const VehiclesPage = () => {
 
       setVehicles(vehiclesData);
 
-      // Load current mileage for each vehicle
+      // Load current mileage for each vehicle (cumulative from all events)
       const mileages = {};
       for (const vehicle of vehiclesData) {
         try {
+          // Priority 1: Get the most recent mileage from getLastRecordedMileage (checks all events including return trips)
           const lastMileage = await getLastRecordedMileage(vehicle.id);
-          if (lastMileage && lastMileage.lastMileage) {
-            mileages[vehicle.id] = lastMileage.lastMileage;
-          } else {
-            mileages[vehicle.id] = 0;
-          }
+          
+          // Priority 2: Use vehicle's currentOdometer (updated by services)
+          const vehicleOdometer = vehicle.currentOdometer || 0;
+          
+          // Priority 3: Legacy currentMileage field
+          const legacyMileage = vehicle.currentMileage || 0;
+          
+          // Use the highest value (most recent)
+          const calculatedMileage = lastMileage?.lastMileage || 0;
+          const finalMileage = Math.max(calculatedMileage, vehicleOdometer, legacyMileage);
+          
+          mileages[vehicle.id] = finalMileage;
+          
+          console.log(`🚗 Vehicle ${vehicle.registrationNumber}: Calculated=${calculatedMileage}, Odometer=${vehicleOdometer}, Legacy=${legacyMileage}, Final=${finalMileage}`);
         } catch (error) {
           console.error('Error loading mileage for vehicle:', error);
-          mileages[vehicle.id] = 0;
+          // Fallback: prioritize currentOdometer over currentMileage
+          mileages[vehicle.id] = vehicle.currentOdometer || vehicle.currentMileage || 0;
         }
       }
       setVehicleMileages(mileages);
@@ -124,7 +153,10 @@ const VehiclesPage = () => {
   };
 
   const getLicenseStatus = (vehicle) => {
-    if (!vehicle.licenseExpiryDate) {
+    // Check all possible field names for backward compatibility
+    const expiryDateValue = vehicle.discExpiryDate || vehicle.roadworthinessExpiryDate || vehicle.licenseExpiryDate;
+    
+    if (!expiryDateValue) {
       return { 
         status: 'missing', 
         text: '⚠️ Please capture disc licence expiry date', 
@@ -134,7 +166,7 @@ const VehiclesPage = () => {
       };
     }
 
-    const expiryDate = new Date(vehicle.licenseExpiryDate);
+    const expiryDate = new Date(expiryDateValue);
     const today = new Date();
     const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
 
@@ -165,6 +197,13 @@ const VehiclesPage = () => {
     }
   };
 
+  // Count vehicle types for hybrid breakdown
+  const dieselCount = vehicles.filter(v => v.vehicleType === 'fuelTruck').length;
+  const gasCount = vehicles.filter(v => v.vehicleType === 'lpGasTruck').length;
+  const isHybrid = dieselCount > 0 && (vehicles.length - dieselCount - gasCount) > 0 || 
+                   gasCount > 0 && (vehicles.length - dieselCount - gasCount) > 0 ||
+                   (dieselCount > 0 && gasCount > 0);
+
   const stats = {
     total: vehicles.length,
     active: vehicles.filter(v => getServiceStatus(v).status === 'ok').length,
@@ -173,52 +212,69 @@ const VehiclesPage = () => {
       getServiceStatus(v).status === 'missing' || 
       getLicenseStatus(v).status === 'missing'
     ).length,
+    dieselCount,
+    gasCount,
+    traditionalCount: vehicles.length - dieselCount - gasCount,
   };
 
   const handleOpenModal = (vehicle = null) => {
-    if (vehicle) {
-      setEditingVehicle(vehicle);
-      setFormData({
-        name: vehicle.name || '',
-        registrationNumber: vehicle.registrationNumber || '',
-        make: vehicle.make || '',
-        model: vehicle.model || '',
-        nextServiceMileage: vehicle.nextServiceMileage || '',
-        licenseExpiryDate: vehicle.licenseExpiryDate || '',
-      });
-    } else {
-      setEditingVehicle(null);
-      setFormData({
-        name: '',
-        registrationNumber: '',
-        make: '',
-        model: '',
-        nextServiceMileage: '',
-        licenseExpiryDate: '',
-      });
-    }
+    setEditingVehicle(vehicle);
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingVehicle(null);
-    setFormData({
-      name: '',
-      registrationNumber: '',
-      make: '',
-      model: '',
-      nextServiceMileage: '',
-      licenseExpiryDate: '',
-    });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Smart default: Use business type preference or most common existing vehicle type
+  const getSmartDefaultVehicleType = () => {
+    // Priority 1: Check user's business type preference (set during registration)
+    if (userProfile?.businessType === 'commodity') {
+      // Commodity-only business - default to fuelTruck
+      return 'fuelTruck';
+    }
+    
+    // Priority 2: Check if company has commoditySettings
+    if (company?.commoditySettings?.primaryCommodity === 'diesel') {
+      return 'fuelTruck';
+    }
+    if (company?.commoditySettings?.primaryCommodity === 'lpGas') {
+      return 'lpGasTruck';
+    }
+    
+    // Priority 3: Check existing vehicles
+    const existingTypes = vehicles.map(v => v.vehicleType).filter(Boolean);
+    const hasCommodityVehicles = existingTypes.some(t => ['fuelTruck', 'lpGasTruck'].includes(t));
+    
+    if (hasCommodityVehicles) {
+      // Default to the most common commodity type
+      const fuelCount = existingTypes.filter(t => t === 'fuelTruck').length;
+      const gasCount = existingTypes.filter(t => t === 'lpGasTruck').length;
+      return gasCount > fuelCount ? 'lpGasTruck' : 'fuelTruck';
+    }
+    
+    // Priority 4: Hybrid business - default to fuelTruck if they also have commodity tracking
+    if (userProfile?.businessType === 'hybrid') {
+      return 'fuelTruck';
+    }
+    
+    // Fall back to taxi for traditional businesses
+    return 'taxi';
+  };
 
+  const handleSubmit = async (formData) => {
     try {
+      // Clean up formData - convert empty strings to null for optional fields
+      const mileage = formData.currentMileage ? parseInt(formData.currentMileage) : null;
       const vehicleData = {
         ...formData,
+        vehicleType: formData.vehicleType || 'taxi',
+        currentMileage: mileage,
+        currentOdometer: mileage, // Also set currentOdometer for compatibility
+        nextServiceMileage: formData.nextServiceMileage ? parseInt(formData.nextServiceMileage) : null,
+        discExpiryDate: formData.discExpiryDate || null,
+        roadworthinessExpiryDate: formData.discExpiryDate || null, // Also save for compatibility
         userId: user.uid,
         companyId: company?.id || null,
         updatedAt: serverTimestamp(),
@@ -238,10 +294,15 @@ const VehiclesPage = () => {
       }
 
       handleCloseModal();
-      loadVehicles();
+      
+      // Reload vehicles to reflect changes
+      await loadVehicles();
+      
+      // Dispatch event to notify Sidebar of vehicle change
+      window.dispatchEvent(new CustomEvent('vehicleChanged'));
     } catch (error) {
       console.error('Error saving vehicle:', error);
-      toast.error('Failed to save vehicle');
+      toast.error('Failed to save vehicle: ' + error.message);
     }
   };
 
@@ -252,6 +313,9 @@ const VehiclesPage = () => {
       await deleteDoc(doc(db, 'vehicles', vehicleId));
       toast.success('Vehicle deleted successfully!');
       loadVehicles();
+      
+      // Dispatch event to notify Sidebar of vehicle change
+      window.dispatchEvent(new CustomEvent('vehicleChanged'));
     } catch (error) {
       console.error('Error deleting vehicle:', error);
       toast.error('Failed to delete vehicle');
@@ -260,27 +324,27 @@ const VehiclesPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950">
+      <div className={`flex items-center justify-center min-h-screen ${isDark ? 'bg-transparent' : 'bg-transparent'}`}>
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-          <p className="text-slate-400">Loading vehicles...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-baltic-500 mb-4"></div>
+          <p className={isDark ? 'text-slate-400' : 'text-baltic-600'}>Loading vehicles...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4 md:p-6">
+    <div className="min-h-screen p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-1">Vehicle Monitoring</h1>
-            <p className="text-slate-400 text-sm">Monitor your fleet, alerts, and service schedules.</p>
+            <h1 className={`text-3xl font-bold mb-1 ${isDark ? 'text-white' : 'text-baltic-900'}`}>Vehicle Monitoring</h1>
+            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-baltic-600'}`}>Monitor your fleet, alerts, and service schedules.</p>
           </div>
           <button
             onClick={() => handleOpenModal()}
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition shadow-lg shadow-blue-500/20">
+            className="flex items-center gap-2 px-5 py-2.5 bg-baltic-500 hover:bg-baltic-600 text-white rounded-lg font-medium transition shadow-lg shadow-baltic-500/20">
             <Plus className="w-5 h-5" />
             Add Vehicle
           </button>
@@ -292,47 +356,67 @@ const VehiclesPage = () => {
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Total Vehicles */}
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
-            <p className="text-slate-400 text-xs font-medium mb-2">Total Vehicles</p>
-            <p className="text-3xl font-bold text-white">{stats.total}</p>
+          <div className={`rounded-xl p-4 transition ${isDark ? 'bg-slate-900/50 border border-slate-800 hover:border-slate-700' : 'bg-white border border-baltic-200 hover:border-baltic-400 shadow-sm'}`}>
+            <p className={`text-xs font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-baltic-600'}`}>Total Vehicles</p>
+            <p className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-baltic-900'}`}>{stats.total}</p>
+            {/* Show breakdown for hybrid fleets */}
+            {(stats.dieselCount > 0 || stats.gasCount > 0) && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {stats.dieselCount > 0 && (
+                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${isDark ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>
+                    <Fuel className="w-3 h-3" /> {stats.dieselCount} Diesel
+                  </span>
+                )}
+                {stats.gasCount > 0 && (
+                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${isDark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                    <Flame className="w-3 h-3" /> {stats.gasCount} Gas
+                  </span>
+                )}
+                {stats.traditionalCount > 0 && (
+                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${isDark ? 'bg-slate-500/20 text-slate-300' : 'bg-gray-100 text-gray-700'}`}>
+                    <Car className="w-3 h-3" /> {stats.traditionalCount} Other
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Active Vehicles */}
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
-            <p className="text-slate-400 text-xs font-medium mb-2">Active</p>
-            <p className="text-3xl font-bold text-green-400">{stats.active}</p>
+          <div className={`rounded-xl p-4 transition ${isDark ? 'bg-slate-900/50 border border-slate-800 hover:border-slate-700' : 'bg-white border border-baltic-200 hover:border-baltic-400 shadow-sm'}`}>
+            <p className={`text-xs font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-baltic-600'}`}>Active</p>
+            <p className={`text-3xl font-bold ${isDark ? 'text-green-400' : 'text-green-600'}`}>{stats.active}</p>
           </div>
 
           {/* Service Due */}
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
-            <p className="text-slate-400 text-xs font-medium mb-2">Service Due</p>
-            <p className="text-3xl font-bold text-orange-400">{stats.serviceDue}</p>
+          <div className={`rounded-xl p-4 transition ${isDark ? 'bg-slate-900/50 border border-slate-800 hover:border-slate-700' : 'bg-white border border-baltic-200 hover:border-baltic-400 shadow-sm'}`}>
+            <p className={`text-xs font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-baltic-600'}`}>Service Due</p>
+            <p className={`text-3xl font-bold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>{stats.serviceDue}</p>
           </div>
 
           {/* Missing Data */}
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
-            <p className="text-slate-400 text-xs font-medium mb-2">Missing Data</p>
-            <p className="text-3xl font-bold text-yellow-400">{stats.missingData}</p>
+          <div className={`rounded-xl p-4 transition ${isDark ? 'bg-slate-900/50 border border-slate-800 hover:border-slate-700' : 'bg-white border border-baltic-200 hover:border-baltic-400 shadow-sm'}`}>
+            <p className={`text-xs font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-baltic-600'}`}>Missing Data</p>
+            <p className={`text-3xl font-bold ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`}>{stats.missingData}</p>
           </div>
         </div>
 
         {/* Missing Data Alert Banner */}
         {stats.missingData > 0 && (
-          <div className="mb-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 animate-pulse">
+          <div className={`mb-4 rounded-xl p-4 animate-pulse ${isDark ? 'bg-yellow-500/10 border border-yellow-500/30' : 'bg-yellow-50 border border-yellow-300'}`}>
             <div className="flex items-start gap-3">
-              <AlertCircle className="w-6 h-6 text-yellow-400 flex-shrink-0 mt-0.5" />
+              <AlertCircle className={`w-6 h-6 flex-shrink-0 mt-0.5 ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`} />
               <div className="flex-1">
-                <h3 className="text-yellow-400 font-bold text-base mb-1">
+                <h3 className={`font-bold text-base mb-1 ${isDark ? 'text-yellow-400' : 'text-yellow-700'}`}>
                   ⚠️ Action Required: Missing Critical Data
                 </h3>
-                <p className="text-yellow-200 text-sm leading-relaxed mb-2">
+                <p className={`text-sm leading-relaxed mb-2 ${isDark ? 'text-yellow-200' : 'text-yellow-800'}`}>
                   <strong>{stats.missingData} vehicle{stats.missingData > 1 ? 's' : ''}</strong> {stats.missingData > 1 ? 'are' : 'is'} missing important information needed for alerts:
                 </p>
-                <ul className="text-yellow-200 text-xs space-y-1 ml-4">
+                <ul className={`text-xs space-y-1 ml-4 ${isDark ? 'text-yellow-200' : 'text-yellow-800'}`}>
                   <li>• <strong>Next Service Mileage</strong> - Required for service due alerts</li>
                   <li>• <strong>Disc License Expiry</strong> - Required for license renewal alerts</li>
                 </ul>
-                <p className="text-yellow-300 text-xs mt-2 font-medium">
+                <p className={`text-xs mt-2 font-medium ${isDark ? 'text-yellow-300' : 'text-yellow-700'}`}>
                   👉 Please edit these vehicles and add the missing data to enable automatic alerts.
                 </p>
               </div>
@@ -343,17 +427,17 @@ const VehiclesPage = () => {
         {/* Vehicles Section */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white">Your Fleet</h2>
-            <p className="text-sm text-slate-400">{vehicles.length} {vehicles.length === 1 ? 'vehicle' : 'vehicles'}</p>
+            <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-baltic-900'}`}>Your Fleet</h2>
+            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-baltic-600'}`}>{vehicles.length} {vehicles.length === 1 ? 'vehicle' : 'vehicles'}</p>
           </div>
           
           {/* Vehicles Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {vehicles.length === 0 ? (
-            <div className="col-span-full bg-slate-900/30 border border-slate-800 rounded-2xl p-12 text-center">
-              <Car className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-400 text-lg mb-2">No vehicles added yet</p>
-              <p className="text-slate-500 text-sm">Click "Add Vehicle" to get started</p>
+            <div className={`col-span-full rounded-2xl p-12 text-center ${isDark ? 'bg-slate-900/30 border border-slate-800' : 'bg-baltic-50 border border-baltic-200'}`}>
+              <Car className={`w-16 h-16 mx-auto mb-4 ${isDark ? 'text-slate-600' : 'text-baltic-400'}`} />
+              <p className={`text-lg mb-2 ${isDark ? 'text-slate-400' : 'text-baltic-700'}`}>No vehicles added yet</p>
+              <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-baltic-600'}`}>Click "Add Vehicle" to get started</p>
             </div>
           ) : (
             vehicles.map((vehicle) => {
@@ -365,42 +449,59 @@ const VehiclesPage = () => {
               return (
                 <div
                   key={vehicle.id}
-                  className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 hover:border-slate-700 transition"
+                  className={`rounded-xl p-4 transition ${isDark ? 'bg-slate-900/50 border border-slate-800 hover:border-slate-700' : 'bg-white border border-baltic-200 hover:border-baltic-400 shadow-sm'}`}
                 >
-                  {/* Vehicle Icon and Actions */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="p-4 bg-blue-600 rounded-2xl">
-                      <Car className="w-8 h-8 text-white" />
+                  {/* Header: Icon, Name, Actions */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`p-2.5 rounded-xl ${
+                      vehicle.vehicleType === 'fuelTruck' 
+                        ? 'bg-amber-500' 
+                        : vehicle.vehicleType === 'lpGasTruck'
+                        ? 'bg-orange-500'
+                        : 'bg-baltic-500'
+                    }`}>
+                      {vehicle.vehicleType === 'fuelTruck' ? (
+                        <Fuel className="w-5 h-5 text-white" />
+                      ) : vehicle.vehicleType === 'lpGasTruck' ? (
+                        <Flame className="w-5 h-5 text-white" />
+                      ) : ['generalTruck'].includes(vehicle.vehicleType) ? (
+                        <Truck className="w-5 h-5 text-white" />
+                      ) : (
+                        <Car className="w-5 h-5 text-white" />
+                      )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`text-base font-bold truncate ${isDark ? 'text-white' : 'text-baltic-900'}`}>{vehicle.name}</h3>
+                      <p className={`text-xs truncate ${isDark ? 'text-slate-400' : 'text-baltic-600'}`}>{vehicle.registrationNumber}</p>
+                    </div>
+                    <div className="flex gap-1.5">
                       <button
                         onClick={() => handleOpenModal(vehicle)}
-                        className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition"
+                        className={`p-1.5 rounded-lg transition ${isDark ? 'bg-slate-800 hover:bg-slate-700' : 'bg-baltic-100 hover:bg-baltic-200'}`}
                       >
-                        <Edit2 className="w-4 h-4 text-slate-400" />
+                        <Edit2 className={`w-3.5 h-3.5 ${isDark ? 'text-slate-400' : 'text-baltic-600'}`} />
                       </button>
-                      {/* Only admins and managers can delete vehicles */}
                       {(userProfile?.role === 'company_admin' || userProfile?.role === 'company_manager' || userProfile?.role === 'system_admin') && (
                         <button
                           onClick={() => handleDelete(vehicle.id)}
-                          className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition"
+                          className={`p-1.5 rounded-lg transition ${isDark ? 'bg-slate-800 hover:bg-slate-700' : 'bg-baltic-100 hover:bg-baltic-200'}`}
                         >
-                          <Trash2 className="w-4 h-4 text-slate-400" />
+                          <Trash2 className={`w-3.5 h-3.5 ${isDark ? 'text-slate-400' : 'text-baltic-600'}`} />
                         </button>
                       )}
                     </div>
                   </div>
 
-                  {/* Vehicle Name */}
-                  <h3 className="text-xl font-bold text-white mb-1">{vehicle.name}</h3>
-                  <p className="text-slate-400 text-sm mb-4">{vehicle.registrationNumber}</p>
-
-                  {/* Current Mileage - Compact */}
-                  <div className="mb-3 flex items-center gap-1.5 px-2 py-1 bg-blue-500/10 border border-blue-500/20 rounded">
-                    <Gauge className="w-3 h-3 text-blue-400 flex-shrink-0" />
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-blue-300 text-[10px] font-medium">Current:</span>
-                      <span className="text-white font-semibold text-xs">
+                  {/* Info Row: Model & Mileage */}
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs truncate ${isDark ? 'text-slate-400' : 'text-baltic-600'}`}>
+                        {vehicle.make} {vehicle.model}
+                      </p>
+                    </div>
+                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded border ${isDark ? 'bg-blue-500/10 border-blue-500/20' : 'bg-baltic-50 border-baltic-200'}`}>
+                      <Gauge className={`w-3 h-3 ${isDark ? 'text-blue-400' : 'text-baltic-600'}`} />
+                      <span className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-baltic-900'}`}>
                         {vehicleMileages[vehicle.id] !== undefined 
                           ? `${vehicleMileages[vehicle.id].toLocaleString()} km`
                           : '...'}
@@ -408,109 +509,94 @@ const VehiclesPage = () => {
                     </div>
                   </div>
 
-                  {/* Model */}
-                  <div className="mb-4">
-                    <p className="text-slate-500 text-xs mb-1">Model</p>
-                    <p className="text-white font-medium">
-                      {vehicle.make} {vehicle.model}
-                    </p>
-                  </div>
-
-                  {/* Service Status */}
-                  <div
-                    className={`flex items-center gap-2 px-4 py-3 rounded-xl ${
-                      serviceStatus.status === 'ok'
-                        ? 'bg-green-500/10 border border-green-500/20'
-                        : serviceStatus.status === 'due'
-                        ? 'bg-orange-500/10 border border-orange-500/20'
-                        : serviceStatus.status === 'overdue'
-                        ? 'bg-red-500/10 border border-red-500/20'
-                        : serviceStatus.status === 'missing'
-                        ? 'bg-yellow-500/10 border border-yellow-500/30 animate-pulse'
-                        : 'bg-slate-800 border border-slate-700'
-                    }`}
-                  >
-                    <StatusIcon
-                      className={`w-5 h-5 ${
+                  {/* Status Badges - Compact */}
+                  <div className="space-y-2">
+                    {/* Service Status */}
+                    <div
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
                         serviceStatus.status === 'ok'
-                          ? 'text-green-400'
+                          ? isDark ? 'bg-green-500/10 border-green-500/20' : 'bg-green-50 border-green-200'
                           : serviceStatus.status === 'due'
-                          ? 'text-orange-400'
+                          ? isDark ? 'bg-orange-500/10 border-orange-500/20' : 'bg-orange-50 border-orange-200'
                           : serviceStatus.status === 'overdue'
-                          ? 'text-red-400'
+                          ? isDark ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200'
                           : serviceStatus.status === 'missing'
-                          ? 'text-yellow-400'
-                          : 'text-slate-400'
+                          ? isDark ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-yellow-50 border-yellow-200'
+                          : isDark ? 'bg-slate-800 border-slate-700' : 'bg-baltic-50 border-baltic-200'
                       }`}
-                    />
-                    <div className="flex-1">
-                      <p
-                        className={`font-medium text-sm ${
+                    >
+                      <StatusIcon
+                        className={`w-4 h-4 flex-shrink-0 ${
                           serviceStatus.status === 'ok'
-                            ? 'text-green-400'
+                            ? isDark ? 'text-green-400' : 'text-green-600'
                             : serviceStatus.status === 'due'
-                            ? 'text-orange-400'
+                            ? isDark ? 'text-orange-400' : 'text-orange-600'
                             : serviceStatus.status === 'overdue'
-                            ? 'text-red-400'
+                            ? isDark ? 'text-red-400' : 'text-red-600'
                             : serviceStatus.status === 'missing'
-                            ? 'text-yellow-400'
-                            : 'text-slate-400'
+                            ? isDark ? 'text-yellow-400' : 'text-yellow-600'
+                            : isDark ? 'text-slate-400' : 'text-baltic-600'
                         }`}
-                      >
-                        {serviceStatus.text}
-                      </p>
-                      {serviceStatus.mileage && (
-                        <p className="text-xs text-slate-500 mt-0.5">{serviceStatus.mileage}</p>
-                      )}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-medium truncate ${
+                          serviceStatus.status === 'ok'
+                            ? isDark ? 'text-green-400' : 'text-green-700'
+                            : serviceStatus.status === 'due'
+                            ? isDark ? 'text-orange-400' : 'text-orange-700'
+                            : serviceStatus.status === 'overdue'
+                            ? isDark ? 'text-red-400' : 'text-red-700'
+                            : serviceStatus.status === 'missing'
+                            ? isDark ? 'text-yellow-400' : 'text-yellow-700'
+                            : isDark ? 'text-slate-400' : 'text-baltic-600'
+                        }`}>
+                          {serviceStatus.text}
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Licence Disc Status */}
-                  <div
-                    className={`mt-3 flex items-center gap-2 px-4 py-3 rounded-xl ${
-                      licenseStatus.status === 'ok'
-                        ? 'bg-green-500/10 border border-green-500/20'
-                        : licenseStatus.status === 'due'
-                        ? 'bg-orange-500/10 border border-orange-500/20'
-                        : licenseStatus.status === 'expired'
-                        ? 'bg-red-500/10 border border-red-500/20'
-                        : licenseStatus.status === 'missing'
-                        ? 'bg-yellow-500/10 border border-yellow-500/30 animate-pulse'
-                        : 'bg-slate-800 border border-slate-700'
-                    }`}
-                  >
-                    <LicenseIcon
-                      className={`w-5 h-5 ${
+                    {/* Licence Status */}
+                    <div
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
                         licenseStatus.status === 'ok'
-                          ? 'text-green-400'
+                          ? isDark ? 'bg-green-500/10 border-green-500/20' : 'bg-green-50 border-green-200'
                           : licenseStatus.status === 'due'
-                          ? 'text-orange-400'
+                          ? isDark ? 'bg-orange-500/10 border-orange-500/20' : 'bg-orange-50 border-orange-200'
                           : licenseStatus.status === 'expired'
-                          ? 'text-red-400'
+                          ? isDark ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200'
                           : licenseStatus.status === 'missing'
-                          ? 'text-yellow-400'
-                          : 'text-slate-400'
+                          ? isDark ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-yellow-50 border-yellow-200'
+                          : isDark ? 'bg-slate-800 border-slate-700' : 'bg-baltic-50 border-baltic-200'
                       }`}
-                    />
-                    <div className="flex-1">
-                      <p
-                        className={`font-medium text-sm ${
+                    >
+                      <LicenseIcon
+                        className={`w-4 h-4 flex-shrink-0 ${
                           licenseStatus.status === 'ok'
-                            ? 'text-green-400'
+                            ? isDark ? 'text-green-400' : 'text-green-600'
                             : licenseStatus.status === 'due'
-                            ? 'text-orange-400'
+                            ? isDark ? 'text-orange-400' : 'text-orange-600'
                             : licenseStatus.status === 'expired'
-                            ? 'text-red-400'
+                            ? isDark ? 'text-red-400' : 'text-red-600'
                             : licenseStatus.status === 'missing'
-                            ? 'text-yellow-400'
-                            : 'text-slate-400'
+                            ? isDark ? 'text-yellow-400' : 'text-yellow-600'
+                            : isDark ? 'text-slate-400' : 'text-baltic-600'
                         }`}
-                      >
-                        {licenseStatus.text}
-                      </p>
-                      {licenseStatus.date && (
-                        <p className="text-xs text-slate-500 mt-0.5">Expiry: {licenseStatus.date}</p>
-                      )}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-medium truncate ${
+                          licenseStatus.status === 'ok'
+                            ? isDark ? 'text-green-400' : 'text-green-700'
+                            : licenseStatus.status === 'due'
+                            ? isDark ? 'text-orange-400' : 'text-orange-700'
+                            : licenseStatus.status === 'expired'
+                            ? isDark ? 'text-red-400' : 'text-red-700'
+                            : licenseStatus.status === 'missing'
+                            ? isDark ? 'text-yellow-400' : 'text-yellow-700'
+                            : isDark ? 'text-slate-400' : 'text-baltic-600'
+                        }`}>
+                          {licenseStatus.text}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -522,136 +608,18 @@ const VehiclesPage = () => {
 
         {/* Add/Edit Vehicle Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-white mb-6">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className={`rounded-2xl p-8 max-w-2xl w-full my-8 ${isDark ? 'bg-slate-900 border border-slate-800' : 'bg-white border border-baltic-200'}`}>
+            <h2 className={`text-2xl font-bold mb-6 ${isDark ? 'text-white' : 'text-baltic-900'}`}>
               {editingVehicle ? 'Edit Vehicle' : 'Add New Vehicle'}
             </h2>
 
-            {/* Important Notice */}
-            <div className="mb-6 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="text-yellow-400 font-semibold text-sm mb-1">Important for Alerts!</h3>
-                  <p className="text-yellow-200 text-xs leading-relaxed">
-                    Please capture <strong>Next Service Mileage</strong> and <strong>Disc License Expiry</strong> to receive timely alerts. 
-                    You can add these now or later by editing the vehicle.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Vehicle Name */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">
-                    Vehicle Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
-                    placeholder="e.g., Toyota Camry"
-                    required
-                  />
-                </div>
-
-                {/* Registration Number */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">
-                    Registration Number *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.registrationNumber}
-                    onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
-                    placeholder="e.g., ABC-123"
-                    required
-                  />
-                </div>
-
-                {/* Make */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">
-                    Make *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.make}
-                    onChange={(e) => setFormData({ ...formData, make: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
-                    placeholder="e.g., Toyota"
-                    required
-                  />
-                </div>
-
-                {/* Model */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">
-                    Model *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.model}
-                    onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
-                    placeholder="e.g., Camry Hybrid"
-                    required
-                  />
-                </div>
-
-
-                {/* Next Service Mileage */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">
-                    Next Service Mileage (km) <span className="text-yellow-400 text-xs">⚠️ Critical for alerts</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.nextServiceMileage}
-                    onChange={(e) => setFormData({ ...formData, nextServiceMileage: e.target.value })}
-                    className="w-full bg-slate-800 border border-yellow-500/30 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-yellow-500 transition"
-                    placeholder="e.g., 60000"
-                  />
-                  <p className="mt-1 text-xs text-yellow-400">⚠️ Required for service due alerts - Add now or later</p>
-                </div>
-
-                {/* Card Disc Licence Expiry */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">
-                    Disc Licence Expiry <span className="text-yellow-400 text-xs">⚠️ Critical for alerts</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.licenseExpiryDate}
-                    onChange={(e) => setFormData({ ...formData, licenseExpiryDate: e.target.value })}
-                    className="w-full bg-slate-800 border border-yellow-500/30 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-yellow-500 transition"
-                  />
-                  <p className="mt-1 text-xs text-yellow-400">⚠️ Required for license renewal alerts - Add now or later</p>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition"
-                >
-                  {editingVehicle ? 'Update Vehicle' : 'Add Vehicle'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="flex-1 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium transition"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+            <VehicleForm
+              vehicle={editingVehicle}
+              defaultVehicleType={getSmartDefaultVehicleType()}
+              onSubmit={handleSubmit}
+              onCancel={handleCloseModal}
+            />
           </div>
         </div>
       )}

@@ -157,17 +157,17 @@ const ExpenseForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 text-sm text-slate-200">
+    <form onSubmit={handleSubmit} className="space-y-4 text-sm">
       {/* Info Banner - Shows when form is pre-filled */}
       {initialValues && !expense && (
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+        <div className="bg-baltic-100 dark:bg-baltic-900/30 border border-baltic-300 dark:border-baltic-700 rounded-lg p-3">
           <div className="flex items-start gap-2">
-            <svg className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-baltic-600 dark:text-baltic-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div>
-              <p className="text-xs text-blue-300 font-semibold">Linked to Last Entry</p>
-              <p className="text-xs text-slate-300 mt-0.5">
+              <p className="text-xs text-baltic-700 dark:text-baltic-300 font-semibold">Linked to Last Entry</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                 Vehicle and date are pre-filled from your last trip entry. You can change them if needed.
               </p>
             </div>
@@ -180,7 +180,7 @@ const ExpenseForm = ({
         <div>
           <label
             htmlFor="driverId"
-            className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+            className="mb-1 block text-sm font-medium text-baltic-900 dark:text-gray-100"
           >
             Driver *
           </label>
@@ -189,11 +189,12 @@ const ExpenseForm = ({
             name="driverId"
             value={formData.driverId}
             onChange={handleChange}
-            className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
-              errors.driverId
-                ? "border-rose-400/60 bg-rose-500/10"
-                : "border-white/10 bg-surface-200/60"
-            }`}
+            className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors
+              focus:ring-2 focus:ring-baltic-500 focus:border-transparent
+              ${errors.driverId
+                ? "border-danger bg-danger/10"
+                : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+              } text-baltic-900 dark:text-gray-100`}
             disabled={isSubmitting}
           >
             <option value="">Select a driver</option>
@@ -214,7 +215,7 @@ const ExpenseForm = ({
             </optgroup>
           </select>
           {errors.driverId && (
-            <p className="mt-1 text-xs font-medium text-rose-300">
+            <p className="mt-1 text-xs font-medium text-danger">
               {errors.driverId}
             </p>
           )}
@@ -226,7 +227,7 @@ const ExpenseForm = ({
         <div>
           <label
             htmlFor="newDriverName"
-            className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+            className="mb-1 block text-sm font-medium text-baltic-900 dark:text-gray-100"
           >
             New Driver Name *
           </label>
@@ -237,19 +238,20 @@ const ExpenseForm = ({
             value={formData.newDriverName}
             onChange={handleChange}
             placeholder="Enter driver's full name"
-            className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
-              errors.newDriverName
-                ? "border-rose-400/60 bg-rose-500/10"
-                : "border-white/10 bg-surface-200/60"
-            }`}
+            className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors
+              focus:ring-2 focus:ring-baltic-500 focus:border-transparent
+              ${errors.newDriverName
+                ? "border-danger bg-danger/10"
+                : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+              } text-baltic-900 dark:text-gray-100`}
             disabled={isSubmitting}
           />
           {errors.newDriverName && (
-            <p className="mt-1 text-xs font-medium text-rose-300">
+            <p className="mt-1 text-xs font-medium text-danger">
               {errors.newDriverName}
             </p>
           )}
-          <p className="mt-1 text-xs text-blue-300">
+          <p className="mt-1 text-xs text-baltic-600 dark:text-baltic-400">
             💡 A driver profile will be created automatically for this driver
           </p>
         </div>
@@ -259,7 +261,7 @@ const ExpenseForm = ({
         <div>
           <label
             htmlFor="vehicleId"
-            className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+            className="mb-1 block text-sm font-medium text-baltic-900 dark:text-gray-100"
           >
             Vehicle *
           </label>
@@ -268,11 +270,12 @@ const ExpenseForm = ({
             name="vehicleId"
             value={formData.vehicleId}
             onChange={handleChange}
-            className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
-              errors.vehicleId
-                ? "border-rose-400/60 bg-rose-500/10"
-                : "border-white/10 bg-surface-200/60"
-            }`}
+            className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors
+              focus:ring-2 focus:ring-baltic-500 focus:border-transparent
+              ${errors.vehicleId
+                ? "border-danger bg-danger/10"
+                : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+              } text-baltic-900 dark:text-gray-100`}
             disabled={isSubmitting || Boolean(expense)}
           >
             <option value="">Select a vehicle</option>
@@ -283,7 +286,7 @@ const ExpenseForm = ({
             ))}
           </select>
           {errors.vehicleId && (
-            <p className="mt-1 text-xs font-medium text-rose-300">
+            <p className="mt-1 text-xs font-medium text-danger">
               {errors.vehicleId}
             </p>
           )}
@@ -292,10 +295,10 @@ const ExpenseForm = ({
         <div>
           <label
             htmlFor="date"
-            className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+            className="mb-1 block text-sm font-medium text-baltic-900 dark:text-gray-100"
           >
             Date * {initialValues && !expense && formData.date && (
-              <span className="text-xs font-normal text-green-400 ml-2">
+              <span className="text-xs font-normal text-success ml-2">
                 ✓ Pre-filled
               </span>
             )}
@@ -307,15 +310,16 @@ const ExpenseForm = ({
             value={formData.date || new Date().toISOString().split("T")[0]}
             onChange={handleChange}
             max={new Date().toISOString().split("T")[0]}
-            className={`w-full rounded-2xl border px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60 ${
-              errors.date
-                ? "border-rose-400/60 bg-rose-500/10"
-                : "border-white/10 bg-surface-200/60"
-            }`}
+            className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors
+              focus:ring-2 focus:ring-baltic-500 focus:border-transparent
+              ${errors.date
+                ? "border-danger bg-danger/10"
+                : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+              } text-baltic-900 dark:text-gray-100`}
             disabled={isSubmitting}
           />
           {errors.date && (
-            <p className="mt-1 text-xs font-medium text-rose-300">
+            <p className="mt-1 text-xs font-medium text-danger">
               {errors.date}
             </p>
           )}
@@ -325,7 +329,7 @@ const ExpenseForm = ({
       {/* Multiple Expense Items */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-400">
+          <label className="block text-sm font-medium text-baltic-900 dark:text-gray-100">
             Expenses *
           </label>
           <button
@@ -336,7 +340,7 @@ const ExpenseForm = ({
                 expenseItems: [...prev.expenseItems, { description: '', amount: '', category: 'Fuel' }]
               }));
             }}
-            className="flex items-center gap-1 rounded-lg bg-blue-600/20 px-3 py-1.5 text-xs font-semibold text-blue-300 transition hover:bg-blue-600/30"
+            className="flex items-center gap-1 rounded-lg bg-baltic-100 dark:bg-baltic-900/30 px-3 py-1.5 text-xs font-semibold text-baltic-700 dark:text-baltic-300 transition hover:bg-baltic-200 dark:hover:bg-baltic-800/50"
             disabled={isSubmitting}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -347,7 +351,7 @@ const ExpenseForm = ({
         </div>
 
         {formData.expenseItems.map((item, index) => (
-          <div key={index} className="grid grid-cols-12 gap-2 p-3 rounded-xl border border-white/10 bg-surface-200/40">
+          <div key={index} className="grid grid-cols-12 gap-2 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
             <div className="col-span-12 sm:col-span-4">
               <input
                 type="text"
@@ -358,7 +362,7 @@ const ExpenseForm = ({
                   setFormData(prev => ({ ...prev, expenseItems: newItems }));
                 }}
                 placeholder="e.g., Fuel, Toll, Parking"
-                className="w-full rounded-lg border border-white/10 bg-surface-200/60 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-baltic-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-baltic-500 focus:border-transparent transition-colors"
                 disabled={isSubmitting}
               />
             </div>
@@ -370,7 +374,7 @@ const ExpenseForm = ({
                   newItems[index].category = e.target.value;
                   setFormData(prev => ({ ...prev, expenseItems: newItems }));
                 }}
-                className="w-full rounded-lg border border-white/10 bg-surface-200/60 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brand-500/60"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-baltic-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-baltic-500 focus:border-transparent transition-colors"
                 disabled={isSubmitting}
               >
                 {sortedCategories.map((cat) => (
@@ -381,8 +385,8 @@ const ExpenseForm = ({
               </select>
             </div>
             <div className="col-span-10 sm:col-span-4">
-              <div className="flex items-center rounded-lg border border-white/10 bg-surface-200/60 px-3 py-2">
-                <span className="mr-2 text-slate-400">$</span>
+              <div className="flex items-center rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2">
+                <span className="mr-2 text-gray-500 dark:text-gray-400">$</span>
                 <input
                   type="number"
                   value={item.amount}
@@ -394,7 +398,7 @@ const ExpenseForm = ({
                   step="0.01"
                   min="0"
                   placeholder="0.00"
-                  className="w-full bg-transparent text-white outline-none text-sm"
+                  className="w-full bg-transparent text-baltic-900 dark:text-gray-100 outline-none text-sm"
                   disabled={isSubmitting}
                 />
               </div>
@@ -409,7 +413,7 @@ const ExpenseForm = ({
                   }
                   setFormData(prev => ({ ...prev, expenseItems: newItems }));
                 }}
-                className="rounded-lg bg-red-600/20 p-2 text-red-400 transition hover:bg-red-600/30"
+                className="rounded-lg bg-danger/10 p-2 text-danger transition hover:bg-danger/20"
                 disabled={isSubmitting}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -421,14 +425,14 @@ const ExpenseForm = ({
         ))}
         
         {errors.expenseItems && (
-          <p className="text-xs font-medium text-rose-300">
+          <p className="text-xs font-medium text-danger">
             {errors.expenseItems}
           </p>
         )}
 
         <div className="flex justify-end">
-          <p className="text-sm font-semibold text-slate-300">
-            Total: <span className="text-red-400">
+          <p className="text-sm font-semibold text-baltic-700 dark:text-gray-300">
+            Total: <span className="text-danger">
               ${formData.expenseItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0).toFixed(2)}
             </span>
           </p>
@@ -439,7 +443,7 @@ const ExpenseForm = ({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex-1 rounded-2xl bg-brand-gradient px-5 py-2.5 text-sm font-semibold text-white shadow-brand transition hover:shadow-brand/70 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex-1 rounded-lg bg-baltic-500 hover:bg-baltic-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting
             ? "Saving..."
@@ -451,7 +455,7 @@ const ExpenseForm = ({
           type="button"
           onClick={onCancel}
           disabled={isSubmitting}
-          className="flex-1 rounded-2xl border border-white/20 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-5 py-2.5 text-sm font-semibold text-baltic-900 dark:text-gray-100 transition hover:bg-gray-50 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           Cancel
         </button>

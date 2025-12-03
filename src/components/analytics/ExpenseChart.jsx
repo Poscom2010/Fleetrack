@@ -13,6 +13,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { formatCurrency } from "../../utils/calculations";
+import { useTheme } from "../../contexts/ThemeContext";
 
 /**
  * ExpenseChart component to display expense distribution and trends
@@ -37,9 +38,9 @@ const ExpensePieTooltip = ({ active, payload, total }) => {
     const percentage = total ? ((data.value / total) * 100).toFixed(1) : 0;
 
     return (
-      <div className="rounded-2xl border border-white/10 bg-surface-200/80 px-4 py-3 text-sm text-slate-100 shadow-soft">
-        <p className="font-semibold text-white">{data.name}</p>
-        <p className="text-xs text-slate-300">
+      <div className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs shadow-md">
+        <p className="font-semibold text-gray-800">{data.name}</p>
+        <p className="text-gray-600">
           {formatCurrency(data.value)} ({percentage}%)
         </p>
       </div>
@@ -51,9 +52,9 @@ const ExpensePieTooltip = ({ active, payload, total }) => {
 const ExpenseTrendTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-surface-200/80 px-4 py-3 text-sm text-slate-100 shadow-soft">
-        <p className="font-semibold text-white">{label}</p>
-        <p className="text-xs text-slate-300">
+      <div className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs shadow-md">
+        <p className="font-semibold text-gray-800 mb-1">{label}</p>
+        <p className="text-gray-600">
           Expenses: {formatCurrency(payload[0].value)}
         </p>
       </div>
@@ -92,6 +93,7 @@ const renderCustomLabel = ({
 };
 
 const ExpenseChart = ({ expensesByCategory = {}, expenseTrend = [] }) => {
+  const { isDark } = useTheme();
   const categoryData = Object.entries(expensesByCategory).map(
     ([category, amount]) => ({
       name: category,
@@ -114,12 +116,12 @@ const ExpenseChart = ({ expensesByCategory = {}, expenseTrend = [] }) => {
 
   return (
     <>
-      <div className="rounded-2xl border border-rose-400/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 shadow-xl">
+      <div className={`rounded-lg border p-4 ${isDark ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
         <div className="mb-3 flex items-center gap-2">
-          <div className="rounded-lg bg-rose-500/20 p-1.5">
+          <div className={`rounded-lg p-1.5 ${isDark ? 'bg-rose-500/20' : 'bg-rose-100'}`}>
             <span className="text-base">💸</span>
           </div>
-          <h3 className="text-base font-bold text-white">
+          <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-baltic-900'}`}>
             Expense Distribution by Category
           </h3>
         </div>
@@ -156,16 +158,16 @@ const ExpenseChart = ({ expensesByCategory = {}, expenseTrend = [] }) => {
               {categoryData.map((entry, index) => (
                 <div
                   key={entry.name}
-                  className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs backdrop-blur-sm transition hover:bg-slate-800/60"
+                  className={`flex items-center justify-between rounded-xl border px-3 py-2 text-xs transition ${isDark ? 'border-white/10 bg-slate-900/60 hover:bg-slate-800/60' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}
                 >
                   <div className="flex items-center gap-2">
                     <span
                       className="h-3 w-3 rounded-full shadow-lg"
                       style={{ backgroundColor: COLORS[index % COLORS.length] }}
                     />
-                    <span className="font-medium text-slate-200">{entry.name}</span>
+                    <span className={`font-medium ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{entry.name}</span>
                   </div>
-                  <span className="font-bold text-white">
+                  <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     {formatCurrency(entry.value)}
                   </span>
                 </div>
@@ -173,49 +175,49 @@ const ExpenseChart = ({ expensesByCategory = {}, expenseTrend = [] }) => {
             </div>
           </div>
         ) : (
-          <div className="mt-3 rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 py-12 text-center text-xs text-slate-400">
+          <div className={`mt-3 rounded-2xl border border-dashed py-12 text-center text-xs ${isDark ? 'border-slate-700 bg-slate-900/50 text-slate-400' : 'border-gray-300 bg-gray-50 text-gray-500'}`}>
             No expense data available
           </div>
         )}
       </div>
 
-      <div className="rounded-2xl border border-amber-400/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 shadow-xl">
+      <div className={`rounded-2xl border p-4 shadow-xl ${isDark ? 'border-amber-400/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' : 'border-amber-200 bg-white'}`}>
         <div className="mb-3 flex items-center gap-2">
-          <div className="rounded-lg bg-amber-500/20 p-1.5">
+          <div className={`rounded-lg p-1.5 ${isDark ? 'bg-amber-500/20' : 'bg-amber-100'}`}>
             <span className="text-base">📉</span>
           </div>
-          <h3 className="text-base font-bold text-white">
+          <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-baltic-900'}`}>
             Cumulative Expenses Over Time
           </h3>
         </div>
         {trendData.length > 0 ? (
           <>
             {trendData.length === 1 && (
-              <div className="mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-200">
+              <div className={`mb-2 rounded-lg border p-2 text-xs ${isDark ? 'border-amber-500/30 bg-amber-500/10 text-amber-200' : 'border-amber-300 bg-amber-50 text-amber-800'}`}>
                 💡 <span className="font-semibold">Tip:</span> Add expenses on different dates to see the trend grow over time!
               </div>
             )}
             <div className="mt-3 h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} />
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#1e293b" : "#e2e8f0"} opacity={0.3} />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 12, fill: "#94a3b8" }}
-                  stroke="#475569"
+                  tick={{ fontSize: 12, fill: isDark ? "#94a3b8" : "#64748b" }}
+                  stroke={isDark ? "#475569" : "#cbd5e1"}
                   angle={-45}
                   textAnchor="end"
                   height={70}
                 />
                 <YAxis
-                  tick={{ fontSize: 12, fill: "#94a3b8" }}
-                  stroke="#475569"
-                  axisLine={{ stroke: "#475569" }}
-                  tickLine={{ stroke: "#475569" }}
+                  tick={{ fontSize: 12, fill: isDark ? "#94a3b8" : "#64748b" }}
+                  stroke={isDark ? "#475569" : "#cbd5e1"}
+                  axisLine={{ stroke: isDark ? "#475569" : "#cbd5e1" }}
+                  tickLine={{ stroke: isDark ? "#475569" : "#cbd5e1" }}
                 />
-                <Tooltip content={<ExpenseTrendTooltip />} cursor={{ stroke: "#475569", strokeWidth: 1 }} />
+                <Tooltip content={<ExpenseTrendTooltip />} cursor={{ stroke: isDark ? "#475569" : "#94a3b8", strokeWidth: 1 }} />
                 <Legend
-                  wrapperStyle={{ color: "#cbd5e1", fontSize: "13px", fontWeight: "600" }}
+                  wrapperStyle={{ color: isDark ? "#cbd5e1" : "#334155", fontSize: "13px", fontWeight: "600" }}
                 />
                 <Line
                   type="monotone"
@@ -223,7 +225,7 @@ const ExpenseChart = ({ expensesByCategory = {}, expenseTrend = [] }) => {
                   stroke="#f59e0b"
                   strokeWidth={3}
                   name="Expenses"
-                  dot={{ r: 5, fill: "#f59e0b", strokeWidth: 2, stroke: "#78350f" }}
+                  dot={{ r: 5, fill: "#f59e0b", strokeWidth: 2, stroke: isDark ? "#78350f" : "#ffffff" }}
                   activeDot={{ r: 7, fill: "#f59e0b", stroke: "#fff", strokeWidth: 2 }}
                 />
               </LineChart>
@@ -231,7 +233,7 @@ const ExpenseChart = ({ expensesByCategory = {}, expenseTrend = [] }) => {
           </div>
           </>
         ) : (
-          <div className="mt-3 rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 py-12 text-center text-xs text-slate-400">
+          <div className={`mt-3 rounded-2xl border border-dashed py-12 text-center text-xs ${isDark ? 'border-slate-700 bg-slate-900/50 text-slate-400' : 'border-gray-300 bg-gray-50 text-gray-500'}`}>
             No expense trend data available
           </div>
         )}

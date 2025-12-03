@@ -132,43 +132,43 @@ const MileageGapsModal = ({ isOpen, onClose, gaps, vehicles, user, onGapAcknowle
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm overflow-y-auto">
-      <div className="min-h-screen flex items-center justify-center p-4 py-8">
-        <div className="relative w-full max-w-4xl my-auto flex flex-col rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 shadow-2xl">
+      <div className="min-h-screen flex items-center justify-center p-2 sm:p-4 py-4 sm:py-8">
+        <div className="relative w-full max-w-4xl my-auto flex flex-col rounded-xl sm:rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 shadow-2xl max-h-[90vh]">
         {/* Header */}
-        <div className="border-b border-slate-700 bg-slate-900/80 px-4 py-3 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        <div className="border-b border-slate-700 bg-slate-900/80 px-3 sm:px-4 py-2 sm:py-3 flex-shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               {selectedGap && (
                 <button
                   onClick={backToList}
-                  className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white mr-1"
+                  className="rounded-lg p-1 sm:p-1.5 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white flex-shrink-0"
                 >
-                  <ArrowLeft className="h-5 w-5" />
+                  <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
               )}
-              <div className="rounded-lg bg-yellow-500/20 p-1.5">
-                {selectedGap ? <Gauge className="h-5 w-5 text-blue-400" /> : <AlertTriangle className="h-5 w-5 text-yellow-400" />}
+              <div className="rounded-lg bg-yellow-500/20 p-1 sm:p-1.5 flex-shrink-0">
+                {selectedGap ? <Gauge className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" /> : <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400" />}
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-white">
-                  {selectedGap ? `${selectedGap.vehicleName} - All Trips` : `Unaccounted Mileage - ${sortedGaps.length} Gaps`}
+              <div className="min-w-0">
+                <h2 className="text-sm sm:text-lg font-bold text-white truncate">
+                  {selectedGap ? `${selectedGap.vehicleName} Trips` : `Mileage Gaps (${sortedGaps.length})`}
                 </h2>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white"
+              className="rounded-lg p-1 sm:p-1.5 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white flex-shrink-0"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
           </div>
 
           {/* Severity Filter - Only show in gaps list view */}
           {!selectedGap && (
-          <div className="mt-3 flex gap-2">
+          <div className="mt-2 flex gap-1 sm:gap-2 overflow-x-auto pb-1">
             <button
               onClick={() => setSelectedSeverity('all')}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`rounded px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-sm font-medium transition-colors whitespace-nowrap ${
                 selectedSeverity === 'all'
                   ? 'bg-blue-500 text-white'
                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
@@ -178,7 +178,7 @@ const MileageGapsModal = ({ isOpen, onClose, gaps, vehicles, user, onGapAcknowle
             </button>
             <button
               onClick={() => setSelectedSeverity('high')}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`rounded px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-sm font-medium transition-colors whitespace-nowrap ${
                 selectedSeverity === 'high'
                   ? 'bg-red-500 text-white'
                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
@@ -188,17 +188,17 @@ const MileageGapsModal = ({ isOpen, onClose, gaps, vehicles, user, onGapAcknowle
             </button>
             <button
               onClick={() => setSelectedSeverity('medium')}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`rounded px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-sm font-medium transition-colors whitespace-nowrap ${
                 selectedSeverity === 'medium'
                   ? 'bg-orange-500 text-white'
                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
               }`}
             >
-              Medium ({gaps.filter(g => g.severity === 'medium').length})
+              Med ({gaps.filter(g => g.severity === 'medium').length})
             </button>
             <button
               onClick={() => setSelectedSeverity('low')}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`rounded px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-sm font-medium transition-colors whitespace-nowrap ${
                 selectedSeverity === 'low'
                   ? 'bg-yellow-500 text-white'
                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
@@ -211,7 +211,7 @@ const MileageGapsModal = ({ isOpen, onClose, gaps, vehicles, user, onGapAcknowle
         </div>
 
         {/* Content - Scrollable */}
-        <div className="overflow-y-auto flex-1 p-4">
+        <div className="overflow-y-auto flex-1 p-2 sm:p-4">
           {loadingTrips ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-slate-400">Loading trips...</div>
@@ -384,20 +384,21 @@ const MileageGapsModal = ({ isOpen, onClose, gaps, vehicles, user, onGapAcknowle
                     </table>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="px-3 py-3 bg-slate-900/50 border-t border-slate-700/50 space-y-2">
+                  {/* Action Buttons - Compact on mobile */}
+                  <div className="px-2 sm:px-3 py-2 sm:py-3 bg-slate-900/50 border-t border-slate-700/50 space-y-1.5 sm:space-y-2">
                     {/* PRIMARY ACTION - Note as Reviewed */}
                     <button
                       onClick={() => handleAcknowledgeGap(gap)}
                       disabled={acknowledgingGap === gap.id}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold text-sm shadow-lg shadow-green-500/50 hover:shadow-green-500/70 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                      className="w-full flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-green-500/50 hover:shadow-green-500/70 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     >
                       {acknowledgingGap === gap.id ? (
                         <span>Noting...</span>
                       ) : (
                         <>
-                          <CheckCircle className="h-5 w-5" />
-                          <span>✓ Mark as Reviewed (Manager)</span>
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                          <span className="hidden sm:inline">✓ Mark as Reviewed (Manager)</span>
+                          <span className="sm:hidden">✓ Mark Reviewed</span>
                         </>
                       )}
                     </button>
@@ -405,11 +406,12 @@ const MileageGapsModal = ({ isOpen, onClose, gaps, vehicles, user, onGapAcknowle
                     {/* SECONDARY ACTION - View Trips */}
                     <button
                       onClick={() => loadVehicleTrips(gap)}
-                      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-blue-600/30 border-2 border-blue-500/50 text-blue-200 hover:bg-blue-600/40 hover:border-blue-400 transition-all font-semibold text-xs shadow-md hover:shadow-blue-500/30"
+                      className="w-full flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2.5 rounded-lg bg-blue-600/30 border border-blue-500/50 text-blue-200 hover:bg-blue-600/40 hover:border-blue-400 transition-all font-semibold text-[10px] sm:text-xs shadow-md hover:shadow-blue-500/30"
                     >
-                      <Eye className="h-4 w-4" />
-                      <span>View All Trips for {gap.vehicleName}</span>
-                      <ChevronRight className="h-4 w-4" />
+                      <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">View All Trips for {gap.vehicleName}</span>
+                      <span className="sm:hidden">View Trips</span>
+                      <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
                     </button>
                   </div>
                 </div>
@@ -420,14 +422,14 @@ const MileageGapsModal = ({ isOpen, onClose, gaps, vehicles, user, onGapAcknowle
         </div>
 
         {/* Footer */}
-        <div className="border-t border-slate-700 bg-slate-900/80 px-4 py-3 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-400">
-              💡 Review these gaps and update trip records or note as personal use
+        <div className="border-t border-slate-700 bg-slate-900/80 px-2 sm:px-4 py-2 sm:py-3 flex-shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] sm:text-xs text-slate-400 hidden sm:block">
+              💡 Review gaps and update records or note as personal use
             </p>
             <button
               onClick={onClose}
-              className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+              className="rounded-lg bg-blue-600 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium text-white transition-colors hover:bg-blue-700 w-full sm:w-auto"
             >
               Close
             </button>

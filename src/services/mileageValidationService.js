@@ -13,7 +13,7 @@ export const getLastRecordedMileage = async (vehicleId, beforeDate = null, exclu
   if (!vehicleId) return null;
 
   try {
-    // Query ALL daily entries for this vehicle
+    // Query ALL daily entries for this vehicle (for taxis/couriers)
     const entriesQuery = query(
       collection(db, 'dailyEntries'),
       where('vehicleId', '==', vehicleId)
@@ -21,30 +21,88 @@ export const getLastRecordedMileage = async (vehicleId, beforeDate = null, exclu
 
     const snapshot = await getDocs(entriesQuery);
 
-    if (snapshot.empty) {
-      return null;
-    }
+    // Also check load events and offload events for commodity vehicles
+    const loadEventsQuery = query(
+      collection(db, 'loadEvents'),
+      where('vehicleId', '==', vehicleId)
+    );
+    const loadEventsSnapshot = await getDocs(loadEventsQuery);
 
-    // Sort entries by date manually (client-side) to avoid index requirements
+    const offloadEventsQuery = query(
+      collection(db, 'offloadEvents'),
+      where('vehicleId', '==', vehicleId)
+    );
+    const offloadEventsSnapshot = await getDocs(offloadEventsQuery);
+
+    // CRITICAL: Also check return trips - they have the MOST RECENT mileage (mileageAtDepot)
+    const returnTripsQuery = query(
+      collection(db, 'returnTrips'),
+      where('vehicleId', '==', vehicleId)
+    );
+    const returnTripsSnapshot = await getDocs(returnTripsQuery);
+
+    // Combine all entries
     const entries = [];
+    
+    // Add daily entries
     snapshot.docs.forEach(doc => {
       const entry = doc.data();
       const entryDate = entry.date?.toDate ? entry.date.toDate() : new Date(entry.date);
       entries.push({
         id: doc.id,
         data: entry,
-        date: entryDate
+        date: entryDate,
+        type: 'daily'
       });
     });
 
-    // Sort by date descending (most recent first)
-    entries.sort((a, b) => b.date - a.date);
+    // Add load events
+    loadEventsSnapshot.docs.forEach(doc => {
+      const entry = doc.data();
+      const entryDate = entry.loadDate?.toDate ? entry.loadDate.toDate() : new Date(entry.loadDate);
+      entries.push({
+        id: doc.id,
+        data: entry,
+        date: entryDate,
+        type: 'load'
+      });
+    });
+
+    // Add offload events
+    offloadEventsSnapshot.docs.forEach(doc => {
+      const entry = doc.data();
+      const entryDate = entry.offloadDate?.toDate ? entry.offloadDate.toDate() : new Date(entry.offloadDate);
+      entries.push({
+        id: doc.id,
+        data: entry,
+        date: entryDate,
+        type: 'offload'
+      });
+    });
+
+    // Add return trips - MOST IMPORTANT for latest mileage
+    returnTripsSnapshot.docs.forEach(doc => {
+      const entry = doc.data();
+      const entryDate = entry.returnEndDate?.toDate ? entry.returnEndDate.toDate() : new Date(entry.returnEndDate);
+      entries.push({
+        id: doc.id,
+        data: entry,
+        date: entryDate,
+        type: 'return'
+      });
+    });
+
+    if (entries.length === 0) {
+      return null;
+    }
 
     // Convert beforeDate to Date object for comparison
     const checkDate = beforeDate ? (beforeDate instanceof Date ? beforeDate : new Date(beforeDate)) : null;
 
-    // Find the most recent entry BEFORE the given date
-    let lastEntry = null;
+    // CRITICAL: Find the HIGHEST mileage across ALL entries (not just most recent by date)
+    // This handles multiple offloads per trip where each has progressively higher mileage
+    let highestMileage = 0;
+    let highestEntry = null;
     
     for (const entryObj of entries) {
       // Skip the entry being edited
@@ -54,30 +112,42 @@ export const getLastRecordedMileage = async (vehicleId, beforeDate = null, exclu
 
       const entry = entryObj.data;
       const entryDate = entryObj.date;
+      const entryType = entryObj.type;
       
       // If checking before a specific date, only consider entries before that date
-      if (checkDate) {
-        if (entryDate < checkDate) {
-          lastEntry = { ...entry, id: entryObj.id, date: entryDate };
-          break; // Found the most recent entry before the date
-        }
+      if (checkDate && entryDate >= checkDate) {
+        continue;
+      }
+      
+      // Extract mileage based on entry type
+      let currentMileage = 0;
+      if (entryType === 'return') {
+        currentMileage = entry.mileageAtDepot || 0;
+      } else if (entryType === 'load') {
+        currentMileage = entry.mileageAtLoad || entry.startingMileage || 0;
+      } else if (entryType === 'offload') {
+        currentMileage = entry.mileageAtOffload || entry.odometerReading || 0;
       } else {
-        // No date filter, just get the most recent entry
-        lastEntry = { ...entry, id: entryObj.id, date: entryDate };
-        break;
+        currentMileage = entry.endMileage || entry.startMileage || 0;
+      }
+      
+      // Keep track of the entry with HIGHEST mileage
+      if (currentMileage > highestMileage) {
+        highestMileage = currentMileage;
+        highestEntry = { ...entry, id: entryObj.id, date: entryDate, type: entryType };
       }
     }
 
-    if (!lastEntry) {
+    if (!highestEntry || highestMileage === 0) {
       return null;
     }
     
-    const mileage = lastEntry.endMileage || lastEntry.startMileage || 0;
+    console.log(`✅ getLastRecordedMileage for vehicle ${vehicleId}: ${highestMileage} km (HIGHEST) from ${highestEntry.type} event on ${highestEntry.date}`);
     
     return {
-      lastMileage: mileage,
-      date: lastEntry.date,
-      entryId: lastEntry.id
+      lastMileage: highestMileage,
+      date: highestEntry.date,
+      entryId: highestEntry.id
     };
   } catch (error) {
     console.error('Error fetching last mileage:', error);

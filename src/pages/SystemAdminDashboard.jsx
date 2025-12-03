@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { collection, getDocs, query, where, Timestamp, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { Brain } from 'lucide-react';
 import { db } from '../services/firebase';
 import toast from 'react-hot-toast';
 import { wipeCompanyData } from '../services/dataWipeService';
@@ -48,6 +49,7 @@ const SystemAdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [businessInsights, setBusinessInsights] = useState([]);
   const [deleteModal, setDeleteModal] = useState({ show: false, userId: null, userName: '' });
+  const [deleteCompanyModal, setDeleteCompanyModal] = useState({ show: false, companyId: null, companyName: '' });
   const [emailModal, setEmailModal] = useState({ show: false, user: null });
   const [emailForm, setEmailForm] = useState({ subject: '', message: '' });
   const [wipeDataModal, setWipeDataModal] = useState({ 
@@ -231,9 +233,16 @@ const SystemAdminDashboard = () => {
         ...doc.data(),
       }));
 
-      // Get all entries with IDs
+      // Get all entries with IDs (traditional trips)
       const entriesSnapshot = await getDocs(collection(db, 'dailyEntries'));
       const entries = entriesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Get all invoices (commodity revenue)
+      const invoicesSnapshot = await getDocs(collection(db, 'invoices'));
+      const invoices = invoicesSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
@@ -295,7 +304,7 @@ const SystemAdminDashboard = () => {
         };
       });
       
-      // Calculate revenue from entries
+      // Calculate revenue from traditional entries (dailyEntries)
       entries.forEach((entry) => {
         // Use companyId directly from entry first, fallback to user lookup
         let entryCompanyId = entry.companyId;
@@ -313,6 +322,17 @@ const SystemAdminDashboard = () => {
         }
       });
 
+      // Add revenue from commodity invoices
+      invoices.forEach((invoice) => {
+        const invoiceCompanyId = invoice.companyId;
+        const invoiceTotal = Number(invoice.total) || 0;
+        
+        if (invoiceCompanyId && revenueByCompany[invoiceCompanyId]) {
+          revenueByCompany[invoiceCompanyId].entries += 1;
+          revenueByCompany[invoiceCompanyId].revenue += invoiceTotal;
+        }
+      });
+
       const revenueArray = Object.values(revenueByCompany);
       
       // Add USD equivalent for each company for proper ranking
@@ -321,9 +341,10 @@ const SystemAdminDashboard = () => {
       });
       
       // Top performing companies (by revenue in USD for fair comparison)
+      // Show top 10 companies (includes traditional + commodity revenue)
       const topPerforming = [...revenueArray]
         .sort((a, b) => b.revenueUSD - a.revenueUSD) // Sort by USD equivalent!
-        .slice(0, 5);
+        .slice(0, 10); // Top 10
 
       // Underperforming companies (registered but low/no activity)
       const underperforming = companiesData
@@ -630,6 +651,88 @@ const SystemAdminDashboard = () => {
     setDeleteModal({ show: false, userId: null, userName: '' });
   };
 
+  const handleDeleteCompany = (companyId, companyName) => {
+    console.log('🗑️ Opening delete confirmation for company:', { companyId, companyName });
+    setDeleteCompanyModal({ show: true, companyId, companyName });
+  };
+
+  const confirmDeleteCompany = async () => {
+    const { companyId, companyName } = deleteCompanyModal;
+    console.log('🗑️ Confirming delete for company:', { companyId, companyName });
+    
+    // Close modal
+    setDeleteCompanyModal({ show: false, companyId: null, companyName: '' });
+
+    try {
+      console.log('🔄 Deleting company and all related data...');
+      
+      // Get all users in this company
+      const companyUsers = users.filter(u => u.companyId === companyId);
+      console.log(`Found ${companyUsers.length} users to delete`);
+      
+      // Delete all users in the company
+      for (const user of companyUsers) {
+        await deleteDoc(doc(db, 'users', user.id));
+        console.log(`Deleted user: ${user.email}`);
+      }
+      
+      // Get all vehicles for this company
+      const vehiclesSnapshot = await getDocs(query(collection(db, 'vehicles'), where('companyId', '==', companyId)));
+      console.log(`Found ${vehiclesSnapshot.size} vehicles to delete`);
+      
+      // Delete all vehicles
+      for (const vehicleDoc of vehiclesSnapshot.docs) {
+        await deleteDoc(doc(db, 'vehicles', vehicleDoc.id));
+        console.log(`Deleted vehicle: ${vehicleDoc.id}`);
+      }
+      
+      // Get all daily entries for this company
+      const entriesSnapshot = await getDocs(query(collection(db, 'dailyEntries'), where('companyId', '==', companyId)));
+      console.log(`Found ${entriesSnapshot.size} daily entries to delete`);
+      
+      // Delete all daily entries
+      for (const entryDoc of entriesSnapshot.docs) {
+        await deleteDoc(doc(db, 'dailyEntries', entryDoc.id));
+      }
+      
+      // Get all expenses for this company
+      const expensesSnapshot = await getDocs(query(collection(db, 'expenses'), where('companyId', '==', companyId)));
+      console.log(`Found ${expensesSnapshot.size} expenses to delete`);
+      
+      // Delete all expenses
+      for (const expenseDoc of expensesSnapshot.docs) {
+        await deleteDoc(doc(db, 'expenses', expenseDoc.id));
+      }
+      
+      // Finally, delete the company itself
+      await deleteDoc(doc(db, 'companies', companyId));
+      console.log('✅ Company deleted from Firestore successfully');
+      
+      // Reload data to refresh the list
+      console.log('🔄 Reloading system stats...');
+      await loadSystemStats();
+      
+      toast.success(`Company "${companyName}" and all related data deleted successfully`);
+      console.log('✅ Delete operation completed');
+    } catch (error) {
+      console.error('❌ Error deleting company:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      
+      if (error.code === 'permission-denied') {
+        toast.error('Permission denied. You may not have rights to delete this company.');
+      } else if (error.code === 'not-found') {
+        toast.error('Company not found in database.');
+      } else {
+        toast.error(`Failed to delete company: ${error.message || 'Unknown error'}`);
+      }
+    }
+  };
+
+  const cancelDeleteCompany = () => {
+    setDeleteCompanyModal({ show: false, companyId: null, companyName: '' });
+  };
+
   const handleEmailUser = (user) => {
     setEmailModal({ show: true, user });
     setEmailForm({ subject: '', message: '' });
@@ -731,6 +834,19 @@ This is an official communication from FleetTrack System Administration.
     }
   };
 
+  const handleToggleAIInsights = async (companyId, enabled) => {
+    try {
+      await updateDoc(doc(db, 'companies', companyId), {
+        aiInsightsEnabled: enabled
+      });
+      toast.success(`AI Insights ${enabled ? 'enabled' : 'disabled'} successfully`);
+      await loadSystemStats();
+    } catch (error) {
+      console.error('Error toggling AI Insights:', error);
+      toast.error('Failed to update AI Insights setting');
+    }
+  };
+
   const handleWipeDataRequest = (companyId, companyName) => {
     setWipeDataModal({ 
       show: true, 
@@ -794,23 +910,23 @@ This is an official communication from FleetTrack System Administration.
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-baltic-50 via-blue-50 to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500 mb-4"></div>
-          <p className="text-white">Loading system analytics...</p>
+          <p className="text-baltic-900 dark:text-white">Loading system analytics...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-baltic-50 via-blue-50 to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
       <div className="max-w-7xl mx-auto space-y-4">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white mb-1">{getHeaderContent().heading}</h1>
-            <p className="text-slate-400 text-xs sm:text-sm">{getHeaderContent().description}</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-baltic-900 dark:text-white mb-1">{getHeaderContent().heading}</h1>
+            <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">{getHeaderContent().description}</p>
           </div>
           <button
             onClick={() => navigate('/admin/analytics')}
@@ -831,16 +947,16 @@ This is an official communication from FleetTrack System Administration.
         {/* FleetTrack Business Insights */}
         {businessInsights.length > 0 && (
           <div className="space-y-3">
-            <h2 className="text-lg font-bold text-white">💡 Business Insights</h2>
+            <h2 className="text-lg font-bold text-baltic-900 dark:text-white">💡 Business Insights</h2>
             {businessInsights.map((insight, index) => {
-              const colorClass = insight.type === 'success' ? 'bg-green-500/10 border-green-500/30' :
-                                 insight.type === 'warning' ? 'bg-orange-500/10 border-orange-500/30' :
-                                 insight.type === 'danger' ? 'bg-red-500/10 border-red-500/30' :
-                                 'bg-blue-500/10 border-blue-500/30';
-              const iconColor = insight.type === 'success' ? 'text-green-400' :
-                               insight.type === 'warning' ? 'text-orange-400' :
-                               insight.type === 'danger' ? 'text-red-400' :
-                               'text-blue-400';
+              const colorClass = insight.type === 'success' ? 'bg-green-50 dark:bg-green-500/10 border-2 border-green-200 dark:border-green-500/30' :
+                                 insight.type === 'warning' ? 'bg-orange-50 dark:bg-orange-500/10 border-2 border-orange-200 dark:border-orange-500/30' :
+                                 insight.type === 'danger' ? 'bg-red-50 dark:bg-red-500/10 border-2 border-red-200 dark:border-red-500/30' :
+                                 'bg-blue-50 dark:bg-blue-500/10 border-2 border-blue-200 dark:border-blue-500/30';
+              const iconColor = insight.type === 'success' ? 'text-green-600 dark:text-green-400' :
+                               insight.type === 'warning' ? 'text-orange-600 dark:text-orange-400' :
+                               insight.type === 'danger' ? 'text-red-600 dark:text-red-400' :
+                               'text-blue-600 dark:text-blue-400';
               return (
                 <div key={index} className={`${colorClass} border rounded-lg p-4`}>
                   <div className="flex items-start gap-3">
@@ -852,7 +968,7 @@ This is an official communication from FleetTrack System Administration.
                     </svg>
                     <div className="flex-1">
                       <h3 className={`font-semibold ${iconColor} text-sm mb-1`}>{insight.title}</h3>
-                      <p className="text-slate-300 text-sm">{insight.message}</p>
+                      <p className="text-gray-700 dark:text-slate-300 text-sm">{insight.message}</p>
                     </div>
                   </div>
                 </div>
@@ -861,87 +977,53 @@ This is an official communication from FleetTrack System Administration.
           </div>
         )}
 
-        {/* FleetTrack Revenue & Profit Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-          <div className="bg-gradient-to-br from-green-900/30 to-slate-800 rounded-lg p-2.5 border border-green-500/30">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-[10px] text-green-300 font-semibold">Total Revenue</p>
-              <svg className="h-3.5 w-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <p className="text-lg font-bold text-white mb-0.5">${stats.totalRevenue.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
-            <p className="text-[10px] text-green-400">+${stats.growthMetrics.revenueThisMonth.toLocaleString(undefined, {maximumFractionDigits: 0})} this month</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-blue-900/30 to-slate-800 rounded-lg p-2.5 border border-blue-500/30">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-[10px] text-blue-300 font-semibold">Net Profit</p>
-              <svg className="h-3.5 w-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-            <p className="text-lg font-bold text-white mb-0.5">${stats.netProfit.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
-            <p className="text-[10px] text-blue-400">{stats.totalRevenue > 0 ? ((stats.netProfit / stats.totalRevenue) * 100).toFixed(1) : 0}% profit margin</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-purple-900/30 to-slate-800 rounded-lg p-2.5 border border-purple-500/30">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-[10px] text-purple-300 font-semibold">Avg Revenue/Company</p>
-              <svg className="h-3.5 w-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            </div>
-            <p className="text-lg font-bold text-white mb-0.5">${stats.avgRevenuePerCompany.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
-            <p className="text-[10px] text-purple-400">{stats.totalCompanies} active companies</p>
-          </div>
-        </div>
+        {/* Revenue metrics hidden for privacy - System admin should not see company financial data */}
 
         {/* Platform Stats */}
         <div>
-          <h2 className="text-sm font-bold text-white mb-2">📊 Platform Statistics</h2>
+          <h2 className="text-sm font-bold text-baltic-900 dark:text-white mb-2">📊 Platform Statistics</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-          <div className="bg-slate-800 rounded-lg p-2.5 border border-slate-700">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-2.5 border-2 border-gray-200 dark:border-gray-700 shadow-md">
             <div className="flex items-center justify-between mb-0.5">
-              <p className="text-[10px] text-slate-400">Total Companies</p>
+              <p className="text-[10px] text-gray-600 dark:text-gray-400">Total Companies</p>
               <svg className="h-4 w-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
-            <p className="text-lg font-bold text-white">{stats.totalCompanies}</p>
+            <p className="text-lg font-bold text-baltic-900 dark:text-white">{stats.totalCompanies}</p>
             <p className="text-[10px] text-green-400 mt-0.5">+{stats.growthMetrics.companiesThisMonth} this month</p>
           </div>
 
-          <div className="bg-slate-800 rounded-lg p-2.5 border border-slate-700">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-2.5 border-2 border-gray-200 dark:border-gray-700 shadow-md">
             <div className="flex items-center justify-between mb-0.5">
-              <p className="text-[10px] text-slate-400">Total Users</p>
+              <p className="text-[10px] text-gray-600 dark:text-gray-400">Total Users</p>
               <svg className="h-4 w-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
             </div>
-            <p className="text-lg font-bold text-white">{stats.totalUsers}</p>
+            <p className="text-lg font-bold text-baltic-900 dark:text-white">{stats.totalUsers}</p>
             <p className="text-[10px] text-green-400 mt-0.5">+{stats.growthMetrics.usersThisMonth} this month</p>
           </div>
 
-          <div className="bg-slate-800 rounded-lg p-2.5 border border-slate-700">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-2.5 border-2 border-gray-200 dark:border-gray-700 shadow-md">
             <div className="flex items-center justify-between mb-0.5">
-              <p className="text-[10px] text-slate-400">Total Vehicles</p>
+              <p className="text-[10px] text-gray-600 dark:text-gray-400">Total Vehicles</p>
               <svg className="h-4 w-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
               </svg>
             </div>
-            <p className="text-lg font-bold text-white">{stats.totalVehicles}</p>
+            <p className="text-lg font-bold text-baltic-900 dark:text-white">{stats.totalVehicles}</p>
             <p className="text-[10px] text-slate-400 mt-0.5">Across all companies</p>
           </div>
 
-          <div className="bg-slate-800 rounded-lg p-2.5 border border-slate-700">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-2.5 border-2 border-gray-200 dark:border-gray-700 shadow-md">
             <div className="flex items-center justify-between mb-0.5">
-              <p className="text-[10px] text-slate-400">Total Entries</p>
+              <p className="text-[10px] text-gray-600 dark:text-gray-400">Total Entries</p>
               <svg className="h-4 w-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <p className="text-lg font-bold text-white">{stats.totalEntries.toLocaleString()}</p>
+            <p className="text-lg font-bold text-baltic-900 dark:text-white">{stats.totalEntries.toLocaleString()}</p>
             <p className="text-[10px] text-green-400 mt-0.5">+{stats.growthMetrics.entriesThisMonth.toLocaleString()} this month</p>
           </div>
         </div>
@@ -950,15 +1032,15 @@ This is an official communication from FleetTrack System Administration.
         {/* Activity & Geographic Distribution */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
           {/* Active vs Inactive Companies */}
-          <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
-            <h2 className="text-sm font-bold text-white mb-2">Company Activity</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border-2 border-gray-200 dark:border-gray-700 shadow-md">
+            <h2 className="text-sm font-bold text-baltic-900 dark:text-white mb-2">Company Activity</h2>
             <div className="space-y-2.5">
               <div>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-300">Active (Last 30 days)</span>
+                  <span className="text-baltic-900 dark:text-gray-300">Active (Last 30 days)</span>
                   <span className="text-green-400 font-semibold">{stats.activeCompanies}</span>
                 </div>
-                <div className="w-full bg-slate-900 rounded-full h-3">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                   <div 
                     className="bg-green-500 h-3 rounded-full transition-all"
                     style={{ width: `${(stats.activeCompanies / stats.totalCompanies) * 100}%` }}
@@ -967,10 +1049,10 @@ This is an official communication from FleetTrack System Administration.
               </div>
               <div>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-300">Inactive</span>
+                  <span className="text-baltic-900 dark:text-gray-300">Inactive</span>
                   <span className="text-red-400 font-semibold">{stats.totalCompanies - stats.activeCompanies}</span>
                 </div>
-                <div className="w-full bg-slate-900 rounded-full h-3">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                   <div 
                     className="bg-red-500 h-3 rounded-full transition-all"
                     style={{ width: `${((stats.totalCompanies - stats.activeCompanies) / stats.totalCompanies) * 100}%` }}
@@ -978,8 +1060,8 @@ This is an official communication from FleetTrack System Administration.
                 </div>
               </div>
               <div className="pt-2 border-t border-slate-700">
-                <p className="text-[10px] text-slate-400">Activity Rate</p>
-                <p className="text-lg font-bold text-white">
+                <p className="text-[10px] text-gray-600 dark:text-gray-400">Activity Rate</p>
+                <p className="text-lg font-bold text-baltic-900 dark:text-white">
                   {((stats.activeCompanies / stats.totalCompanies) * 100).toFixed(1)}%
                 </p>
               </div>
@@ -987,8 +1069,8 @@ This is an official communication from FleetTrack System Administration.
           </div>
 
           {/* Companies by Country */}
-          <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
-            <h2 className="text-sm font-bold text-white mb-2">Geographic Distribution</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border-2 border-gray-200 dark:border-gray-700 shadow-md">
+            <h2 className="text-sm font-bold text-baltic-900 dark:text-white mb-2">Geographic Distribution</h2>
             <div className="space-y-2">
               {Object.entries(stats.companiesByCountry)
                 .sort((a, b) => b[1] - a[1])
@@ -997,16 +1079,16 @@ This is an official communication from FleetTrack System Administration.
                   <div key={country} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="h-2 w-2 rounded-full bg-brand-400"></div>
-                      <span className="text-slate-300">{country}</span>
+                      <span className="text-baltic-900 dark:text-gray-300">{country}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="w-32 bg-slate-900 rounded-full h-2">
+                      <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                         <div 
                           className="bg-brand-500 h-2 rounded-full"
                           style={{ width: `${(count / stats.totalCompanies) * 100}%` }}
                         ></div>
                       </div>
-                      <span className="text-white font-semibold w-8 text-right">{count}</span>
+                      <span className="text-baltic-900 dark:text-white font-semibold w-8 text-right">{count}</span>
                     </div>
                   </div>
                 ))}
@@ -1014,20 +1096,20 @@ This is an official communication from FleetTrack System Administration.
           </div>
         </div>
 
-        {/* Top Performing Companies */}
-        <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
+        {/* Top Performing Companies - Hidden for privacy */}
+        {false && <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border-2 border-gray-200 dark:border-gray-700 shadow-lg">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-bold text-white">🏆 Top Performing Companies</h2>
-            <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-              💱 Ranked by USD equivalent
+            <h2 className="text-sm font-bold text-baltic-900 dark:text-white">🏆 Top 10 Performing Companies</h2>
+            <span className="text-[10px] text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-500/10 px-2 py-0.5 rounded border border-amber-300 dark:border-amber-500/20">
+              💱 Traditional + Commodity Revenue (USD)
             </span>
           </div>
-          <p className="text-[10px] text-slate-500 mb-2">Rankings use real-time exchange rates for fair multi-currency comparison</p>
+          <p className="text-[10px] text-gray-600 dark:text-gray-400 mb-2">Rankings use real-time exchange rates for fair multi-currency comparison</p>
           
           {/* Mobile Card View */}
           <div className="lg:hidden space-y-3">
             {stats.topPerformingCompanies.map((company, index) => (
-              <div key={index} className="bg-slate-900 rounded-lg p-3 border border-slate-700">
+              <div key={index} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border-2 border-gray-200 dark:border-gray-600">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
@@ -1038,37 +1120,37 @@ This is an official communication from FleetTrack System Administration.
                     }`}>
                       {index + 1}
                     </span>
-                    <span className="text-white font-semibold text-sm">{company.companyName || company.name || `Company ${index + 1}`}</span>
+                    <span className="text-baltic-900 dark:text-white font-semibold text-sm">{company.companyName || company.name || `Company ${index + 1}`}</span>
                   </div>
-                  <span className="text-[9px] text-slate-400 bg-slate-700/50 px-1.5 py-0.5 rounded">
+                  <span className="text-[9px] text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded">
                     {company.currency}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <span className="text-slate-400">Revenue:</span>
+                    <span className="text-gray-600 dark:text-slate-400">Revenue:</span>
                     <p className="text-green-400 font-semibold">
                       {company.currency && company.revenue !== undefined 
                         ? `${getCurrencySymbol(company.currency)}${Number(company.revenue).toLocaleString()}`
                         : 'N/A'}
                     </p>
                     {company.revenueUSD !== undefined && company.currency !== 'USD' && (
-                      <p className="text-[9px] text-slate-500 mt-0.5">
+                      <p className="text-[9px] text-gray-500 dark:text-slate-500 mt-0.5">
                         ≈ ${company.revenueUSD.toLocaleString(undefined, {maximumFractionDigits: 2})} USD
                       </p>
                     )}
                   </div>
                   <div>
-                    <span className="text-slate-400">Entries:</span>
-                    <p className="text-blue-400 font-semibold">{company.entries.toLocaleString()}</p>
+                    <span className="text-gray-600 dark:text-slate-400">Entries:</span>
+                    <p className="text-blue-600 dark:text-blue-400 font-semibold">{company.entries.toLocaleString()}</p>
                   </div>
                   <div>
-                    <span className="text-slate-400">Vehicles:</span>
-                    <p className="text-purple-400 font-semibold">{company.vehicles}</p>
+                    <span className="text-gray-600 dark:text-slate-400">Vehicles:</span>
+                    <p className="text-purple-600 dark:text-purple-400 font-semibold">{company.vehicles}</p>
                   </div>
                   <div>
-                    <span className="text-slate-400">Users:</span>
-                    <p className="text-orange-400 font-semibold">{company.users}</p>
+                    <span className="text-gray-600 dark:text-slate-400">Users:</span>
+                    <p className="text-orange-600 dark:text-orange-400 font-semibold">{company.users}</p>
                   </div>
                 </div>
               </div>
@@ -1079,19 +1161,19 @@ This is an official communication from FleetTrack System Administration.
           <div className="hidden lg:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-700">
-                  <th className="text-left py-3 px-2 text-slate-300 font-semibold">Rank</th>
-                  <th className="text-left py-3 px-2 text-slate-300 font-semibold">Company</th>
-                  <th className="text-center py-3 px-2 text-slate-300 font-semibold">Currency</th>
-                  <th className="text-right py-3 px-2 text-slate-300 font-semibold">Revenue</th>
-                  <th className="text-right py-3 px-2 text-slate-300 font-semibold">Entries</th>
-                  <th className="text-right py-3 px-2 text-slate-300 font-semibold">Vehicles</th>
-                  <th className="text-right py-3 px-2 text-slate-300 font-semibold">Users</th>
+                <tr className="border-b-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                  <th className="text-left py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Rank</th>
+                  <th className="text-left py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Company</th>
+                  <th className="text-center py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Currency</th>
+                  <th className="text-right py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Revenue</th>
+                  <th className="text-right py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Entries</th>
+                  <th className="text-right py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Vehicles</th>
+                  <th className="text-right py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Users</th>
                 </tr>
               </thead>
               <tbody>
                 {stats.topPerformingCompanies.map((company, index) => (
-                  <tr key={index} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+                  <tr key={index} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30">
                     <td className="py-3 px-2">
                       <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
                         index === 0 ? 'bg-yellow-500 text-slate-900' :
@@ -1102,9 +1184,9 @@ This is an official communication from FleetTrack System Administration.
                         {index + 1}
                       </span>
                     </td>
-                    <td className="py-3 px-2 text-white font-medium">{company.companyName || company.name || `Company ${index + 1}`}</td>
+                    <td className="py-3 px-2 text-baltic-900 dark:text-white font-medium">{company.companyName || company.name || `Company ${index + 1}`}</td>
                     <td className="py-3 px-2 text-center">
-                      <span className="text-[10px] text-slate-400 bg-slate-700/50 px-2 py-0.5 rounded">
+                      <span className="text-[10px] text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 px-2 py-0.5 rounded">
                         {company.currency}
                       </span>
                     </td>
@@ -1116,48 +1198,48 @@ This is an official communication from FleetTrack System Administration.
                             : 'N/A'}
                         </p>
                         {company.revenueUSD !== undefined && company.currency !== 'USD' && (
-                          <p className="text-[9px] text-slate-500 mt-0.5">
+                          <p className="text-[9px] text-gray-500 dark:text-slate-500 mt-0.5">
                             ≈ ${company.revenueUSD.toLocaleString(undefined, {maximumFractionDigits: 2})} USD
                           </p>
                         )}
                       </div>
                     </td>
-                    <td className="py-3 px-2 text-right text-blue-400">{company.entries.toLocaleString()}</td>
-                    <td className="py-3 px-2 text-right text-purple-400">{company.vehicles}</td>
-                    <td className="py-3 px-2 text-right text-orange-400">{company.users}</td>
+                    <td className="py-3 px-2 text-right text-blue-600 dark:text-blue-400 font-semibold">{company.entries.toLocaleString()}</td>
+                    <td className="py-3 px-2 text-right text-purple-600 dark:text-purple-400 font-semibold">{company.vehicles}</td>
+                    <td className="py-3 px-2 text-right text-orange-600 dark:text-orange-400 font-semibold">{company.users}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+        </div>}
 
         {/* Underperforming Companies */}
         {stats.underperformingCompanies.length > 0 && (
-          <div className="bg-slate-800 rounded-lg p-3 border border-red-900/30">
-            <h2 className="text-sm font-bold text-white mb-1.5">⚠️ Companies Needing Attention</h2>
-            <p className="text-[10px] text-slate-400 mb-2">Low activity - may need support or engagement</p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border-2 border-red-200 dark:border-red-900/30 shadow-lg">
+            <h2 className="text-sm font-bold text-red-900 dark:text-white mb-1.5">⚠️ Companies Needing Attention</h2>
+            <p className="text-[10px] text-gray-600 dark:text-slate-400 mb-2">Low activity - may need support or engagement</p>
             
             {/* Mobile Card View */}
             <div className="lg:hidden space-y-3">
               {stats.underperformingCompanies.map((company, index) => (
-                <div key={index} className="bg-slate-900 rounded-lg p-3 border border-red-900/30">
+                <div key={index} className="bg-red-50 dark:bg-gray-700 rounded-lg p-3 border-2 border-red-200 dark:border-red-900/30">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-white font-semibold text-sm">{company.name}</span>
+                    <span className="text-baltic-900 dark:text-white font-semibold text-sm">{company.name}</span>
                     <span className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs">Low Activity</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div>
-                      <span className="text-slate-400">Users:</span>
-                      <p className="text-slate-300 font-semibold">{company.users}</p>
+                      <span className="text-gray-600 dark:text-slate-400">Users:</span>
+                      <p className="text-baltic-900 dark:text-slate-300 font-semibold">{company.users}</p>
                     </div>
                     <div>
-                      <span className="text-slate-400">Vehicles:</span>
-                      <p className="text-slate-300 font-semibold">{company.vehicles}</p>
+                      <span className="text-gray-600 dark:text-slate-400">Vehicles:</span>
+                      <p className="text-baltic-900 dark:text-slate-300 font-semibold">{company.vehicles}</p>
                     </div>
                     <div>
-                      <span className="text-slate-400">Entries:</span>
-                      <p className="text-orange-400 font-semibold">{company.entries}</p>
+                      <span className="text-gray-600 dark:text-slate-400">Entries:</span>
+                      <p className="text-orange-600 dark:text-orange-400 font-semibold">{company.entries}</p>
                     </div>
                   </div>
                 </div>
@@ -1168,21 +1250,21 @@ This is an official communication from FleetTrack System Administration.
             <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-700">
-                    <th className="text-left py-3 px-2 text-slate-300 font-semibold">Company</th>
-                    <th className="text-right py-3 px-2 text-slate-300 font-semibold">Users</th>
-                    <th className="text-right py-3 px-2 text-slate-300 font-semibold">Vehicles</th>
-                    <th className="text-right py-3 px-2 text-slate-300 font-semibold">Entries</th>
-                    <th className="text-right py-3 px-2 text-slate-300 font-semibold">Status</th>
+                  <tr className="border-b-2 border-gray-200 dark:border-gray-700 bg-red-50 dark:bg-gray-900">
+                    <th className="text-left py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Company</th>
+                    <th className="text-right py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Users</th>
+                    <th className="text-right py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Vehicles</th>
+                    <th className="text-right py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Entries</th>
+                    <th className="text-right py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {stats.underperformingCompanies.map((company, index) => (
-                    <tr key={index} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                      <td className="py-3 px-2 text-white">{company.name}</td>
-                      <td className="py-3 px-2 text-right text-slate-300">{company.users}</td>
-                      <td className="py-3 px-2 text-right text-slate-300">{company.vehicles}</td>
-                      <td className="py-3 px-2 text-right text-orange-400">{company.entries}</td>
+                    <tr key={index} className="border-b border-gray-200 dark:border-gray-700 hover:bg-red-50 dark:hover:bg-gray-700/30">
+                      <td className="py-3 px-2 text-baltic-900 dark:text-white font-medium">{company.name}</td>
+                      <td className="py-3 px-2 text-right text-baltic-900 dark:text-gray-300">{company.users}</td>
+                      <td className="py-3 px-2 text-right text-baltic-900 dark:text-gray-300">{company.vehicles}</td>
+                      <td className="py-3 px-2 text-right text-orange-600 dark:text-orange-400 font-semibold">{company.entries}</td>
                       <td className="py-3 px-2 text-right">
                         <span className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs">
                           Low Activity
@@ -1197,14 +1279,14 @@ This is an official communication from FleetTrack System Administration.
         )}
 
         {/* Users by Role */}
-        <div className="bg-slate-800 rounded-lg p-4 sm:p-6 border border-slate-700">
-          <h2 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">User Distribution by Role</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 border-2 border-gray-200 dark:border-gray-700 shadow-lg">
+          <h2 className="text-lg sm:text-xl font-bold text-baltic-900 dark:text-white mb-3 sm:mb-4">User Distribution by Role</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {Object.entries(stats.usersByRole).map(([role, count]) => (
-              <div key={role} className="bg-slate-900 rounded-lg p-4 border border-slate-700">
-                <p className="text-sm text-slate-400 mb-1 capitalize">{role.replace('_', ' ')}</p>
-                <p className="text-2xl font-bold text-white">{count}</p>
-                <p className="text-xs text-slate-500 mt-1">
+              <div key={role} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border-2 border-gray-200 dark:border-gray-600">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 capitalize">{role.replace('_', ' ')}</p>
+                <p className="text-2xl font-bold text-baltic-900 dark:text-white">{count}</p>
+                <p className="text-xs text-gray-500 dark:text-slate-500 mt-1">
                   {((count / stats.totalUsers) * 100).toFixed(1)}%
                 </p>
               </div>
@@ -1213,19 +1295,19 @@ This is an official communication from FleetTrack System Administration.
         </div>
 
         {/* Cities Distribution */}
-        <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
-          <h2 className="text-sm font-bold text-white mb-2">🏙️ Top Cities</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border-2 border-gray-200 dark:border-gray-700 shadow-lg">
+          <h2 className="text-sm font-bold text-baltic-900 dark:text-white mb-2">🏙️ Top Cities</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2.5">
             {Object.entries(stats.companiesByCity)
               .sort((a, b) => b[1] - a[1])
               .slice(0, 6)
               .map(([city, count]) => (
-                <div key={city} className="bg-slate-900 rounded-lg p-2.5 border border-slate-700">
+                <div key={city} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-2.5 border-2 border-gray-200 dark:border-gray-600">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-300 text-xs">{city}</span>
-                    <span className="text-brand-400 font-bold text-base">{count}</span>
+                    <span className="text-gray-700 dark:text-slate-300 text-xs">{city}</span>
+                    <span className="text-brand-600 dark:text-brand-400 font-bold text-base">{count}</span>
                   </div>
-                  <div className="mt-1.5 w-full bg-slate-800 rounded-full h-1.5">
+                  <div className="mt-1.5 w-full bg-gray-200 dark:bg-slate-800 rounded-full h-1.5">
                     <div 
                       className="bg-brand-500 h-1.5 rounded-full"
                       style={{ width: `${(count / stats.totalCompanies) * 100}%` }}
@@ -1240,12 +1322,12 @@ This is an official communication from FleetTrack System Administration.
 
         {/* Companies Tab */}
         {activeTab === 'companies' && (
-          <div className="bg-slate-800 rounded-lg p-4 sm:p-6 border border-slate-700">
-            <h2 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 border-2 border-gray-200 dark:border-gray-700 shadow-xl">
+            <h2 className="text-lg sm:text-xl font-bold text-baltic-900 dark:text-white mb-3 sm:mb-4">
               All Companies ({companies.length})
             </h2>
             {companies.length === 0 ? (
-              <p className="text-slate-400 text-center py-8">No companies registered yet</p>
+              <p className="text-gray-600 dark:text-gray-400 text-center py-8">No companies registered yet</p>
             ) : (
               <>
                 {/* Mobile Card View */}
@@ -1254,11 +1336,11 @@ This is an official communication from FleetTrack System Administration.
                     const companyUsers = users.filter(u => u.companyId === company.id);
                     const companyVehicles = users.filter(u => u.companyId === company.id).length;
                     return (
-                      <div key={company.id} className="bg-slate-900 rounded-lg p-3 border border-slate-700">
+                      <div key={company.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border-2 border-gray-200 dark:border-gray-600">
                         <div className="flex items-center justify-between mb-2">
                           <div>
-                            <p className="text-white font-semibold text-sm">{company.name || 'Unnamed Company'}</p>
-                            <p className="text-slate-400 text-xs">{company.country || 'Not Set'}</p>
+                            <p className="text-baltic-900 dark:text-white font-semibold text-sm">{company.name || 'Unnamed Company'}</p>
+                            <p className="text-gray-600 dark:text-gray-400 text-xs">{company.country || 'Not Set'}</p>
                           </div>
                           <span className={`px-2 py-1 rounded text-xs ${
                             company.isActive !== false
@@ -1270,15 +1352,15 @@ This is an official communication from FleetTrack System Administration.
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-xs mb-3">
                           <div>
-                            <span className="text-slate-400">City:</span>
-                            <p className="text-slate-300">{company.address?.city || 'Not Set'}</p>
+                            <span className="text-gray-600 dark:text-gray-400">City:</span>
+                            <p className="text-baltic-900 dark:text-gray-300">{company.address?.city || 'Not Set'}</p>
                           </div>
                           <div>
-                            <span className="text-slate-400">Users:</span>
+                            <span className="text-gray-600 dark:text-gray-400">Users:</span>
                             <p className="text-slate-300 font-semibold">{companyUsers.length}</p>
                           </div>
                           <div>
-                            <span className="text-slate-400">Vehicles:</span>
+                            <span className="text-gray-600 dark:text-gray-400">Vehicles:</span>
                             <p className="text-slate-300 font-semibold">{companyVehicles}</p>
                           </div>
                         </div>
@@ -1291,10 +1373,17 @@ This is an official communication from FleetTrack System Administration.
                           </button>
                           <button
                             onClick={() => handleWipeDataRequest(company.id, company.name)}
-                            className="flex-1 px-3 py-1.5 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 text-xs transition"
+                            className="flex-1 px-3 py-1.5 bg-orange-500/20 text-orange-400 rounded hover:bg-orange-500/30 text-xs transition"
                             title="Reset captured data"
                           >
                             Reset Data
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCompany(company.id, company.name)}
+                            className="flex-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs transition"
+                            title="Delete company and all data"
+                          >
+                            Delete
                           </button>
                         </div>
                       </div>
@@ -1307,13 +1396,14 @@ This is an official communication from FleetTrack System Administration.
                   <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-700">
-                      <th className="text-left py-3 px-2 text-slate-300 font-semibold">Company</th>
-                      <th className="text-left py-3 px-2 text-slate-300 font-semibold">Country</th>
-                      <th className="text-left py-3 px-2 text-slate-300 font-semibold">City</th>
-                      <th className="text-right py-3 px-2 text-slate-300 font-semibold">Users</th>
-                      <th className="text-right py-3 px-2 text-slate-300 font-semibold">Vehicles</th>
-                      <th className="text-right py-3 px-2 text-slate-300 font-semibold">Status</th>
-                      <th className="text-right py-3 px-2 text-slate-300 font-semibold">Actions</th>
+                      <th className="text-left py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Company</th>
+                      <th className="text-left py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Country</th>
+                      <th className="text-left py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">City</th>
+                      <th className="text-right py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Users</th>
+                      <th className="text-right py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Vehicles</th>
+                      <th className="text-center py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">AI Insights</th>
+                      <th className="text-right py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Status</th>
+                      <th className="text-right py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1321,12 +1411,35 @@ This is an official communication from FleetTrack System Administration.
                       const companyUsers = users.filter(u => u.companyId === company.id);
                       const companyVehicles = users.filter(u => u.companyId === company.id).length;
                       return (
-                        <tr key={company.id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                          <td className="py-3 px-2 text-white font-medium">{company.name || 'Unnamed Company'}</td>
-                          <td className="py-3 px-2 text-slate-300">{company.country || 'Not Set'}</td>
-                          <td className="py-3 px-2 text-slate-300">{company.address?.city || 'Not Set'}</td>
-                          <td className="py-3 px-2 text-right text-slate-300">{companyUsers.length}</td>
-                          <td className="py-3 px-2 text-right text-slate-300">{companyVehicles}</td>
+                        <tr key={company.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                          <td className="py-3 px-2 text-baltic-900 dark:text-white font-medium">{company.name || 'Unnamed Company'}</td>
+                          <td className="py-3 px-2 text-baltic-900 dark:text-gray-300">{company.country || 'Not Set'}</td>
+                          <td className="py-3 px-2 text-baltic-900 dark:text-gray-300">{company.address?.city || 'Not Set'}</td>
+                          <td className="py-3 px-2 text-right text-baltic-900 dark:text-gray-300">{companyUsers.length}</td>
+                          <td className="py-3 px-2 text-right text-baltic-900 dark:text-gray-300">{companyVehicles}</td>
+                          <td className="py-3 px-2 text-center">
+                            <button
+                              onClick={() => handleToggleAIInsights(company.id, !company.aiInsightsEnabled)}
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                company.aiInsightsEnabled
+                                  ? 'bg-baltic-500'
+                                  : 'bg-gray-300 dark:bg-gray-600'
+                              }`}
+                              title={company.aiInsightsEnabled ? 'AI Insights Enabled' : 'AI Insights Disabled'}
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                  company.aiInsightsEnabled ? 'translate-x-6' : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                            {company.aiInsightsEnabled && (
+                              <div className="mt-1 flex items-center justify-center gap-1 text-xs text-baltic-600 dark:text-baltic-400">
+                                <Brain className="h-3 w-3" />
+                                <span>Active</span>
+                              </div>
+                            )}
+                          </td>
                           <td className="py-3 px-2 text-right">
                             <span className={`px-2 py-1 rounded text-xs ${
                               company.isActive !== false
@@ -1346,10 +1459,17 @@ This is an official communication from FleetTrack System Administration.
                               </button>
                               <button
                                 onClick={() => handleWipeDataRequest(company.id, company.name)}
-                                className="px-3 py-1 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 text-xs"
+                                className="px-3 py-1 bg-orange-500/20 text-orange-400 rounded hover:bg-orange-500/30 text-xs"
                                 title="Reset captured data"
                               >
                                 Reset Data
+                              </button>
+                              <button
+                                onClick={() => handleDeleteCompany(company.id, company.name)}
+                                className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs"
+                                title="Delete company and all data"
+                              >
+                                Delete
                               </button>
                             </div>
                           </td>
@@ -1366,12 +1486,12 @@ This is an official communication from FleetTrack System Administration.
 
         {/* Users Tab */}
         {activeTab === 'users' && (
-          <div className="bg-slate-800 rounded-lg p-4 sm:p-6 border border-slate-700">
-            <h2 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 border-2 border-gray-200 dark:border-gray-700 shadow-xl">
+            <h2 className="text-lg sm:text-xl font-bold text-baltic-900 dark:text-white mb-3 sm:mb-4">
               All Users ({users.length})
             </h2>
             {users.length === 0 ? (
-              <p className="text-slate-400 text-center py-8">No users registered yet</p>
+              <p className="text-gray-600 dark:text-gray-400 text-center py-8">No users registered yet</p>
             ) : (
               <>
                 {/* Mobile Card View */}
@@ -1379,12 +1499,12 @@ This is an official communication from FleetTrack System Administration.
                   {users.map((user) => {
                     const userCompany = companies.find(c => c.id === user.companyId);
                     return (
-                      <div key={user.id} className="bg-slate-900 rounded-lg p-3 border border-slate-700">
+                      <div key={user.id} className="bg-white dark:bg-gray-800 rounded-lg p-3 border-2 border-gray-200 dark:border-gray-700 shadow-md">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex-1 min-w-0">
-                            <p className="text-white font-semibold text-sm">{user.fullName || user.displayName || user.email?.split('@')[0] || 'No Name'}</p>
+                            <p className="text-baltic-900 dark:text-white font-semibold text-sm">{user.fullName || user.displayName || user.email?.split('@')[0] || 'No Name'}</p>
                             <div className="flex items-center gap-1 mt-1">
-                              <p className="text-slate-400 text-xs truncate">
+                              <p className="text-gray-600 dark:text-gray-400 text-xs truncate">
                                 {visibleEmails[user.id] ? (user.email || 'No Email') : maskEmail(user.email)}
                               </p>
                               <button
@@ -1415,13 +1535,13 @@ This is an official communication from FleetTrack System Administration.
                         </div>
                         <div className="space-y-2 text-xs mb-3">
                           <div className="flex justify-between">
-                            <span className="text-slate-400">Company:</span>
-                            <span className="text-slate-300">{userCompany?.name || 'No Company'}</span>
+                            <span className="text-gray-600 dark:text-gray-400">Company:</span>
+                            <span className="text-baltic-900 dark:text-gray-300">{userCompany?.name || 'No Company'}</span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-slate-400">Phone:</span>
+                            <span className="text-gray-600 dark:text-gray-400">Phone:</span>
                             <div className="flex items-center gap-1">
-                              <span className="text-slate-300">
+                              <span className="text-baltic-900 dark:text-gray-300">
                                 {visiblePhones[user.id] ? (user.phoneNumber || '-') : maskPhone(user.phoneNumber)}
                               </span>
                               <button
@@ -1443,7 +1563,7 @@ This is an official communication from FleetTrack System Administration.
                             </div>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-slate-400">Role:</span>
+                            <span className="text-gray-600 dark:text-gray-400">Role:</span>
                             <select
                               value={user.role || 'company_user'}
                               onChange={(e) => handleUpdateUserRole(user.id, e.target.value, user.fullName || user.displayName || user.email)}
@@ -1456,7 +1576,7 @@ This is an official communication from FleetTrack System Administration.
                             </select>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-slate-400">Last Seen:</span>
+                            <span className="text-gray-600 dark:text-gray-400">Last Seen:</span>
                             {(() => {
                               const lastSeen = formatRelativeTime(user.lastLoginAt);
                               const isRecent = user.lastLoginAt && (Date.now() - user.lastLoginAt) < 24 * 60 * 60 * 1000;
@@ -1511,14 +1631,14 @@ This is an official communication from FleetTrack System Administration.
                 <div className="hidden lg:block overflow-x-auto">
                   <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-700">
-                      <th className="text-left py-3 px-2 text-slate-300 font-semibold">Name</th>
-                      <th className="text-left py-3 px-2 text-slate-300 font-semibold">Email</th>
-                      <th className="text-left py-3 px-2 text-slate-300 font-semibold">Phone</th>
-                      <th className="text-left py-3 px-2 text-slate-300 font-semibold">Company</th>
-                      <th className="text-left py-3 px-2 text-slate-300 font-semibold">Role</th>
-                      <th className="text-left py-3 px-2 text-slate-300 font-semibold">Last Seen</th>
-                      <th className="text-left py-3 px-2 text-slate-300 font-semibold">Status</th>
+                    <tr className="border-b-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                      <th className="text-left py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Name</th>
+                      <th className="text-left py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Email</th>
+                      <th className="text-left py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Phone</th>
+                      <th className="text-left py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Company</th>
+                      <th className="text-left py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Role</th>
+                      <th className="text-left py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Last Seen</th>
+                      <th className="text-left py-3 px-2 text-baltic-900 dark:text-gray-300 font-semibold">Status</th>
                       <th className="text-right py-3 px-2 text-slate-300 font-semibold">Actions</th>
                     </tr>
                   </thead>
@@ -1526,11 +1646,11 @@ This is an official communication from FleetTrack System Administration.
                     {users.map((user) => {
                       const userCompany = companies.find(c => c.id === user.companyId);
                       return (
-                        <tr key={user.id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                          <td className="py-3 px-2 text-white">{user.fullName || user.displayName || user.email?.split('@')[0] || 'No Name'}</td>
+                        <tr key={user.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                          <td className="py-3 px-2 text-baltic-900 dark:text-white font-medium">{user.fullName || user.displayName || user.email?.split('@')[0] || 'No Name'}</td>
                           <td className="py-3 px-2">
                             <div className="flex items-center gap-2">
-                              <span className="text-slate-300">
+                              <span className="text-baltic-900 dark:text-gray-300">
                                 {visibleEmails[user.id] ? (user.email || 'No Email') : maskEmail(user.email)}
                               </span>
                               <button
@@ -1553,7 +1673,7 @@ This is an official communication from FleetTrack System Administration.
                           </td>
                           <td className="py-3 px-2">
                             <div className="flex items-center gap-2">
-                              <span className="text-slate-300">
+                              <span className="text-baltic-900 dark:text-gray-300">
                                 {visiblePhones[user.id] ? (user.phoneNumber || '-') : maskPhone(user.phoneNumber)}
                               </span>
                               <button
@@ -1689,6 +1809,53 @@ This is an official communication from FleetTrack System Administration.
                 className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition font-medium"
               >
                 Delete User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Company Confirmation Modal */}
+      {deleteCompanyModal.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border-2 border-red-500 dark:border-red-500/30 p-6 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500/20">
+                <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-baltic-900 dark:text-white">Delete Company</h3>
+            </div>
+            
+            <p className="text-baltic-900 dark:text-slate-300 mb-6">
+              Are you sure you want to permanently delete <span className="font-semibold text-red-600 dark:text-red-400">{deleteCompanyModal.companyName}</span>?
+              <br /><br />
+              <span className="font-semibold text-red-600 dark:text-red-400">⚠️ WARNING:</span> This will delete:
+              <ul className="list-disc ml-6 mt-2 space-y-1">
+                <li>The company record</li>
+                <li>All users in this company</li>
+                <li>All vehicles</li>
+                <li>All daily entries</li>
+                <li>All expenses</li>
+                <li>All other related data</li>
+              </ul>
+              <br />
+              <span className="font-semibold text-red-600 dark:text-red-400">This action cannot be undone!</span>
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={cancelDeleteCompany}
+                className="flex-1 px-4 py-2.5 bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 text-baltic-900 dark:text-white rounded-lg transition font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteCompany}
+                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition font-medium"
+              >
+                Delete Company
               </button>
             </div>
           </div>

@@ -10,8 +10,10 @@ import {
   where,
   orderBy,
   serverTimestamp,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { softDelete } from "./dataRecoveryService";
 
 const VEHICLES_COLLECTION = "vehicles";
 
@@ -29,18 +31,38 @@ const VEHICLES_COLLECTION = "vehicles";
  */
 export const createVehicle = async (userId, companyId, vehicleData) => {
   try {
-    const vehicleRef = await addDoc(collection(db, VEHICLES_COLLECTION), {
+    // Build vehicle document with all fields from vehicleData
+    const vehicleDoc = {
       userId,
       companyId: companyId || null,
       name: vehicleData.name,
       registrationNumber: vehicleData.registrationNumber,
       model: vehicleData.model,
-      year: vehicleData.year,
-      serviceAlertThreshold: vehicleData.serviceAlertThreshold || 5000,
-      lastServiceMileage: 0,
+      year: vehicleData.year || null,
+      // Vehicle type - critical for filtering (fuelTruck, lpGasTruck, taxi, courier, etc.)
+      vehicleType: vehicleData.vehicleType || 'taxi',
+      // Service tracking
+      serviceInterval: vehicleData.serviceInterval || 5000,
+      serviceAlertThreshold: vehicleData.serviceAlertThreshold || vehicleData.serviceInterval || 5000,
+      lastServiceMileage: vehicleData.lastServiceMileage || 0,
+      // Mileage tracking (optional - can be updated later)
+      currentMileage: vehicleData.currentMileage ? parseInt(vehicleData.currentMileage) : null,
+      currentOdometer: vehicleData.currentMileage ? parseInt(vehicleData.currentMileage) : null,
+      nextServiceMileage: vehicleData.nextServiceMileage ? parseInt(vehicleData.nextServiceMileage) : null,
+      // Disc/Roadworthiness expiry (optional)
+      discExpiryDate: vehicleData.discExpiryDate || null,
+      roadworthinessExpiryDate: vehicleData.discExpiryDate || null,
+      // Soft delete fields
+      deleted: false,
+      deletedAt: null,
+      deletedBy: null,
+      // Timestamps
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    });
+    };
+
+    const vehicleRef = await addDoc(collection(db, VEHICLES_COLLECTION), vehicleDoc);
+    console.log('✅ Vehicle created with full data:', { id: vehicleRef.id, vehicleType: vehicleDoc.vehicleType });
     return vehicleRef.id;
   } catch (error) {
     console.error("Error creating vehicle:", error);
@@ -55,6 +77,8 @@ export const createVehicle = async (userId, companyId, vehicleData) => {
  */
 export const getVehicles = async (userId) => {
   try {
+    // Query all vehicles for user, then filter out deleted ones client-side
+    // This handles vehicles that don't have the 'deleted' field yet
     const q = query(
       collection(db, VEHICLES_COLLECTION),
       where("userId", "==", userId)
@@ -63,11 +87,14 @@ export const getVehicles = async (userId) => {
     const vehicles = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      vehicles.push({
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-      });
+      // Only include vehicles that are NOT deleted (deleted !== true)
+      if (data.deleted !== true) {
+        vehicles.push({
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+        });
+      }
     });
     // Sort client-side by createdAt descending
     vehicles.sort((a, b) => {
@@ -89,6 +116,8 @@ export const getVehicles = async (userId) => {
  */
 export const getCompanyVehicles = async (companyId) => {
   try {
+    // Query all vehicles for company, then filter out deleted ones client-side
+    // This handles vehicles that don't have the 'deleted' field yet
     const q = query(
       collection(db, VEHICLES_COLLECTION),
       where("companyId", "==", companyId)
@@ -97,11 +126,15 @@ export const getCompanyVehicles = async (companyId) => {
     const vehicles = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      vehicles.push({
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-      });
+      // Only include vehicles that are NOT deleted (deleted !== true)
+      // This handles: deleted=false, deleted=undefined, deleted=null
+      if (data.deleted !== true) {
+        vehicles.push({
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+        });
+      }
     });
     // Sort client-side by createdAt descending
     vehicles.sort((a, b) => {
@@ -165,16 +198,31 @@ export const updateVehicle = async (userId, vehicleId, vehicleData) => {
 };
 
 /**
- * Delete a vehicle
+ * Delete a vehicle (soft delete - can be recovered by System Admin)
+ * @param {string} vehicleId - The vehicle's ID
+ * @param {string} userId - The user performing the delete
+ * @returns {Promise<void>}
+ */
+export const deleteVehicle = async (vehicleId, userId) => {
+  try {
+    await softDelete('vehicles', vehicleId, userId);
+  } catch (error) {
+    console.error("Error deleting vehicle:", error);
+    throw error;
+  }
+};
+
+/**
+ * Permanently delete a vehicle (cannot be recovered)
  * @param {string} vehicleId - The vehicle's ID
  * @returns {Promise<void>}
  */
-export const deleteVehicle = async (vehicleId) => {
+export const permanentDeleteVehicle = async (vehicleId) => {
   try {
     const vehicleRef = doc(db, VEHICLES_COLLECTION, vehicleId);
     await deleteDoc(vehicleRef);
   } catch (error) {
-    console.error("Error deleting vehicle:", error);
+    console.error("Error permanently deleting vehicle:", error);
     throw error;
   }
 };

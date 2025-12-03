@@ -52,9 +52,14 @@ service cloud.firestore {
       allow create: if isAuthenticated() &&
                       request.resource.data.ownerId == request.auth.uid;
       
-      // Admins and company owners can update
+      // Admins, company owners, and company managers can update
       allow update: if isAdmin() || 
-                       (isAuthenticated() && resource.data.ownerId == request.auth.uid);
+                       (isAuthenticated() && resource.data.ownerId == request.auth.uid) ||
+                       (isAuthenticated() && 
+                        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId &&
+                        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin' ||
+                         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_manager'));
       
       // Only admins can delete companies
       allow delete: if isAdmin();
@@ -103,10 +108,11 @@ service cloud.firestore {
     
     // Vehicles collection rules
     match /vehicles/{vehicleId} {
-      // Allow read if user has company access or owns the vehicle
+      // Allow read if user has company access, owns the vehicle, or is system admin
       allow read: if isAuthenticated() && (
                      resource.data.userId == request.auth.uid ||
-                     hasCompanyAccess(resource.data.companyId)
+                     hasCompanyAccess(resource.data.companyId) ||
+                     isSystemAdmin()
                    );
       
       // Allow create if user is authenticated (with or without company)
@@ -336,6 +342,43 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'system_admin';
     }
     
+    // User Profiles collection rules
+    // Additional profile data (may overlap with users collection)
+    match /userProfiles/{profileId} {
+      // Allow read if user is reading their own profile, admin, or same company
+      allow read: if isAuthenticated() && (
+        request.auth.uid == profileId ||
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         exists(/databases/$(database)/documents/userProfiles/$(profileId)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == get(/databases/$(database)/documents/userProfiles/$(profileId)).data.companyId)
+      );
+      
+      // Allow list for admins and company managers
+      allow list: if isAuthenticated() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_manager'))
+      );
+      
+      // Users can create their own profile
+      allow create: if isAuthenticated() && request.auth.uid == profileId;
+      
+      // Users can update their own profile, admins and company admins can update profiles in their company
+      allow update: if isAuthenticated() && (
+        request.auth.uid == profileId ||
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         exists(/databases/$(database)/documents/userProfiles/$(profileId)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == get(/databases/$(database)/documents/userProfiles/$(profileId)).data.companyId &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin')
+      );
+      
+      // Only system admins can delete user profiles
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+    
     // Acknowledged Gaps collection rules
     // Managers can acknowledge/note mileage gaps to mark them as reviewed
     match /acknowledgedGaps/{gapId} {
@@ -356,6 +399,315 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'system_admin';
+    }
+    
+    // ========================================
+    // COMMODITY TRACKING COLLECTIONS
+    // ========================================
+    
+    // Load Events collection rules
+    // Tracks fuel loading at depot/supplier
+    match /loadEvents/{loadId} {
+      // Allow read if user has company access
+      allow read: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow list/query for company users (needed for mileage tracking)
+      allow list: if isAuthenticated() && 
+                     request.auth.uid != null &&
+                     exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      
+      // Allow create if user has company access and validates required fields
+      allow create: if isAuthenticated() &&
+                      hasCompanyAccess(request.resource.data.companyId) &&
+                      request.resource.data.vehicleId is string &&
+                      request.resource.data.commodityType is string &&
+                      request.resource.data.loadQuantity is number &&
+                      request.resource.data.loadQuantity > 0 &&
+                      request.resource.data.tankReadingBefore is number &&
+                      request.resource.data.tankReadingAfter is number &&
+                      request.resource.data.tankReadingAfter >= request.resource.data.tankReadingBefore;
+      
+      // Allow update if user has company access
+      allow update: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow delete if user is company admin, company manager, or system admin
+      allow delete: if isAuthenticated() && (
+        isAdmin() ||
+        (hasCompanyAccess(resource.data.companyId) &&
+         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_manager'))
+      );
+    }
+    
+    // Offload Events collection rules
+    // Tracks fuel delivery to customers
+    match /offloadEvents/{offloadId} {
+      // Allow read if user has company access
+      allow read: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow list/query for company users (needed for mileage tracking)
+      allow list: if isAuthenticated() && 
+                     request.auth.uid != null &&
+                     exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      
+      // Allow create if user has company access and validates required fields
+      allow create: if isAuthenticated() &&
+                      hasCompanyAccess(request.resource.data.companyId) &&
+                      request.resource.data.loadEventId is string &&
+                      request.resource.data.vehicleId is string &&
+                      request.resource.data.offloadQuantity is number &&
+                      request.resource.data.offloadQuantity > 0 &&
+                      request.resource.data.tankReadingBefore is number &&
+                      request.resource.data.tankReadingBefore >= 0 &&
+                      request.resource.data.tankReadingAfter is number &&
+                      request.resource.data.tankReadingAfter >= 0 &&
+                      request.resource.data.createdBy is string &&
+                      request.resource.data.createdBy == request.auth.uid &&
+                      (!('driverId' in request.resource.data) || request.resource.data.driverId is string);
+      
+      // Allow update if user has company access
+      allow update: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow delete if user is company admin, company manager, or system admin
+      allow delete: if isAuthenticated() && (
+        isAdmin() ||
+        (hasCompanyAccess(resource.data.companyId) &&
+         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_manager'))
+      );
+    }
+    
+    // Invoices collection rules
+    // Billing and payment tracking
+    match /invoices/{invoiceId} {
+      // Allow read if user has company access
+      allow read: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow list for authenticated company users
+      allow list: if isAuthenticated() && 
+                     request.auth.uid != null &&
+                     exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId != null;
+      
+      // Allow create if user has company access - simplified
+      allow create: if isAuthenticated() &&
+                      request.resource.data.companyId is string &&
+                      hasCompanyAccess(request.resource.data.companyId);
+      
+      // Allow update if user has company access
+      allow update: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow delete if user is company admin, company manager, or system admin
+      allow delete: if isAuthenticated() && (
+        isAdmin() ||
+        (hasCompanyAccess(resource.data.companyId) &&
+         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_manager'))
+      );
+    }
+    
+    // Payments collection rules
+    // Track payments received
+    match /payments/{paymentId} {
+      // Allow read if user has company access
+      allow read: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow list for authenticated company users
+      allow list: if isAuthenticated() && 
+                     request.auth.uid != null &&
+                     exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId != null;
+      
+      // Allow create if user has company access - simplified
+      allow create: if isAuthenticated() &&
+                      request.resource.data.companyId is string &&
+                      hasCompanyAccess(request.resource.data.companyId);
+      
+      // Allow update if user has company access
+      allow update: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow delete if user is company admin, company manager, or system admin
+      allow delete: if isAuthenticated() && (
+        isAdmin() ||
+        (hasCompanyAccess(resource.data.companyId) &&
+         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_manager'))
+      );
+    }
+    
+    // Reconciliation Reports collection rules
+    // Detailed audit trail for investigations
+    match /reconciliationReports/{reportId} {
+      // Allow read if user has company access
+      allow read: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow create if user has company access
+      allow create: if isAuthenticated() &&
+                      hasCompanyAccess(request.resource.data.companyId) &&
+                      request.resource.data.loadEventId is string &&
+                      request.resource.data.offloadEventId is string;
+      
+      // Allow update if user has company access
+      allow update: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow delete if user is company admin, company manager, or system admin
+      allow delete: if isAuthenticated() && (
+        isAdmin() ||
+        (hasCompanyAccess(resource.data.companyId) &&
+         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_manager'))
+      );
+    }
+    
+    // Tank Discrepancy Alerts Collection
+    match /tankDiscrepancyAlerts/{alertId} {
+      // Allow read if user has company access
+      allow read: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow list for company users
+      allow list: if isAuthenticated() && 
+                     request.auth.uid != null &&
+                     exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      
+      // Allow create by authenticated users with company access
+      allow create: if isAuthenticated() &&
+                      hasCompanyAccess(request.resource.data.companyId) &&
+                      request.resource.data.offloadEventId is string &&
+                      request.resource.data.alertType is string;
+      
+      // Allow update if user has company access (for acknowledging alerts)
+      allow update: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow delete if user is company admin, company manager, or system admin
+      allow delete: if isAuthenticated() && (
+        isAdmin() ||
+        (hasCompanyAccess(resource.data.companyId) &&
+         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_manager'))
+      );
+    }
+    
+    // Return Trips Collection
+    match /returnTrips/{returnTripId} {
+      // Allow read if user has company access
+      allow read: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow list for company users
+      allow list: if isAuthenticated() && 
+                     request.auth.uid != null &&
+                     exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      
+      // Allow create by authenticated users with company access
+      allow create: if isAuthenticated() &&
+                      hasCompanyAccess(request.resource.data.companyId) &&
+                      request.resource.data.offloadEventId is string &&
+                      request.resource.data.vehicleId is string &&
+                      request.resource.data.mileageAtCustomer is number &&
+                      request.resource.data.mileageAtDepot is number &&
+                      request.resource.data.mileageAtDepot > request.resource.data.mileageAtCustomer &&
+                      request.resource.data.createdBy is string &&
+                      request.resource.data.createdBy == request.auth.uid;
+      
+      // Allow update if user has company access
+      allow update: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow delete if user is company admin, company manager, or system admin
+      allow delete: if isAuthenticated() && (
+        isAdmin() ||
+        (hasCompanyAccess(resource.data.companyId) &&
+         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_manager'))
+      );
+    }
+    
+    // Trip Expenses Collection
+    // Track expenses for commodity trips (fuel, tolls, maintenance, etc.)
+    match /tripExpenses/{expenseId} {
+      // Allow read if user has company access
+      allow read: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow list for authenticated company users
+      allow list: if isAuthenticated() && 
+                     request.auth.uid != null &&
+                     exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId != null;
+      
+      // Allow create by authenticated users with company access
+      allow create: if isAuthenticated() &&
+                      hasCompanyAccess(request.resource.data.companyId) &&
+                      request.resource.data.loadEventId is string &&
+                      request.resource.data.vehicleId is string &&
+                      request.resource.data.expenseType is string &&
+                      request.resource.data.amount is number &&
+                      request.resource.data.amount > 0 &&
+                      request.resource.data.createdBy is string &&
+                      request.resource.data.createdBy == request.auth.uid;
+      
+      // Allow update if user has company access
+      allow update: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      
+      // Allow delete if user is company admin, company manager, or system admin
+      allow delete: if isAuthenticated() && (
+        isAdmin() ||
+        (hasCompanyAccess(resource.data.companyId) &&
+         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_manager'))
+      );
+    }
+    
+    // Support Tickets Collection
+    // Allow any authenticated user to create support tickets
+    // Only system admins can view and manage tickets
+    match /supportTickets/{ticketId} {
+      // Any authenticated user can create a support ticket
+      allow create: if isAuthenticated() &&
+                      request.resource.data.userId is string &&
+                      request.resource.data.userEmail is string &&
+                      request.resource.data.userName is string &&
+                      request.resource.data.subject is string &&
+                      request.resource.data.message is string &&
+                      request.resource.data.priority is string &&
+                      request.resource.data.status is string;
+      
+      // Only system admins can read support tickets
+      allow read: if isAuthenticated() && isAdmin();
+      
+      // Only system admins can list support tickets
+      allow list: if isAuthenticated() && isAdmin();
+      
+      // Only system admins can update ticket status
+      allow update: if isAuthenticated() && isAdmin();
+      
+      // Only system admins can delete tickets
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+    
+    // Support Replies Collection
+    // Track admin replies to support tickets
+    match /supportReplies/{replyId} {
+      // Only system admins can create replies
+      allow create: if isAuthenticated() && isAdmin() &&
+                      request.resource.data.ticketId is string &&
+                      request.resource.data.userEmail is string &&
+                      request.resource.data.replyMessage is string &&
+                      request.resource.data.repliedBy is string;
+      
+      // Only system admins can read replies
+      allow read: if isAuthenticated() && isAdmin();
+      
+      // Only system admins can list replies
+      allow list: if isAuthenticated() && isAdmin();
+      
+      // Only system admins can delete replies
+      allow delete: if isAuthenticated() && isAdmin();
     }
     
     // Deny all other access by default
