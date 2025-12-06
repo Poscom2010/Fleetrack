@@ -3,9 +3,6 @@ node_modules
 node_modules/
 /.pnp
 .pnp.js
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
 
 # Build outputs
 dist
@@ -18,7 +15,7 @@ out
 .output
 .vite
 
-# Environment variables
+# Environment variables - KEEP THESE IGNORED
 .env
 .env.local
 .env.development
@@ -27,7 +24,6 @@ out
 .env.test.local
 .env.production
 .env.production.local
-*.local
 .env*.local
 
 # Logs
@@ -47,7 +43,6 @@ debug.log
 .idea
 .idea/
 *.iml
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
@@ -57,10 +52,12 @@ debug.log
 *.swo
 *~
 
-# Firebase
+# Windsurf/Cascade
+.windsurf/
+
+# Firebase (keep .firebaserc - it's safe, just project aliases)
 .firebase
 .firebase/
-.firebaserc
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
@@ -93,9 +90,6 @@ coverage/
 .nyc_output
 *.lcov
 
-# Documentation (if auto-generated)
-# docs/
-
 # Sensitive data
 cleanup-data.js
 *.key
@@ -110,45 +104,32 @@ service-account-key.json
 *.sqlite
 *.db
 
-# Deployment configs (if they contain secrets)
-# deployment-config.json
-
 # User-specific files
 .history/
 *.bak
 *.backup
 
-# Lock files (optional - uncomment if you want to ignore them)
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
-
-# Firebase config (if it contains API keys in plain text)
-# src/services/firebase.js
-
-# Development/Debug files
+# Development/Debug/Fix files - temporary notes
 FIX_*.md
 DEBUG_*.md
 TODO_*.md
 NOTES_*.md
 *_DEBUG.js
 *_TEST.js
+MOBILE_*.md
+QUICK_FIX_*.txt
+*.md.bak
 
 # Test data and seeds
 test-data/
 seed-data/
 mock-data/
 
-# Firestore indexes (auto-generated)
-firestore.indexes.json
-
 # Source maps in production
 *.map
 
 # AWS/Cloud credentials
 .aws/
-credentials
-config
 
 # API keys and secrets documentation
 API_KEYS.md
@@ -162,5 +143,13 @@ dev.config.js
 # Deployment artifacts
 deploy/
 deployment/
-*.zip
 *.tar.gz
+
+# Batch/Shell scripts for local dev (optional - keep if needed for team)
+# *.bat
+# *.sh
+# *.ps1
+
+# Lock files - KEEP package-lock.json for consistent builds
+yarn.lock
+pnpm-lock.yaml

@@ -19,8 +19,8 @@ export const ThemeProvider = ({ children }) => {
     if (saved && Object.values(THEMES).includes(saved)) {
       return saved;
     }
-    // Default to dark theme
-    return THEMES.dark;
+    // Default to bright theme for new users
+    return THEMES.bright;
   });
 
   useEffect(() => {
