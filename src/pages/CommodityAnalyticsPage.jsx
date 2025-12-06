@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../services/firebase';
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign, Droplets, AlertTriangle, CheckCircle, Calendar, Download } from 'lucide-react';
 import { getCurrencySymbol } from '../utils/calculations';
 import toast from 'react-hot-toast';
@@ -71,7 +71,7 @@ const CommodityAnalyticsPage = ({ embedded = false, externalDateRange = null }) 
   const [reconciliationData, setReconciliationData] = useState([]);
   const [vehiclePerformance, setVehiclePerformance] = useState([]);
   const [varianceTrend, setVarianceTrend] = useState([]);
-  const [expensesByMonth, setExpensesByMonth] = useState([]);
+  const [netIncomeByMonth, setNetIncomeByMonth] = useState([]);
 
   useEffect(() => {
     if (company?.id) {
@@ -335,43 +335,63 @@ const CommodityAnalyticsPage = ({ embedded = false, externalDateRange = null }) 
         { name: 'Pending', value: reconciliationMap.pending, color: '#6B7280' }
       ].filter(item => item.value > 0));
 
-      // Prepare expenses by month data - USE FILTERED EXPENSES
-      const expensesMonthMap = new Map();
+      // Prepare NET INCOME by month data (Revenue - Expenses)
+      const netIncomeMonthMap = new Map();
+      
+      // First, aggregate expenses by month
       filteredExpenses.forEach(expense => {
         if (expense.expenseDate) {
           const monthKey = expense.expenseDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'short' });
-          if (!expensesMonthMap.has(monthKey)) {
-            expensesMonthMap.set(monthKey, { month: monthKey, totalExpenses: 0, count: 0 });
+          if (!netIncomeMonthMap.has(monthKey)) {
+            netIncomeMonthMap.set(monthKey, { month: monthKey, revenue: 0, expenses: 0, netIncome: 0 });
           }
-          const monthData = expensesMonthMap.get(monthKey);
-          monthData.totalExpenses += Number(expense.amount) || 0;
-          monthData.count += 1;
+          const monthData = netIncomeMonthMap.get(monthKey);
+          monthData.expenses += Number(expense.amount) || 0;
         }
       });
-      let expensesArray = Array.from(expensesMonthMap.values()).sort((a, b) => {
-        // Sort by date
+      
+      // Then, aggregate revenue by month from invoices
+      filteredInvoices.forEach(invoice => {
+        const invoiceDate = invoice.invoiceDate?.toDate ? invoice.invoiceDate.toDate() : new Date(invoice.invoiceDate);
+        if (invoiceDate) {
+          const monthKey = invoiceDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'short' });
+          if (!netIncomeMonthMap.has(monthKey)) {
+            netIncomeMonthMap.set(monthKey, { month: monthKey, revenue: 0, expenses: 0, netIncome: 0 });
+          }
+          const monthData = netIncomeMonthMap.get(monthKey);
+          monthData.revenue += Number(invoice.total) || Number(invoice.totalAmount) || 0;
+        }
+      });
+      
+      // Calculate net income for each month
+      netIncomeMonthMap.forEach((value) => {
+        value.netIncome = value.revenue - value.expenses;
+      });
+      
+      let netIncomeArray = Array.from(netIncomeMonthMap.values()).sort((a, b) => {
         const dateA = new Date(a.month);
         const dateB = new Date(b.month);
         return dateA - dateB;
       });
       
       // Add blank spacing after data (no dates)
-      if (expensesArray.length > 0) {
-        const paddedExpenses = [...expensesArray];
+      if (netIncomeArray.length > 0) {
+        const paddedNetIncome = [...netIncomeArray];
         
         // Add 3 blank spaces after for chart spacing
         for (let i = 1; i <= 3; i++) {
-          paddedExpenses.push({
+          paddedNetIncome.push({
             month: '',
-            totalExpenses: null,
-            count: 0
+            revenue: null,
+            expenses: null,
+            netIncome: null
           });
         }
         
-        expensesArray = paddedExpenses;
+        netIncomeArray = paddedNetIncome;
       }
       
-      setExpensesByMonth(expensesArray);
+      setNetIncomeByMonth(netIncomeArray);
 
       // Vehicle performance - using filtered data
       const vehicleMap = new Map();
@@ -728,11 +748,11 @@ const CommodityAnalyticsPage = ({ embedded = false, externalDateRange = null }) 
           </ResponsiveContainer>
         </div>
 
-        {/* Expenses by Month */}
+        {/* Net Income by Month */}
         <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Expenses by Month</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-4">Net Income by Month</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={expensesByMonth}>
+            <BarChart data={netIncomeByMonth}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis 
                 dataKey="month" 
@@ -745,8 +765,12 @@ const CommodityAnalyticsPage = ({ embedded = false, externalDateRange = null }) 
                 tickFormatter={(value) => `${getCurrencySymbol(company?.currency)}${(value / 1000).toFixed(0)}k`}
               />
               <Tooltip 
-                formatter={(value) => [`${getCurrencySymbol(company?.currency)}${value.toLocaleString()}`, 'Expenses']}
-                labelFormatter={(label) => `Month: ${label}`}
+                formatter={(value, name) => {
+                  if (value === null) return ['-', name];
+                  const formatted = `${getCurrencySymbol(company?.currency)}${Math.abs(value).toLocaleString()}`;
+                  return [value < 0 ? `-${formatted}` : formatted, name];
+                }}
+                labelFormatter={(label) => label ? `Month: ${label}` : ''}
                 contentStyle={{ 
                   backgroundColor: 'rgba(0, 0, 0, 0.85)', 
                   border: 'none', 
@@ -754,28 +778,24 @@ const CommodityAnalyticsPage = ({ embedded = false, externalDateRange = null }) 
                   color: '#10B981'
                 }}
                 labelStyle={{ color: '#10B981', fontWeight: 'bold' }}
-                itemStyle={{ color: '#10B981' }}
               />
               <Legend wrapperStyle={{ fontSize: '13px', fontWeight: '600' }} />
-              <Line 
-                type="monotone" 
-                dataKey="totalExpenses" 
-                stroke="#EF4444" 
-                strokeWidth={3}
-                name="Total Expenses"
-                dot={{ r: 5, fill: '#EF4444', strokeWidth: 2, stroke: '#7f1d1d' }}
-                activeDot={{ r: 7, fill: '#EF4444', stroke: '#fff', strokeWidth: 2 }}
-              />
-            </LineChart>
+              <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="3 3" />
+              <Bar 
+                dataKey="netIncome" 
+                name="Net Income"
+                fill="#10B981"
+                radius={[4, 4, 0, 0]}
+              >
+                {netIncomeByMonth.map((entry, index) => (
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={entry.netIncome >= 0 ? '#10B981' : '#EF4444'} 
+                  />
+                ))}
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
-          {expensesByMonth.length > 0 && (
-            <div className="mt-4 text-center">
-              <p className="text-sm text-gray-600">
-                Total: <span className="font-bold text-danger">{getCurrencySymbol(company?.currency)} {expensesByMonth.reduce((sum, month) => sum + (Number(month.totalExpenses) || 0), 0).toLocaleString()}</span>
-                {' '}across {expensesByMonth.length} month(s)
-              </p>
-            </div>
-          )}
         </div>
       </div>
 

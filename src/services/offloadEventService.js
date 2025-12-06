@@ -244,26 +244,34 @@ export const createOffloadEvent = async (userId, companyId, offloadData) => {
     const tankValidation = validateTankReadings(loadEvent, offloadData, previousOffload);
     
     // Store tank validation results but DON'T block - allow capture with notes
-    // Manager will be alerted about SIGNIFICANT discrepancies only
-    // Filter out minor variances to avoid alert fatigue
-    const significantErrors = tankValidation.errors.filter(error => {
-      // Only alert on critical discrepancies:
-      // 1. Tank reading mismatch > 5% (not 2%)
-      // 2. Absolute variance > 50L
-      // 3. Impossible increases
+    // Manager will be alerted about ALL variances > 3L (minor and major)
+    // Only very_minor (≤3L) and matched (0L) are excluded from alerts
+    const alertableErrors = tankValidation.errors.filter(error => {
+      // Alert on ALL significant discrepancies:
+      // 1. Impossible increases - ALWAYS alert
+      // 2. Tank reading mismatch > 3L - alert (minor and major)
+      // 3. Tank calculation error > 3L - alert (minor and major)
+      // 4. Quantity mismatch > 3L - alert
       if (error.type === 'IMPOSSIBLE_INCREASE') return true;
-      if (error.type === 'TANK_READING_MISMATCH' && error.difference > 50) return true;
-      if (error.type === 'TANK_CALCULATION_ERROR' && error.difference > 50) return true;
+      if (error.type === 'TANK_READING_MISMATCH' && error.difference > 3) return true;
+      if (error.type === 'TANK_CALCULATION_ERROR' && error.difference > 3) return true;
+      if (error.type === 'QUANTITY_TANK_MISMATCH' && error.difference > 3) return true;
       return false;
     });
     
-    const hasTankDiscrepancy = significantErrors.length > 0;
-    const tankDiscrepancyDetails = hasTankDiscrepancy 
-      ? significantErrors.map(e => e.message).join('; ')
-      : null;
-    
-    // Calculate reconciliation
+    // Calculate reconciliation FIRST (needed for alert check)
     const reconciliation = calculateReconciliation(loadEvent, offloadData);
+    
+    // Also check reconciliation status - if minor_variance or major_variance, create alert
+    const reconciliationNeedsAlert = reconciliation.reconciliationStatus === 'minor_variance' || 
+                                      reconciliation.reconciliationStatus === 'major_variance';
+    
+    const hasTankDiscrepancy = alertableErrors.length > 0 || reconciliationNeedsAlert;
+    const tankDiscrepancyDetails = alertableErrors.length > 0 
+      ? alertableErrors.map(e => e.message).join('; ')
+      : reconciliationNeedsAlert 
+        ? `Variance detected: ${reconciliation.varianceAbs}L (${reconciliation.variancePercentage.toFixed(2)}%) - ${reconciliation.message}`
+        : null;
 
     // Determine if this is the last offload (tank empty or explicitly marked)
     const isLastOffload = offloadData.isLastOffload || Number(offloadData.tankReadingAfter) === 0;
@@ -404,6 +412,16 @@ export const createOffloadEvent = async (userId, companyId, offloadData) => {
     // If there's a tank discrepancy, create an alert for the manager
     if (hasTankDiscrepancy) {
       try {
+        // Determine severity based on reconciliation status
+        const alertSeverity = reconciliation.reconciliationStatus === 'major_variance' ? 'critical' : 
+                              reconciliation.reconciliationStatus === 'minor_variance' ? 'high' : 'medium';
+        
+        // Create descriptive title based on variance
+        const varianceAmount = Math.abs(reconciliation.variance || 0);
+        const alertTitle = varianceAmount >= 50 
+          ? `Major Discrepancy: ${varianceAmount.toFixed(0)}L variance detected`
+          : `Minor Variance: ${varianceAmount.toFixed(0)}L difference detected`;
+        
         const alertData = {
           companyId,
           vehicleId: loadEvent.vehicleId,
@@ -411,15 +429,19 @@ export const createOffloadEvent = async (userId, companyId, offloadData) => {
           offloadEventId: docRef.id,
           loadEventId: offloadData.loadEventId,
           alertType: 'tank_discrepancy',
-          severity: 'high',
-          title: 'Tank Reading Discrepancy Detected',
+          severity: alertSeverity,
+          reconciliationStatus: reconciliation.reconciliationStatus,
+          title: alertTitle,
           message: tankDiscrepancyDetails,
           details: {
             loadQuantity: loadEvent.loadQuantity,
             offloadQuantity: offloadData.offloadQuantity,
             tankBefore: offloadData.tankReadingBefore,
             tankAfter: offloadData.tankReadingAfter,
-            expectedAfter: offloadData.tankReadingBefore - offloadData.offloadQuantity
+            expectedAfter: offloadData.tankReadingBefore - offloadData.offloadQuantity,
+            variance: reconciliation.variance,
+            variancePercentage: reconciliation.variancePercentage,
+            customer: offloadData.customer || 'Unknown'
           },
           acknowledged: false,
           acknowledgedBy: null,
@@ -428,6 +450,7 @@ export const createOffloadEvent = async (userId, companyId, offloadData) => {
         };
         
         await addDoc(collection(db, 'tankDiscrepancyAlerts'), alertData);
+        console.log(`⚠️ Tank discrepancy alert created: ${alertTitle}`);
       } catch (alertError) {
         console.error('Error creating tank discrepancy alert:', alertError);
         // Don't fail the offload if alert creation fails
