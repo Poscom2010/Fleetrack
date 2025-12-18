@@ -170,29 +170,37 @@ const LandingPage = () => {
         {/* Header with Logo and Motto */}
         <header className="container mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <img src={logo} alt="FleetTrack" className="h-16 w-16 sm:h-20 sm:w-20 object-contain drop-shadow-2xl" />
+            {/* Logo and Brand */}
+            <div className="flex items-center gap-2 sm:gap-4">
+              <img src={logo} alt="FleetTrack" className="h-12 w-12 sm:h-20 sm:w-20 object-contain drop-shadow-2xl" />
               <div className="flex flex-col">
-                <span className="text-white font-bold text-xl sm:text-2xl tracking-tight">FleetTrack</span>
-                <span className="px-3 py-1 bg-gradient-to-r from-yellow-500/30 to-amber-500/30 border border-yellow-500/50 rounded-full text-xs sm:text-sm font-semibold shadow-lg" style={{color: '#fbbf24'}}>
+                <span className="text-white font-bold text-lg sm:text-2xl tracking-tight">FleetTrack</span>
+                <span className="hidden sm:inline-block px-3 py-1 bg-gradient-to-r from-yellow-500/30 to-amber-500/30 border border-yellow-500/50 rounded-full text-xs sm:text-sm font-semibold shadow-lg" style={{color: '#fbbf24'}}>
                   The power in You. Drive Smart, Earn More
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={() => setShowFaqModal(true)}
-                className="px-5 py-2.5 text-base font-semibold text-slate-200 hover:text-white hover:bg-slate-700/30 rounded-lg transition-all transform hover:scale-105"
+                className="px-3 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-semibold text-slate-200 hover:text-white bg-slate-800/50 sm:bg-transparent border border-slate-600 sm:border-transparent hover:bg-slate-700/30 rounded-lg transition-all transform hover:scale-105"
               >
                 FAQ
               </button>
               <button
                 onClick={() => openAuthModal(true)}
-                className="px-6 py-2.5 text-base font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 border border-blue-500 rounded-lg transition-all shadow-lg shadow-blue-500/30 transform hover:scale-105"
+                className="px-4 py-2 sm:px-6 sm:py-2.5 text-sm sm:text-base font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 border border-blue-500 rounded-lg transition-all shadow-lg shadow-blue-500/30 transform hover:scale-105"
               >
                 Sign In
               </button>
             </div>
+          </div>
+          {/* Mobile Motto - shown below header on small screens */}
+          <div className="sm:hidden mt-2 text-center">
+            <span className="inline-block px-3 py-1.5 bg-gradient-to-r from-yellow-500/30 to-amber-500/30 border border-yellow-500/50 rounded-full text-xs font-semibold shadow-lg" style={{color: '#fbbf24'}}>
+              The power in You. Drive Smart, Earn More
+            </span>
           </div>
         </header>
 
